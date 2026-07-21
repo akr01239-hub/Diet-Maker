@@ -2,7 +2,9 @@ package com.nutriai.di
 
 import com.jakewharton.retrofit2.converter.kotlinx.serialization.asConverterFactory
 import com.nutriai.BuildConfig
+import com.nutriai.data.remote.AuthInterceptor
 import com.nutriai.data.remote.HealthApi
+import com.nutriai.data.remote.NutriApi
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -28,7 +30,7 @@ object NetworkModule {
 
     @Provides
     @Singleton
-    fun provideOkHttpClient(): OkHttpClient {
+    fun provideOkHttpClient(authInterceptor: AuthInterceptor): OkHttpClient {
         val logging = HttpLoggingInterceptor().apply {
             level = if (BuildConfig.DEBUG) {
                 HttpLoggingInterceptor.Level.BODY
@@ -37,6 +39,7 @@ object NetworkModule {
             }
         }
         return OkHttpClient.Builder()
+            .addInterceptor(authInterceptor)
             .addInterceptor(logging)
             // Render free tier can cold-start (~30–60s); be generous on the read timeout.
             .connectTimeout(20, TimeUnit.SECONDS)
@@ -60,4 +63,8 @@ object NetworkModule {
     @Provides
     @Singleton
     fun provideHealthApi(retrofit: Retrofit): HealthApi = retrofit.create(HealthApi::class.java)
+
+    @Provides
+    @Singleton
+    fun provideNutriApi(retrofit: Retrofit): NutriApi = retrofit.create(NutriApi::class.java)
 }

@@ -8,7 +8,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Scaffold
 import androidx.compose.ui.Modifier
-import com.nutriai.ui.health.HealthScreen
+import com.nutriai.ui.navigation.AppRoot
 import com.nutriai.ui.theme.NutriAiTheme
 import dagger.hilt.android.AndroidEntryPoint
 
@@ -20,7 +20,9 @@ class MainActivity : ComponentActivity() {
         setContent {
             NutriAiTheme {
                 Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
-                    HealthScreen(modifier = Modifier.padding(innerPadding))
+                    androidx.compose.foundation.layout.Box(Modifier.padding(innerPadding)) {
+                        AppRoot()
+                    }
                 }
             }
         }
