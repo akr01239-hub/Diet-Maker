@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <!-- Simple leaf motif inside the safe zone (~36..72). -->
+    <group android:translateX="0" android:translateY="0">
+        <path
+            android:fillColor="#FFFFFF"
+            android:pathData="M54,32C42,38 38,52 44,66C50,60 54,54 54,54C54,54 58,60 64,66C70,52 66,38 54,32Z" />
+        <path
+            android:fillColor="#B7E4C7"
+            android:pathData="M53,54h2v20h-2z" />
+    </group>
+</vector>

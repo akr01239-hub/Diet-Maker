@@ -1,0 +1,25 @@
+// NutriAI — Prisma schema.
+// Phase 0 keeps this minimal (just enough to prove Neon connectivity + migrations).
+// Phase 1 introduces the real domain models (User, Profile, CalcResult, ...).
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL") // pooled — used by the app at runtime
+  directUrl = env("DIRECT_URL")   // direct — used by prisma migrate
+}
+
+/// Singleton-ish marker table proving the DB is migrated and reachable.
+/// Also handy for surfacing a schema/version stamp from /ready.
+model AppMeta {
+  id        String   @id @default(uuid())
+  key       String   @unique
+  value     String
+  updatedAt DateTime @updatedAt
+  createdAt DateTime @default(now())
+
+  @@map("app_meta")
+}

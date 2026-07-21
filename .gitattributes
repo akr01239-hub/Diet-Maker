@@ -1,0 +1,18 @@
+# Normalize line endings. Default: let git handle text, checkout native.
+* text=auto
+
+# Shell scripts and the Gradle wrapper MUST stay LF or they break on Linux/CI.
+*.sh   text eol=lf
+gradlew text eol=lf
+
+# Windows batch files stay CRLF.
+*.bat  text eol=crlf
+
+# Binaries — never touch line endings.
+*.jar  binary
+*.png  binary
+*.jpg  binary
+*.jpeg binary
+*.webp binary
+*.keystore binary
+*.jks  binary

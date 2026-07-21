@@ -1,0 +1,33 @@
+# ---- Secrets ----
+.env
+.env.*
+!.env.example
+**/local.properties
+**/google-services.json
+*.pem
+*.keystore
+*.jks
+
+# ---- Node / server ----
+node_modules/
+server/dist/
+server/coverage/
+server/prisma/*.db
+npm-debug.log*
+pnpm-debug.log*
+yarn-error.log*
+
+# ---- Android ----
+android/.gradle/
+android/build/
+android/app/build/
+android/captures/
+android/.idea/
+android/local.properties
+*.iml
+
+# ---- OS / editors ----
+.DS_Store
+Thumbs.db
+.vscode/
+*.log

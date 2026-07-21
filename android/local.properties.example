@@ -1,0 +1,8 @@
+# Copy to android/local.properties (git-ignored) and set your API base URL.
+# Android Studio also writes sdk.dir here automatically on first open.
+
+# Production (Render):
+API_BASE_URL=https://nutriai-api.onrender.com/api/v1
+
+# Local server from the emulator (host loopback):
+# API_BASE_URL=http://10.0.2.2:8080/api/v1

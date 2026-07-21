@@ -1,0 +1,51 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  server:
+    name: Server (build + test)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: server
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: server/package-lock.json
+      - run: npm ci
+      - run: npx prisma generate
+      - run: npm run build
+      - run: npm test -- --run
+        env:
+          # Placeholder values so env validation passes in CI (no DB access in unit tests).
+          DATABASE_URL: postgresql://user:pw@localhost:5432/nutriai
+          DIRECT_URL: postgresql://user:pw@localhost:5432/nutriai
+          JWT_ACCESS_SECRET: ci_access_secret_ci_access_secret_ci_access_secret_ci_00
+          JWT_REFRESH_SECRET: ci_refresh_secret_ci_refresh_secret_ci_refresh_secret_00
+          HEALTH_DATA_ENCRYPTION_KEY: MDEyMzQ1Njc4OWFiY2RlZjAxMjM0NTY3ODlhYmNkZWY=
+          AI_PROVIDER: rules
+
+  android:
+    name: Android (assemble debug)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: android
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+      - name: Provide local.properties
+        run: echo "API_BASE_URL=https://nutriai-api.onrender.com/api/v1" > local.properties
+      - uses: gradle/actions/setup-gradle@v3
+      - run: ./gradlew assembleDebug --no-daemon
