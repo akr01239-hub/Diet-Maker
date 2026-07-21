@@ -1,0 +1,24 @@
+name: Keep Render Backend Alive
+
+on:
+  schedule:
+    # every ~5 minutes (GitHub may delay scheduled runs under load; that's fine —
+    # Render's free tier only sleeps after ~15 min idle).
+    - cron: '*/5 * * * *'
+  workflow_dispatch:
+
+jobs:
+  ping:
+    name: Ping NutriAI backend
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ping health endpoint
+        run: |
+          echo "Pinging diet-maker-xja0.onrender.com/health ..."
+          STATUS=$(curl -o /dev/null -s -m 60 -w "%{http_code}" https://diet-maker-xja0.onrender.com/health)
+          echo "Response status: $STATUS"
+          if [ "$STATUS" -eq 200 ]; then
+            echo "Server is alive!"
+          else
+            echo "Server returned status $STATUS"
+          fi

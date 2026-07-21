@@ -1,8 +1,8 @@
 import jwt from 'jsonwebtoken';
 import { env } from '../../lib/env';
 
-export const ACCESS_TTL_SECONDS = 15 * 60; // 15 min
-export const REFRESH_TTL_SECONDS = 7 * 24 * 60 * 60; // 7 days
+export const ACCESS_TTL_SECONDS = 60 * 60; // 1 hour (client auto-refreshes on 401 anyway)
+export const REFRESH_TTL_SECONDS = 30 * 24 * 60 * 60; // 30 days
 
 export interface AccessClaims {
   sub: string; // user id
