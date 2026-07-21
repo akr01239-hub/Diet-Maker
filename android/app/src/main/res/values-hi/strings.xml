@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">NutriAI</string>
+    <string name="disclaimer">शैक्षिक मार्गदर्शन, चिकित्सा सलाह नहीं — कृपया किसी विशेषज्ञ से परामर्श करें।</string>
+    <string name="login">लॉग इन करें</string>
+    <string name="sign_up">साइन अप करें</string>
+    <string name="dashboard">डैशबोर्ड</string>
+    <string name="todays_plan">आज की योजना</string>
+    <string name="log_out">लॉग आउट</string>
+</resources>

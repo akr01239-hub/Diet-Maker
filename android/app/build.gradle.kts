@@ -99,6 +99,7 @@ dependencies {
     ksp(libs.androidx.room.compiler)
     implementation(libs.androidx.work.runtime.ktx)
     implementation(libs.coil.compose)
+    implementation(libs.health.connect.client)
 
     testImplementation(libs.junit)
     testImplementation(libs.mockk)
