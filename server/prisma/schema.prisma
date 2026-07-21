@@ -53,6 +53,9 @@ model User {
   calcResults   CalcResultSnapshot[]
   auditLogs     AuditLog[]
   dietPlans     DietPlan[]
+  foodLogs      FoodLog[]
+  waterLogs     WaterLog[]
+  checkins      WeeklyCheckin[]
 
   @@map("users")
 }
@@ -143,6 +146,63 @@ model DietPlan {
 
   @@index([userId])
   @@map("diet_plans")
+}
+
+/// A logged food entry. Nutrition is snapshotted so history stays stable if a Food changes.
+model FoodLog {
+  id          String   @id @default(uuid())
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  loggedAt    DateTime @default(now())
+  mealSlot    String
+  foodId      String?
+  foodName    String
+  grams       Float
+  entryMethod String   @default("text") // text | barcode | photo | voice
+  kcal        Float
+  proteinG    Float
+  carbG       Float
+  fatG        Float
+  fiberG      Float
+  sugarG      Float    @default(0)
+  sodiumMg    Float    @default(0)
+  notes       String?
+  mood        String?
+  hunger      Int?
+  createdAt   DateTime @default(now())
+
+  @@index([userId, loggedAt])
+  @@map("food_logs")
+}
+
+model WaterLog {
+  id       String   @id @default(uuid())
+  userId   String
+  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  loggedAt DateTime @default(now())
+  amountMl Int
+
+  @@index([userId, loggedAt])
+  @@map("water_logs")
+}
+
+/// Weekly progress check-in. Weight + body measurements are AES-256-GCM-encrypted in
+/// `measurementsEnc`; subjective 1–5 ratings are stored plain.
+model WeeklyCheckin {
+  id              String   @id @default(uuid())
+  userId          String
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  date            DateTime @default(now())
+  measurementsEnc String? // { weightKg, waistCm?, chestCm?, hipCm?, ... }
+  energy          Int? // 1..5
+  sleepHours      Float?
+  mood            Int? // 1..5
+  pain            Int? // 1..5
+  notes           String?
+  createdAt       DateTime @default(now())
+
+  @@index([userId, date])
+  @@map("weekly_checkins")
 }
 
 /// Audit trail for access to health data (required by SECURITY.md).
