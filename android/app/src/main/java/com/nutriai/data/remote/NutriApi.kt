@@ -70,8 +70,15 @@ interface NutriApi {
     @POST("logs/food")
     suspend fun logFood(@Body body: FoodLogRequest)
 
+    @GET("logs/food")
+    suspend fun todayLogs(): com.nutriai.data.remote.dto.FoodLogsEnvelope
+
     @POST("logs/water")
     suspend fun logWater(@Body body: WaterLogRequest)
+
+    @retrofit2.http.Streaming
+    @GET("reports/weekly.pdf")
+    suspend fun weeklyPdf(): okhttp3.ResponseBody
 
     // ---- Check-ins ----
     @POST("checkins")

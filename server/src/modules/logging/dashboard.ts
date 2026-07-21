@@ -6,6 +6,7 @@ export interface NutritionTotals {
   carbG: number;
   fatG: number;
   fiberG: number;
+  sugarG: number;
   sodiumMg: number;
 }
 
@@ -15,6 +16,7 @@ export interface LoggedNutrition {
   carbG: number;
   fatG: number;
   fiberG: number;
+  sugarG?: number;
   sodiumMg: number;
 }
 
@@ -24,6 +26,7 @@ export const EMPTY_TOTALS: NutritionTotals = {
   carbG: 0,
   fatG: 0,
   fiberG: 0,
+  sugarG: 0,
   sodiumMg: 0,
 };
 
@@ -33,13 +36,14 @@ export function dayKey(date: Date): string {
 }
 
 export function sumTotals(entries: LoggedNutrition[]): NutritionTotals {
-  const t = entries.reduce(
+  const t = entries.reduce<NutritionTotals>(
     (acc, e) => ({
       kcal: acc.kcal + e.kcal,
       proteinG: acc.proteinG + e.proteinG,
       carbG: acc.carbG + e.carbG,
       fatG: acc.fatG + e.fatG,
       fiberG: acc.fiberG + e.fiberG,
+      sugarG: acc.sugarG + (e.sugarG ?? 0),
       sodiumMg: acc.sodiumMg + e.sodiumMg,
     }),
     { ...EMPTY_TOTALS },
@@ -50,6 +54,7 @@ export function sumTotals(entries: LoggedNutrition[]): NutritionTotals {
     carbG: round(t.carbG, 1),
     fatG: round(t.fatG, 1),
     fiberG: round(t.fiberG, 1),
+    sugarG: round(t.sugarG, 1),
     sodiumMg: round(t.sodiumMg, 0),
   };
 }
@@ -131,6 +136,7 @@ export function buildDashboard(input: DashboardInput) {
       carbG: todayTotals.carbG,
       fatG: todayTotals.fatG,
       fiberG: todayTotals.fiberG,
+      sugarG: todayTotals.sugarG,
       sodiumMg: todayTotals.sodiumMg,
     },
     streakDays: computeStreak(input.logDayKeys, input.todayKey),

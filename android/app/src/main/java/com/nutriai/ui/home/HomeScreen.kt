@@ -129,12 +129,34 @@ private fun DashboardBody(d: Dashboard, onCompleteProfile: () -> Unit, onAddWate
     metricCard("Water", "${d.water.consumedMl?.toInt() ?: 0} / ${d.water.targetMl?.toInt() ?: 0} ml", d.water.percent)
     Button(onClick = onAddWater) { Text("+ 250 ml water") }
 
+    // Full nutrition breakdown for today.
+    Card(Modifier.fillMaxWidth()) {
+        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+            Text("Nutrition today", style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.primary)
+            nutritionRow("Calories", "${d.calories.consumed.toInt()} kcal")
+            nutritionRow("Protein", "${d.protein.consumed?.toInt() ?: 0} g")
+            nutritionRow("Carbs", "${d.macros.carbG.toInt()} g")
+            nutritionRow("Fat", "${d.macros.fatG.toInt()} g")
+            nutritionRow("Fiber", "${d.macros.fiberG.toInt()} g")
+            nutritionRow("Sugar", "${d.macros.sugarG.toInt()} g")
+            nutritionRow("Sodium", "${d.macros.sodiumMg.toInt()} mg")
+        }
+    }
+
     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
         statCard("Streak", "${d.streakDays} 🔥", Modifier.weight(1f))
         statCard("BMI", d.bmi?.let { it.toString() } ?: "—", Modifier.weight(1f))
     }
     d.weight.latestKg?.let { latest ->
         statCard("Weight", "$latest kg (${d.weight.deltaKg ?: 0.0} kg)", Modifier.fillMaxWidth())
+    }
+}
+
+@Composable
+private fun nutritionRow(label: String, value: String) {
+    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+        Text(label, style = MaterialTheme.typography.bodyMedium)
+        Text(value, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.primary)
     }
 }
 
@@ -198,53 +220,59 @@ private fun PlanTab(viewModel: PlanViewModel = hiltViewModel()) {
 private fun LogTab(viewModel: LogFoodViewModel = hiltViewModel()) {
     val state by viewModel.state.collectAsStateWithLifecycle()
 
-    Column(Modifier.fillMaxSize().padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-        Text("Log food", style = MaterialTheme.typography.headlineSmall, color = MaterialTheme.colorScheme.primary)
-
-        Text("Meal", style = MaterialTheme.typography.labelLarge)
-        Row(
-            Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-        ) {
-            viewModel.slots.forEach { s ->
-                FilterChip(
-                    selected = s == state.slot,
-                    onClick = { viewModel.onSlot(s) },
-                    label = { Text(s) },
-                )
+    LazyColumn(
+        Modifier.fillMaxSize().padding(16.dp),
+        verticalArrangement = Arrangement.spacedBy(10.dp),
+    ) {
+        item {
+            Text("Log food", style = MaterialTheme.typography.headlineSmall, color = MaterialTheme.colorScheme.primary)
+        }
+        item {
+            Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                Text("Meal", style = MaterialTheme.typography.labelLarge)
+                Row(
+                    Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    viewModel.slots.forEach { s ->
+                        FilterChip(selected = s == state.slot, onClick = { viewModel.onSlot(s) }, label = { Text(s) })
+                    }
+                }
             }
         }
-
-        OutlinedTextField(
-            value = state.grams,
-            onValueChange = viewModel::onGrams,
-            label = { Text("Grams") },
-            singleLine = true,
-            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-            modifier = Modifier.fillMaxWidth(),
-        )
-
-        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+        item {
             OutlinedTextField(
-                value = state.query,
-                onValueChange = viewModel::onQuery,
-                modifier = Modifier.weight(1f),
-                placeholder = { Text("Search foods…") },
+                value = state.grams,
+                onValueChange = viewModel::onGrams,
+                label = { Text("Grams") },
                 singleLine = true,
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                modifier = Modifier.fillMaxWidth(),
             )
-            Button(onClick = { viewModel.search(state.query) }, modifier = Modifier.padding(start = 8.dp)) {
-                Text("Search")
+        }
+        item {
+            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                OutlinedTextField(
+                    value = state.query,
+                    onValueChange = viewModel::onQuery,
+                    modifier = Modifier.weight(1f),
+                    placeholder = { Text("Search foods (local + USDA)…") },
+                    singleLine = true,
+                )
+                Button(onClick = { viewModel.search(state.query) }, modifier = Modifier.padding(start = 8.dp)) {
+                    Text("Search")
+                }
             }
         }
-
-        state.message?.let {
-            Text(it, color = MaterialTheme.colorScheme.primary, style = MaterialTheme.typography.bodyMedium)
+        state.message?.let { msg ->
+            item { Text(msg, color = MaterialTheme.colorScheme.primary, style = MaterialTheme.typography.bodyMedium) }
         }
-        if (state.loading) CircularProgressIndicator()
+        if (state.loading) item { CircularProgressIndicator() }
 
-        LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        if (state.results.isNotEmpty()) {
+            item { Text("Results — tap Add", style = MaterialTheme.typography.labelLarge) }
             items(state.results) { food ->
-                Card(Modifier.fillMaxWidth().clickable { viewModel.log(food) }) {
+                Card(Modifier.fillMaxWidth()) {
                     Row(
                         Modifier.fillMaxWidth().padding(12.dp),
                         horizontalArrangement = Arrangement.SpaceBetween,
@@ -252,9 +280,37 @@ private fun LogTab(viewModel: LogFoodViewModel = hiltViewModel()) {
                     ) {
                         Column(Modifier.weight(1f)) {
                             Text(food.name, style = MaterialTheme.typography.titleSmall)
-                            Text("${food.kcal.toInt()} kcal / 100 g", style = MaterialTheme.typography.bodySmall)
+                            Text(
+                                "${food.kcal.toInt()} kcal · P ${food.proteinG.toInt()} · C ${food.carbG.toInt()} · F ${food.fatG.toInt()} /100g",
+                                style = MaterialTheme.typography.bodySmall,
+                            )
                         }
-                        Text("+ Add", color = MaterialTheme.colorScheme.primary, style = MaterialTheme.typography.labelLarge)
+                        Button(onClick = { viewModel.log(food) }) { Text("+ Add") }
+                    }
+                }
+            }
+        }
+
+        if (state.today.isNotEmpty()) {
+            item {
+                Text(
+                    "Today's log (${state.today.size})",
+                    style = MaterialTheme.typography.titleMedium,
+                    color = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.padding(top = 8.dp),
+                )
+            }
+            items(state.today) { e ->
+                Card(
+                    Modifier.fillMaxWidth(),
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
+                ) {
+                    Column(Modifier.padding(12.dp)) {
+                        Text("${e.foodName} — ${e.grams.toInt()} g · ${e.mealSlot}", style = MaterialTheme.typography.titleSmall)
+                        Text(
+                            "${e.kcal.toInt()} kcal · P ${e.proteinG.toInt()}g · C ${e.carbG.toInt()}g · F ${e.fatG.toInt()}g",
+                            style = MaterialTheme.typography.bodySmall,
+                        )
                     }
                 }
             }

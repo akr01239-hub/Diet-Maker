@@ -120,15 +120,43 @@ data class DashMetric(val consumed: Double? = null, val consumedMl: Double? = nu
 data class WeightTrend(val latestKg: Double? = null, val firstKg: Double? = null, val deltaKg: Double? = null)
 
 @Serializable
+data class DashMacros(
+    val carbG: Double = 0.0,
+    val fatG: Double = 0.0,
+    val fiberG: Double = 0.0,
+    val sugarG: Double = 0.0,
+    val sodiumMg: Double = 0.0,
+)
+
+@Serializable
 data class Dashboard(
     val date: String,
     val calories: DashCalories,
     val protein: DashMetric,
     val water: DashMetric,
+    val macros: DashMacros = DashMacros(),
     val streakDays: Int,
     val bmi: Double? = null,
     val weight: WeightTrend,
 )
+
+@Serializable
+data class FoodLogEntry(
+    val id: String,
+    val foodName: String,
+    val mealSlot: String,
+    val grams: Double,
+    val kcal: Double,
+    val proteinG: Double = 0.0,
+    val carbG: Double = 0.0,
+    val fatG: Double = 0.0,
+    val fiberG: Double = 0.0,
+    val sugarG: Double = 0.0,
+    val sodiumMg: Double = 0.0,
+)
+
+@Serializable
+data class FoodLogsEnvelope(val entries: List<FoodLogEntry> = emptyList())
 
 @Serializable
 data class DashboardEnvelope(val dashboard: Dashboard)

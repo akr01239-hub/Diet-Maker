@@ -124,6 +124,7 @@ class ChatViewModel @Inject constructor(
 data class LogState(
     val query: String = "",
     val results: List<com.nutriai.data.remote.dto.FoodDto> = emptyList(),
+    val today: List<com.nutriai.data.remote.dto.FoodLogEntry> = emptyList(),
     val slot: String = "breakfast",
     val grams: String = "150",
     val loading: Boolean = false,
@@ -141,6 +142,14 @@ class LogFoodViewModel @Inject constructor(
 
     init {
         search("")
+        loadToday()
+    }
+
+    fun loadToday() {
+        viewModelScope.launch {
+            val r = repository.todayLogs()
+            r.getOrNull()?.let { _state.value = _state.value.copy(today = it) }
+        }
     }
 
     fun onQuery(q: String) {
@@ -169,11 +178,12 @@ class LogFoodViewModel @Inject constructor(
             val r = repository.logFoodItem(_state.value.slot, food, grams)
             _state.value = _state.value.copy(
                 message = if (r.isSuccess) {
-                    "Logged ${grams.toInt()} g of ${food.name} to ${_state.value.slot}"
+                    "✓ Logged ${grams.toInt()} g of ${food.name} to ${_state.value.slot}"
                 } else {
                     r.exceptionOrNull()?.message ?: "Could not log"
                 },
             )
+            if (r.isSuccess) loadToday()
         }
     }
 }

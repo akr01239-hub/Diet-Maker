@@ -88,6 +88,11 @@ class AppRepository @Inject constructor(
 
     suspend fun logWater(ml: Int): Result<Unit> = runCatching { api.logWater(WaterLogRequest(ml)) }
 
+    suspend fun todayLogs(): Result<List<com.nutriai.data.remote.dto.FoodLogEntry>> =
+        runCatching { api.todayLogs().entries }
+
+    suspend fun reportPdfBytes(): Result<ByteArray> = runCatching { api.weeklyPdf().bytes() }
+
     // ---- Check-ins ----
     suspend fun createCheckin(body: com.nutriai.data.remote.dto.CheckinRequest): Result<Unit> =
         runCatching { api.createCheckin(body); Unit }
