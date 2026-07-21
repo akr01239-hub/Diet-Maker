@@ -1,6 +1,6 @@
 // NutriAI — Prisma schema.
-// Phase 0 keeps this minimal (just enough to prove Neon connectivity + migrations).
-// Phase 1 introduces the real domain models (User, Profile, CalcResult, ...).
+// Phase 1: identity + encrypted health profile + versioned calc snapshots.
+// Sensitive health data is stored AES-256-GCM-encrypted in `Profile.sensitiveEnc`.
 
 generator client {
   provider = "prisma-client-js"
@@ -8,12 +8,17 @@ generator client {
 
 datasource db {
   provider  = "postgresql"
-  url       = env("DATABASE_URL") // pooled — used by the app at runtime
-  directUrl = env("DIRECT_URL")   // direct — used by prisma migrate
+  url       = env("DATABASE_URL") // pooled — runtime
+  directUrl = env("DIRECT_URL")   // direct — migrations
 }
 
-/// Singleton-ish marker table proving the DB is migrated and reachable.
-/// Also handy for surfacing a schema/version stamp from /ready.
+enum Role {
+  user
+  dietitian
+  admin
+}
+
+/// Marker table proving the DB is migrated/reachable (surfaced by /ready).
 model AppMeta {
   id        String   @id @default(uuid())
   key       String   @unique
@@ -22,4 +27,91 @@ model AppMeta {
   createdAt DateTime @default(now())
 
   @@map("app_meta")
+}
+
+model User {
+  id           String   @id @default(uuid())
+  email        String   @unique
+  passwordHash String
+  firstName    String
+  lastName     String
+  role         Role     @default(user)
+
+  dob      DateTime?
+  gender   String? // 'male' | 'female' | other free text
+  country  String?
+  state    String?
+  city     String?
+  language String   @default("en")
+  timezone String   @default("Asia/Kolkata")
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  profile       Profile?
+  refreshTokens RefreshToken[]
+  calcResults   CalcResultSnapshot[]
+  auditLogs     AuditLog[]
+
+  @@map("users")
+}
+
+model RefreshToken {
+  id        String    @id @default(uuid())
+  userId    String
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  /// SHA-256 of the opaque refresh token — the raw token is never stored.
+  tokenHash String    @unique
+  expiresAt DateTime
+  revokedAt DateTime?
+  createdAt DateTime  @default(now())
+
+  @@index([userId])
+  @@map("refresh_tokens")
+}
+
+model Profile {
+  id     String @id @default(uuid())
+  userId String @unique
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  // Non-sensitive planning inputs.
+  heightCm        Float
+  activityLevel   String  @default("moderate")
+  goal            String  @default("maintain")
+  dietType        String  @default("nonveg")
+  reducedMobility Boolean @default(false)
+
+  /// AES-256-GCM JSON: weights, measurements, vitals, conditions, allergies, etc.
+  sensitiveEnc String?
+
+  updatedAt DateTime @updatedAt
+  createdAt DateTime @default(now())
+
+  @@map("profiles")
+}
+
+/// Versioned snapshot of a deterministic CalcResult (bmi/bmr/tdee/macros/flags).
+model CalcResultSnapshot {
+  id        String   @id @default(uuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  result    Json
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+  @@map("calc_results")
+}
+
+/// Audit trail for access to health data (required by SECURITY.md).
+model AuditLog {
+  id        String   @id @default(uuid())
+  userId    String?
+  user      User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+  action    String
+  detail    String?
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+  @@map("audit_logs")
 }

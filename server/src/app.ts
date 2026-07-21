@@ -4,6 +4,8 @@ import helmet from 'helmet';
 import { corsOrigins } from './lib/env';
 import { errorHandler, notFound } from './middleware/error';
 import { healthRouter, API_VERSION } from './modules/health/health.routes';
+import { authRouter } from './modules/auth/auth.routes';
+import { profileRouter } from './modules/profile/profile.routes';
 
 /**
  * Builds the Express app. Kept free of `listen()` so tests can import it directly
@@ -26,6 +28,8 @@ export function createApp(): Express {
   api.get('/', (_req: Request, res: Response) => {
     res.json({ name: 'nutriai-api', version: API_VERSION });
   });
+  api.use('/auth', authRouter);
+  api.use('/', profileRouter);
   app.use('/api/v1', api);
 
   app.use(notFound);
