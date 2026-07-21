@@ -76,7 +76,10 @@ export async function generateAndSavePlan(userId: string, days = 7) {
     throw new HttpError(503, 'Food database is empty — run the seed');
   }
 
-  const week = generateWeekPlan(foods.map(toFoodItem), targets, prefs, { days });
+  const week = generateWeekPlan(foods.map(toFoodItem), targets, prefs, {
+    days,
+    startDate: new Date(),
+  });
 
   const saved = await prisma.dietPlan.create({
     data: {

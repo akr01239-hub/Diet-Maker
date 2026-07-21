@@ -204,28 +204,62 @@ private fun statCard(title: String, value: String, modifier: Modifier = Modifier
 @Composable
 private fun PlanTab(viewModel: PlanViewModel = hiltViewModel()) {
     val state by viewModel.state.collectAsStateWithLifecycle()
-    Column(Modifier.fillMaxSize().padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-        Text("Today's plan", style = MaterialTheme.typography.headlineSmall, color = MaterialTheme.colorScheme.primary)
-        when {
-            state.loading -> CircularProgressIndicator()
-            state.plan?.days?.isNotEmpty() == true -> {
-                val day = state.plan!!.days.first()
-                LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    items(day.meals) { meal ->
-                        Card(Modifier.fillMaxWidth()) {
-                            Column(Modifier.padding(12.dp)) {
-                                Text(meal.slot.replaceFirstChar { it.uppercase() }, style = MaterialTheme.typography.titleSmall)
-                                meal.items.forEach { item ->
-                                    Text("• ${item.name} — ${item.grams.toInt()} g (${item.kcal.toInt()} kcal)")
-                                }
+    val days = state.plan?.days.orEmpty()
+
+    LazyColumn(
+        Modifier.fillMaxSize().padding(16.dp),
+        verticalArrangement = Arrangement.spacedBy(10.dp),
+    ) {
+        item {
+            Text("Your 7-day plan", style = MaterialTheme.typography.headlineSmall, color = MaterialTheme.colorScheme.primary)
+        }
+        if (state.loading) item { CircularProgressIndicator() }
+
+        if (days.isNotEmpty()) {
+            item {
+                Button(onClick = { viewModel.generate() }, modifier = Modifier.fillMaxWidth()) {
+                    Text("🔄  Regenerate plan")
+                }
+            }
+            days.forEach { day ->
+                item {
+                    Card(
+                        Modifier.fillMaxWidth(),
+                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer),
+                    ) {
+                        Column(Modifier.padding(12.dp)) {
+                            Text(
+                                "${day.label ?: "Day ${day.dayIndex + 1}"}${day.date?.let { " · $it" } ?: ""}",
+                                style = MaterialTheme.typography.titleMedium,
+                                color = MaterialTheme.colorScheme.onPrimaryContainer,
+                            )
+                            Text(
+                                "${day.totals.kcal.toInt()} kcal · P ${day.totals.proteinG.toInt()}g",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onPrimaryContainer,
+                            )
+                        }
+                    }
+                }
+                items(day.meals) { meal ->
+                    Card(Modifier.fillMaxWidth()) {
+                        Column(Modifier.padding(12.dp)) {
+                            Text(meal.slot.replaceFirstChar { it.uppercase() }, style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.primary)
+                            meal.items.forEach { item ->
+                                Text("• ${item.name} — ${item.grams.toInt()} g (${item.kcal.toInt()} kcal)", style = MaterialTheme.typography.bodyMedium)
                             }
                         }
                     }
                 }
             }
-            else -> {
-                Text(state.error ?: "No plan yet.")
-                Button(onClick = { viewModel.generate() }) { Text("Generate my 7-day plan") }
+        } else if (!state.loading) {
+            item {
+                Text(state.error ?: "No plan yet — generate your personalised 7-day plan.")
+            }
+            item {
+                Button(onClick = { viewModel.generate() }, modifier = Modifier.fillMaxWidth()) {
+                    Text("Generate my 7-day plan")
+                }
             }
         }
     }

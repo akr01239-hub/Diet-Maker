@@ -172,7 +172,13 @@ data class Meal(val slot: String, val items: List<MealItem>, val kcal: Double, v
 data class DayTotals(val kcal: Double, val proteinG: Double, val carbG: Double, val fatG: Double, val fiberG: Double, val sodiumMg: Double)
 
 @Serializable
-data class DayPlan(val dayIndex: Int, val meals: List<Meal>, val totals: DayTotals)
+data class DayPlan(
+    val dayIndex: Int,
+    val date: String? = null,
+    val label: String? = null,
+    val meals: List<Meal>,
+    val totals: DayTotals,
+)
 
 @Serializable
 data class PlanTargets(val dailyKcal: Double, val proteinG: Double)

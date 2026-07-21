@@ -139,6 +139,16 @@ export function applyGuardrails(input: GuardrailInput): GuardrailResult {
   let fatPerKgMin = 0.6;
   let sodiumMaxMg: number | undefined;
 
+  // Muscle-building goal: more protein to support hypertrophy.
+  if (goal === 'gain') {
+    proteinPerKg = 2.0;
+    flags.push({
+      code: 'MUSCLE_PROTEIN',
+      severity: 'info',
+      message: 'Muscle-building goal: protein raised to ~2.0 g/kg. Pair with resistance training 3–5×/week.',
+    });
+  }
+
   if (has(conditions, 'pcos')) {
     proteinPerKg = 2.0;
     flags.push({

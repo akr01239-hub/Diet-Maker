@@ -95,6 +95,8 @@ export interface Meal {
 
 export interface DayPlan {
   dayIndex: number; // 0..6
+  date?: string; // YYYY-MM-DD (today + dayIndex)
+  label?: string; // e.g. "Today", "Tomorrow", weekday name
   meals: Meal[];
   totals: {
     kcal: number;

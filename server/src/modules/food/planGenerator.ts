@@ -146,7 +146,11 @@ function buildDay(
 
 export interface GenerateOptions {
   days?: number;
+  /** If given, each day gets a real date + label (Today/Tomorrow/weekday). */
+  startDate?: Date;
 }
+
+const WEEKDAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 
 /**
  * Deterministic `rules` meal-plan generator. Given targets, the food DB and preferences,
@@ -174,7 +178,13 @@ export function generateWeekPlan(
   const dayCount = options.days ?? 7;
   const days: DayPlan[] = [];
   for (let d = 0; d < dayCount; d++) {
-    days.push(buildDay(d, ordered, targets, prefs.dietType));
+    const day = buildDay(d, ordered, targets, prefs.dietType);
+    if (options.startDate) {
+      const dt = new Date(options.startDate.getTime() + d * 86_400_000);
+      day.date = dt.toISOString().slice(0, 10);
+      day.label = d === 0 ? 'Today' : d === 1 ? 'Tomorrow' : WEEKDAYS[dt.getUTCDay()];
+    }
+    days.push(day);
   }
   return { days, targets };
 }
