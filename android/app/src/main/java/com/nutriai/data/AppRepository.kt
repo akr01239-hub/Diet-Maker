@@ -62,4 +62,37 @@ class AppRepository @Inject constructor(
     }
 
     suspend fun logWater(ml: Int): Result<Unit> = runCatching { api.logWater(WaterLogRequest(ml)) }
+
+    // ---- Check-ins ----
+    suspend fun createCheckin(body: com.nutriai.data.remote.dto.CheckinRequest): Result<Unit> =
+        runCatching { api.createCheckin(body); Unit }
+
+    suspend fun checkins(): Result<List<com.nutriai.data.remote.dto.CheckinDto>> =
+        runCatching { api.checkins().checkins }
+
+    // ---- Grocery ----
+    suspend fun grocery(): Result<com.nutriai.data.remote.dto.Grocery> =
+        runCatching { api.grocery().grocery }
+
+    // ---- Reports ----
+    suspend fun weeklyReport(): Result<com.nutriai.data.remote.dto.WeeklyReport> =
+        runCatching { api.weeklyReport().report }
+
+    // ---- Gamification ----
+    suspend fun gamification(): Result<com.nutriai.data.remote.dto.Gamification> =
+        runCatching { api.gamification().gamification }
+
+    // ---- Family ----
+    suspend fun family(): Result<List<com.nutriai.data.remote.dto.FamilyMemberDto>> =
+        runCatching { api.family().members }
+
+    suspend fun addFamilyMember(body: com.nutriai.data.remote.dto.FamilyMemberRequest): Result<Unit> =
+        runCatching { api.addFamilyMember(body); Unit }
+
+    suspend fun familyCalc(id: String): Result<com.nutriai.data.remote.dto.CalcResult?> =
+        runCatching { api.familyCalc(id).result }
+
+    // ---- Barcode ----
+    suspend fun barcode(code: String): Result<com.nutriai.data.remote.dto.BarcodeFood> =
+        runCatching { api.barcode(code).food }
 }

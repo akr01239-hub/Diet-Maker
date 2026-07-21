@@ -1,22 +1,33 @@
 package com.nutriai.data.remote
 
 import com.nutriai.data.remote.dto.AuthResponse
+import com.nutriai.data.remote.dto.BarcodeEnvelope
 import com.nutriai.data.remote.dto.CalcEnvelope
 import com.nutriai.data.remote.dto.ChatEnvelope
 import com.nutriai.data.remote.dto.ChatRequest
+import com.nutriai.data.remote.dto.CheckinCreatedEnvelope
+import com.nutriai.data.remote.dto.CheckinRequest
+import com.nutriai.data.remote.dto.CheckinsEnvelope
 import com.nutriai.data.remote.dto.DashboardEnvelope
+import com.nutriai.data.remote.dto.FamilyEnvelope
+import com.nutriai.data.remote.dto.FamilyMemberCreatedEnvelope
+import com.nutriai.data.remote.dto.FamilyMemberRequest
 import com.nutriai.data.remote.dto.FoodLogRequest
 import com.nutriai.data.remote.dto.FoodsEnvelope
+import com.nutriai.data.remote.dto.GamificationEnvelope
+import com.nutriai.data.remote.dto.GroceryEnvelope
 import com.nutriai.data.remote.dto.LoginRequest
 import com.nutriai.data.remote.dto.PlanEnvelope
 import com.nutriai.data.remote.dto.ProfileEnvelope
 import com.nutriai.data.remote.dto.ProfileUpsertRequest
 import com.nutriai.data.remote.dto.RegisterRequest
+import com.nutriai.data.remote.dto.ReportEnvelope
 import com.nutriai.data.remote.dto.WaterLogRequest
 import retrofit2.http.Body
 import retrofit2.http.GET
 import retrofit2.http.POST
 import retrofit2.http.PUT
+import retrofit2.http.Path
 import retrofit2.http.Query
 
 interface NutriApi {
@@ -58,4 +69,37 @@ interface NutriApi {
 
     @POST("logs/water")
     suspend fun logWater(@Body body: WaterLogRequest)
+
+    // ---- Check-ins ----
+    @POST("checkins")
+    suspend fun createCheckin(@Body body: CheckinRequest): CheckinCreatedEnvelope
+
+    @GET("checkins")
+    suspend fun checkins(): CheckinsEnvelope
+
+    // ---- Grocery ----
+    @GET("grocery")
+    suspend fun grocery(): GroceryEnvelope
+
+    // ---- Reports ----
+    @GET("reports/weekly.json")
+    suspend fun weeklyReport(): ReportEnvelope
+
+    // ---- Gamification ----
+    @GET("gamification")
+    suspend fun gamification(): GamificationEnvelope
+
+    // ---- Family ----
+    @GET("family")
+    suspend fun family(): FamilyEnvelope
+
+    @POST("family")
+    suspend fun addFamilyMember(@Body body: FamilyMemberRequest): FamilyMemberCreatedEnvelope
+
+    @GET("family/{id}/calc")
+    suspend fun familyCalc(@Path("id") id: String): CalcEnvelope
+
+    // ---- Barcode ----
+    @GET("barcode/{code}")
+    suspend fun barcode(@Path("code") code: String): BarcodeEnvelope
 }

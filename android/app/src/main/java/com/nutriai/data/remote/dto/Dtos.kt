@@ -189,3 +189,145 @@ data class FoodDto(
 
 @Serializable
 data class FoodsEnvelope(val foods: List<FoodDto> = emptyList())
+
+// ---- Weekly check-ins ----
+@Serializable
+data class CheckinRequest(
+    val weightKg: Double,
+    val waistCm: Double? = null,
+    val chestCm: Double? = null,
+    val hipCm: Double? = null,
+    val energy: Int? = null,
+    val sleepHours: Double? = null,
+    val mood: Int? = null,
+    val pain: Int? = null,
+    val notes: String? = null,
+)
+
+@Serializable
+data class Measurements(val weightKg: Double, val waistCm: Double? = null)
+
+@Serializable
+data class CheckinDto(
+    val id: String,
+    val date: String,
+    val measurements: Measurements? = null,
+    val energy: Int? = null,
+    val sleepHours: Double? = null,
+    val mood: Int? = null,
+    val pain: Int? = null,
+    val notes: String? = null,
+)
+
+@Serializable
+data class CheckinsEnvelope(val checkins: List<CheckinDto> = emptyList())
+
+@Serializable
+data class CheckinCreated(val id: String, val date: String)
+
+@Serializable
+data class CheckinCreatedEnvelope(val checkin: CheckinCreated)
+
+// ---- Grocery ----
+@Serializable
+data class GroceryItem(
+    val foodId: String,
+    val name: String,
+    val totalGrams: Double,
+    val servings: Double,
+    val costTier: Int,
+)
+
+@Serializable
+data class Grocery(
+    val items: List<GroceryItem> = emptyList(),
+    val estimatedCostTierTotal: Double = 0.0,
+    val trimmed: List<String> = emptyList(),
+)
+
+@Serializable
+data class GroceryEnvelope(val grocery: Grocery)
+
+// ---- Reports ----
+@Serializable
+data class ReportDay(val date: String, val kcal: Double, val proteinG: Double)
+
+@Serializable
+data class ReportTargets(val dailyKcal: Double, val proteinG: Double, val waterMl: Double)
+
+@Serializable
+data class WeeklyReport(
+    val name: String,
+    val generatedAt: String,
+    val targets: ReportTargets? = null,
+    val bmi: Double? = null,
+    val latestWeightKg: Double? = null,
+    val weightDeltaKg: Double? = null,
+    val days: List<ReportDay> = emptyList(),
+    val avgKcal: Double? = null,
+    val adherencePct: Double? = null,
+    val disclaimer: String,
+)
+
+@Serializable
+data class ReportEnvelope(val report: WeeklyReport)
+
+// ---- Gamification ----
+@Serializable
+data class Badge(val code: String, val title: String, val description: String, val earned: Boolean)
+
+@Serializable
+data class Gamification(val earnedCount: Int, val total: Int, val badges: List<Badge> = emptyList())
+
+@Serializable
+data class GamificationEnvelope(val gamification: Gamification)
+
+// ---- Family ----
+@Serializable
+data class FamilyMemberRequest(
+    val firstName: String,
+    val relation: String? = null,
+    val heightCm: Double,
+    val activityLevel: String,
+    val goal: String,
+    val dietType: String,
+    val sensitive: SensitiveData,
+)
+
+@Serializable
+data class FamilyMemberDto(
+    val id: String,
+    val firstName: String,
+    val relation: String? = null,
+    val heightCm: Double? = null,
+    val activityLevel: String? = null,
+    val goal: String? = null,
+    val dietType: String? = null,
+)
+
+@Serializable
+data class FamilyEnvelope(val members: List<FamilyMemberDto> = emptyList())
+
+@Serializable
+data class FamilyMemberCreated(val id: String, val firstName: String, val relation: String? = null)
+
+@Serializable
+data class FamilyMemberCreatedEnvelope(val member: FamilyMemberCreated)
+
+// ---- Barcode ----
+@Serializable
+data class BarcodePer100g(
+    val kcal: Double,
+    val proteinG: Double = 0.0,
+    val carbG: Double = 0.0,
+    val fatG: Double = 0.0,
+    val fiberG: Double = 0.0,
+    val sugarG: Double = 0.0,
+    val sodiumMg: Double = 0.0,
+)
+
+@Serializable
+data class BarcodeFood(val code: String, val name: String, val per100g: BarcodePer100g)
+
+@Serializable
+data class BarcodeEnvelope(val food: BarcodeFood)
