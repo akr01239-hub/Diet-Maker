@@ -78,17 +78,30 @@ in ~30–60s. Acceptable for MVP. Optionally add a free uptime pinger hitting `/
 
 ## Build phases
 
-Built incrementally; each phase ends with tests + a review checkpoint.
+Built incrementally; each phase ends with tests + a checkpoint. Backend is verified live
+against Neon; the Android app compiles green in CI.
 
-- **Phase 0 — Bootstrap & Deploy** ← *current*: server + `/health` on Render, Android
-  skeleton that calls the live health endpoint, CI.
-- Phase 1 — Identity, Profile, Calc engine (BMR/TDEE/macros) + risk report.
-- Phase 2 — Diet plans (food DB ETL + `rules` generator + guardrails), offline cache.
-- Phase 3 — Logging & progress (barcode, water, weekly check-in, charts).
-- Phase 4 — Adaptive plans, chat dietitian, notifications.
-- Phase 5 — Grocery, reports (PDF/Excel), gamification.
-- Phase 6 — Health Connect, family mode, i18n, dark-mode polish.
-- Phase 7 — Hardening & signed release.
+- ✅ **Phase 0 — Bootstrap:** server + `/health`/`/ready`, Android skeleton, CI, render.yaml.
+- ✅ **Phase 1 — Identity/Profile/Calc:** calc engine (100% cov), guardrails (100% stmts),
+  Argon2id auth + JWT rotation, AES-256-GCM profile, `/calc`.
+- ✅ **Phase 2 — Diet plans:** food DB + deterministic `rules` generator + guardrails.
+- ✅ **Phase 3 — Logging & progress:** food/water logging, barcode (Open Food Facts),
+  weekly check-ins, dashboard aggregates.
+- ✅ **Phase 4 — Adaptive/chat:** rules chat dietitian, adaptive engine, reminders.
+- ✅ **Phase 5 — Grocery/reports:** grocery list, CSV + PDF reports, gamification badges.
+- ✅ **Phase 6 — Family/i18n:** owner-scoped family members (own AI), Hindi i18n, Health
+  Connect steps, dark mode.
+- ✅ **Phase 7 — Hardening:** rate limiting, request IDs, data export, account deletion.
+  (Signed release build remains a manual step — see docs/ANDROID_GUIDE.md.)
+
+Android app: auth, onboarding wizard, dashboard, today/7-day plan, chat coach.
+
+## API surface (`/api/v1`)
+
+`auth/{register,login,refresh,logout,me}` · `profile` · `calc`, `calc/preview`, `calc/latest` ·
+`plan`, `plan/latest` · `foods` · `logs/food`, `logs/water`, `checkins`, `dashboard`,
+`barcode/:code` · `chat`, `adapt`, `reminders` · `grocery`, `gamification`,
+`reports/weekly.{json,csv,pdf}` · `family`, `family/:id/{calc,plan}` · `me/export`, `DELETE /me`.
 
 ## License / data
 
