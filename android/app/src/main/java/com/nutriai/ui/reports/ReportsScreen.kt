@@ -21,6 +21,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewModelScope
 import com.nutriai.data.AppRepository
+import com.nutriai.data.remote.dto.ReportDay
 import com.nutriai.data.remote.dto.WeeklyReport
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -66,26 +67,35 @@ fun ReportsScreen(
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
 
-    Column(
-        modifier.fillMaxSize().padding(16.dp),
+    LazyColumn(
+        modifier = modifier.fillMaxSize().padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
-        Text(
-            "Weekly report",
-            style = MaterialTheme.typography.headlineSmall,
-            color = MaterialTheme.colorScheme.primary,
-        )
-
-        when {
-            state.loading -> CircularProgressIndicator()
-            state.error != null -> Text(state.error!!, color = MaterialTheme.colorScheme.error)
-            state.report != null -> ReportBody(state.report!!)
+        item {
+            Text(
+                "Weekly report",
+                style = MaterialTheme.typography.headlineSmall,
+                color = MaterialTheme.colorScheme.primary,
+            )
+        }
+        if (state.loading) {
+            item { CircularProgressIndicator() }
+        }
+        state.error?.let { err ->
+            item { Text(err, color = MaterialTheme.colorScheme.error) }
+        }
+        state.report?.let { report ->
+            item { SummaryCard(report) }
+            items(report.days) { day -> DayCard(day) }
+            item {
+                Text(report.disclaimer, style = MaterialTheme.typography.labelSmall)
+            }
         }
     }
 }
 
 @Composable
-private fun ReportBody(report: WeeklyReport) {
+private fun SummaryCard(report: WeeklyReport) {
     Card(Modifier.fillMaxWidth()) {
         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
             summaryRow("Calorie target", report.targets?.dailyKcal?.let { "${it.toInt()} kcal" } ?: "—")
@@ -97,25 +107,22 @@ private fun ReportBody(report: WeeklyReport) {
             summaryRow("Adherence", report.adherencePct?.let { "${it.toInt()}%" } ?: "—")
         }
     }
+}
 
-    LazyColumn(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        items(report.days) { day ->
-            Card(Modifier.fillMaxWidth()) {
-                Row(
-                    Modifier.fillMaxWidth().padding(12.dp),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                ) {
-                    Text(day.date, style = MaterialTheme.typography.titleSmall)
-                    Text(
-                        "${day.kcal.toInt()} kcal · ${day.proteinG.toInt()} g protein",
-                        style = MaterialTheme.typography.bodySmall,
-                    )
-                }
-            }
+@Composable
+private fun DayCard(day: ReportDay) {
+    Card(Modifier.fillMaxWidth()) {
+        Row(
+            Modifier.fillMaxWidth().padding(12.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+        ) {
+            Text(day.date, style = MaterialTheme.typography.titleSmall)
+            Text(
+                "${day.kcal.toInt()} kcal · ${day.proteinG.toInt()} g protein",
+                style = MaterialTheme.typography.bodyMedium,
+            )
         }
     }
-
-    Text(report.disclaimer, style = MaterialTheme.typography.labelSmall)
 }
 
 @Composable
