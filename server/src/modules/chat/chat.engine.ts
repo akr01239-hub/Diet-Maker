@@ -16,7 +16,8 @@ export interface ChatReply {
     | 'weight_pace'
     | 'water'
     | 'help'
-    | 'fallback';
+    | 'fallback'
+    | 'llm';
   reply: string;
   sources: string[];
 }

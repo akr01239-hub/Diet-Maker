@@ -47,7 +47,7 @@ fun HomeScreen(
     onCompleteProfile: () -> Unit,
 ) {
     var tab by remember { mutableIntStateOf(0) }
-    val tabs = listOf("🏠" to "Home", "🍽️" to "Plan", "➕" to "Log", "💬" to "Coach")
+    val tabs = listOf("🏠" to "Home", "🍽️" to "Plan", "➕" to "Log", "💬" to "Coach", "☰" to "More")
 
     Scaffold(
         bottomBar = {
@@ -68,7 +68,8 @@ fun HomeScreen(
                 0 -> DashboardTab(onLogout = onLogout, onCompleteProfile = onCompleteProfile)
                 1 -> PlanTab()
                 2 -> LogTab()
-                else -> ChatTab()
+                3 -> ChatTab()
+                else -> MoreScreen(Modifier.fillMaxSize())
             }
         }
     }

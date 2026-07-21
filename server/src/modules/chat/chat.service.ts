@@ -2,6 +2,14 @@ import { prisma } from '../../lib/prisma';
 import { decryptJson } from '../../lib/crypto';
 import type { FoodItem, MealSlot } from '../food/food.types';
 import { answer, type ChatReply } from './chat.engine';
+import { getAiProvider } from '../../ai';
+
+const DISCLAIMER =
+  'This is educational guidance, not medical advice — please consult a professional.';
+
+function withDisclaimer(text: string): string {
+  return text.includes(DISCLAIMER) ? text : `${text}\n\n${DISCLAIMER}`;
+}
 
 function toFoodItem(f: {
   id: string; name: string; locale: string; region: string | null; category: string;
@@ -57,8 +65,25 @@ export async function chat(userId: string, message: string, firstName?: string):
     }
   }
 
+  const targets = result
+    ? { dailyKcal: result.dailyKcal, proteinG: result.proteinG, waterMl: result.waterMl }
+    : null;
+
+  // Try the pluggable LLM provider first (if configured). Numbers/targets always come
+  // from the deterministic calc above — the LLM never supplies them. On null/empty or
+  // any failure, fall back to the deterministic rules engine exactly as before.
+  const provider = getAiProvider();
+  if (provider) {
+    const llm = await provider.chatReply(message, { targets, conditions, firstName });
+    if (llm && llm.trim()) {
+      const reply: ChatReply = { intent: 'llm', reply: withDisclaimer(llm.trim()), sources: [] };
+      await prisma.auditLog.create({ data: { userId, action: 'chat.query', detail: reply.intent } });
+      return reply;
+    }
+  }
+
   const reply = answer(message, {
-    targets: result ? { dailyKcal: result.dailyKcal, proteinG: result.proteinG, waterMl: result.waterMl } : null,
+    targets,
     conditions,
     findFood: makeFindFood(foods.map(toFoodItem)),
     firstName,
