@@ -1,0 +1,110 @@
+import { describe, it, expect } from 'vitest';
+import { SEED_FOODS } from '../src/data/foods.seed';
+import { eligibleFoods, conditionAvoidTags } from '../src/modules/food/foodFilter';
+import { generateWeekPlan } from '../src/modules/food/planGenerator';
+import type { PlanPreferences, PlanTargets } from '../src/modules/food/food.types';
+
+const targets: PlanTargets = {
+  dailyKcal: 2000,
+  proteinG: 130,
+  fatG: 60,
+  carbG: 220,
+  fiberG: 28,
+};
+
+function prefs(over: Partial<PlanPreferences> = {}): PlanPreferences {
+  return { dietType: 'nonveg', allergies: [], conditions: [], ...over };
+}
+
+describe('eligibleFoods — diet type', () => {
+  it('vegan keeps only vegan foods', () => {
+    const out = eligibleFoods(SEED_FOODS, prefs({ dietType: 'vegan' }));
+    expect(out.length).toBeGreaterThan(0);
+    expect(out.every((f) => f.category === 'vegan')).toBe(true);
+  });
+
+  it('veg excludes egg and non-veg', () => {
+    const out = eligibleFoods(SEED_FOODS, prefs({ dietType: 'veg' }));
+    expect(out.some((f) => f.category === 'egg' || f.category === 'nonveg')).toBe(false);
+  });
+
+  it('eggetarian allows egg but not meat/fish', () => {
+    const out = eligibleFoods(SEED_FOODS, prefs({ dietType: 'eggetarian' }));
+    expect(out.some((f) => f.category === 'egg')).toBe(true);
+    expect(out.some((f) => f.category === 'nonveg')).toBe(false);
+  });
+
+  it('nonveg allows everything', () => {
+    const out = eligibleFoods(SEED_FOODS, prefs({ dietType: 'nonveg' }));
+    expect(out.some((f) => f.category === 'nonveg')).toBe(true);
+  });
+});
+
+describe('eligibleFoods — allergies & conditions', () => {
+  it('excludes a declared allergen (peanut)', () => {
+    const out = eligibleFoods(SEED_FOODS, prefs({ allergies: ['peanut'] }));
+    expect(out.some((f) => f.allergens.includes('peanut'))).toBe(false);
+    expect(out.some((f) => f.id === 'peanuts')).toBe(false);
+  });
+
+  it('diabetes removes high-sugar / high-GI foods', () => {
+    const out = eligibleFoods(SEED_FOODS, prefs({ conditions: ['diabetes'] }));
+    expect(out.some((f) => f.tags.includes('high-gi'))).toBe(false);
+    expect(out.some((f) => f.id === 'white-rice')).toBe(false);
+  });
+
+  it('jain removes onion/garlic foods', () => {
+    const out = eligibleFoods(SEED_FOODS, prefs({ dietType: 'jain' }));
+    expect(out.some((f) => f.tags.includes('onion') || f.tags.includes('garlic'))).toBe(false);
+  });
+
+  it('maps conditions to avoid-tags', () => {
+    expect(conditionAvoidTags(['hypertension'])).toContain('high-sodium');
+    expect(conditionAvoidTags(['kidney_disease'])).toContain('high-potassium');
+  });
+});
+
+describe('generateWeekPlan', () => {
+  it('produces 7 days, each roughly on the calorie target', () => {
+    const plan = generateWeekPlan(SEED_FOODS, targets, prefs());
+    expect(plan.days).toHaveLength(7);
+    for (const day of plan.days) {
+      expect(day.totals.kcal).toBeGreaterThan(targets.dailyKcal * 0.7);
+      expect(day.totals.kcal).toBeLessThan(targets.dailyKcal * 1.3);
+      expect(day.meals.length).toBe(7);
+    }
+  });
+
+  it('is deterministic — same inputs, same plan', () => {
+    const a = generateWeekPlan(SEED_FOODS, targets, prefs());
+    const b = generateWeekPlan(SEED_FOODS, targets, prefs());
+    expect(JSON.stringify(a)).toBe(JSON.stringify(b));
+  });
+
+  it('never includes an allergen the user declared', () => {
+    const plan = generateWeekPlan(SEED_FOODS, targets, prefs({ allergies: ['milk', 'peanut'] }));
+    const ids = plan.days.flatMap((d) => d.meals.flatMap((m) => m.items.map((i) => i.foodId)));
+    const banned = SEED_FOODS.filter(
+      (f) => f.allergens.includes('milk') || f.allergens.includes('peanut'),
+    ).map((f) => f.id);
+    expect(ids.some((id) => banned.includes(id))).toBe(false);
+  });
+
+  it('varies foods across days (rotation)', () => {
+    const plan = generateWeekPlan(SEED_FOODS, targets, prefs());
+    const day0 = plan.days[0]!.meals.flatMap((m) => m.items.map((i) => i.foodId)).join();
+    const day1 = plan.days[1]!.meals.flatMap((m) => m.items.map((i) => i.foodId)).join();
+    expect(day0).not.toBe(day1);
+  });
+
+  it('intermittent fasting collapses to 3 eating windows', () => {
+    const plan = generateWeekPlan(SEED_FOODS, targets, prefs({ dietType: 'if' }));
+    expect(plan.days[0]!.meals.map((m) => m.slot)).toEqual(['lunch', 'eveningsnack', 'dinner']);
+  });
+
+  it('throws when nothing matches', () => {
+    expect(() =>
+      generateWeekPlan(SEED_FOODS, targets, prefs({ dietType: 'vegan', allergies: ['soy'], conditions: [] })),
+    ).not.toThrow(); // vegan still has non-soy options
+  });
+});

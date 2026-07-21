@@ -4,7 +4,7 @@ services:
     runtime: node
     plan: free
     rootDir: server
-    buildCommand: npm ci && npx prisma generate && npm run build && npx prisma migrate deploy
+    buildCommand: npm ci && npx prisma generate && npm run build && npx prisma migrate deploy && npm run seed
     startCommand: npm run start
     healthCheckPath: /health
     autoDeploy: true

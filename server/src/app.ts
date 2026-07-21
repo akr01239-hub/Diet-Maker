@@ -6,6 +6,7 @@ import { errorHandler, notFound } from './middleware/error';
 import { healthRouter, API_VERSION } from './modules/health/health.routes';
 import { authRouter } from './modules/auth/auth.routes';
 import { profileRouter } from './modules/profile/profile.routes';
+import { planRouter } from './modules/food/plan.routes';
 
 /**
  * Builds the Express app. Kept free of `listen()` so tests can import it directly
@@ -30,6 +31,7 @@ export function createApp(): Express {
   });
   api.use('/auth', authRouter);
   api.use('/', profileRouter);
+  api.use('/', planRouter);
   app.use('/api/v1', api);
 
   app.use(notFound);

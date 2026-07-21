@@ -52,6 +52,7 @@ model User {
   refreshTokens RefreshToken[]
   calcResults   CalcResultSnapshot[]
   auditLogs     AuditLog[]
+  dietPlans     DietPlan[]
 
   @@map("users")
 }
@@ -101,6 +102,47 @@ model CalcResultSnapshot {
 
   @@index([userId])
   @@map("calc_results")
+}
+
+/// Food database (USDA + Indian seed). Per-100g macros; tags drive condition guardrails.
+model Food {
+  id              String   @id @default(uuid())
+  name            String
+  locale          String   @default("global")
+  region          String?
+  category        String // vegan | vegetarian | egg | nonveg
+  mealSlots       String[]
+  kcal            Float
+  proteinG        Float
+  carbG           Float
+  fatG            Float
+  fiberG          Float
+  sugarG          Float    @default(0)
+  sodiumMg        Float    @default(0)
+  glycemicIndex   Int?
+  typicalServingG Float    @default(100)
+  costTier        Int      @default(2)
+  tags            String[]
+  allergens       String[]
+  source          String   @default("seed")
+  createdAt       DateTime @default(now())
+
+  @@index([category])
+  @@index([locale])
+  @@map("foods")
+}
+
+/// A generated multi-day meal plan (days + the targets it was built for), stored as JSON.
+model DietPlan {
+  id        String   @id @default(uuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  days      Json
+  targets   Json
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+  @@map("diet_plans")
 }
 
 /// Audit trail for access to health data (required by SECURITY.md).
