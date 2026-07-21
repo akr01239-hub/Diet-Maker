@@ -64,6 +64,9 @@ interface NutriApi {
     @GET("foods")
     suspend fun foods(@Query("q") q: String?): FoodsEnvelope
 
+    @GET("foods/search")
+    suspend fun foodsSearch(@Query("q") q: String?): FoodsEnvelope
+
     @POST("logs/food")
     suspend fun logFood(@Body body: FoodLogRequest)
 

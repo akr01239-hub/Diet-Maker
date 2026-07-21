@@ -166,7 +166,7 @@ class LogFoodViewModel @Inject constructor(
     fun log(food: com.nutriai.data.remote.dto.FoodDto) {
         val grams = _state.value.grams.toDoubleOrNull() ?: food.typicalServingG
         viewModelScope.launch {
-            val r = repository.logFood(_state.value.slot, food.id, grams)
+            val r = repository.logFoodItem(_state.value.slot, food, grams)
             _state.value = _state.value.copy(
                 message = if (r.isSuccess) {
                     "Logged ${grams.toInt()} g of ${food.name} to ${_state.value.slot}"

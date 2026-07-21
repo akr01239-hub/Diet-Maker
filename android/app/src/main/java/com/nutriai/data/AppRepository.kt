@@ -54,11 +54,36 @@ class AppRepository @Inject constructor(
     suspend fun chat(message: String): Result<ChatReply> = runCatching { api.chat(ChatRequest(message)).reply }
 
     suspend fun searchFoods(q: String): Result<List<com.nutriai.data.remote.dto.FoodDto>> = runCatching {
-        api.foods(if (q.isBlank()) null else q).foods
+        api.foodsSearch(if (q.isBlank()) null else q).foods
     }
 
     suspend fun logFood(slot: String, foodId: String, grams: Double): Result<Unit> = runCatching {
         api.logFood(FoodLogRequest(mealSlot = slot, grams = grams, foodId = foodId))
+    }
+
+    /** Logs any food (local or USDA) by name + per-100g so no local DB row is required. */
+    suspend fun logFoodItem(
+        slot: String,
+        food: com.nutriai.data.remote.dto.FoodDto,
+        grams: Double,
+    ): Result<Unit> = runCatching {
+        api.logFood(
+            FoodLogRequest(
+                mealSlot = slot,
+                grams = grams,
+                foodName = food.name,
+                per100g = com.nutriai.data.remote.dto.FoodLogPer100g(
+                    kcal = food.kcal,
+                    proteinG = food.proteinG,
+                    carbG = food.carbG,
+                    fatG = food.fatG,
+                    fiberG = food.fiberG,
+                    sugarG = food.sugarG,
+                    sodiumMg = food.sodiumMg,
+                ),
+                entryMethod = if (food.source == "usda") "barcode" else "text",
+            ),
+        )
     }
 
     suspend fun logWater(ml: Int): Result<Unit> = runCatching { api.logWater(WaterLogRequest(ml)) }
@@ -95,4 +120,29 @@ class AppRepository @Inject constructor(
     // ---- Barcode ----
     suspend fun barcode(code: String): Result<com.nutriai.data.remote.dto.BarcodeFood> =
         runCatching { api.barcode(code).food }
+
+    /** Logs a scanned barcode food by name + per-100g (no local DB row needed). */
+    suspend fun logBarcodeFood(
+        slot: String,
+        food: com.nutriai.data.remote.dto.BarcodeFood,
+        grams: Double,
+    ): Result<Unit> = runCatching {
+        api.logFood(
+            FoodLogRequest(
+                mealSlot = slot,
+                grams = grams,
+                foodName = food.name,
+                per100g = com.nutriai.data.remote.dto.FoodLogPer100g(
+                    kcal = food.per100g.kcal,
+                    proteinG = food.per100g.proteinG,
+                    carbG = food.per100g.carbG,
+                    fatG = food.per100g.fatG,
+                    fiberG = food.per100g.fiberG,
+                    sugarG = food.per100g.sugarG,
+                    sodiumMg = food.per100g.sodiumMg,
+                ),
+                entryMethod = "barcode",
+            ),
+        )
+    }
 }

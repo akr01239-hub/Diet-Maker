@@ -167,11 +167,23 @@ data class ChatEnvelope(val reply: ChatReply)
 
 // ---- Food logging ----
 @Serializable
+data class FoodLogPer100g(
+    val kcal: Double,
+    val proteinG: Double = 0.0,
+    val carbG: Double = 0.0,
+    val fatG: Double = 0.0,
+    val fiberG: Double = 0.0,
+    val sugarG: Double = 0.0,
+    val sodiumMg: Double = 0.0,
+)
+
+@Serializable
 data class FoodLogRequest(
     val mealSlot: String,
     val grams: Double,
     val foodId: String? = null,
     val foodName: String? = null,
+    val per100g: FoodLogPer100g? = null,
     val entryMethod: String = "text",
 )
 
@@ -184,7 +196,13 @@ data class FoodDto(
     val name: String,
     val kcal: Double,
     val proteinG: Double = 0.0,
+    val carbG: Double = 0.0,
+    val fatG: Double = 0.0,
+    val fiberG: Double = 0.0,
+    val sugarG: Double = 0.0,
+    val sodiumMg: Double = 0.0,
     val typicalServingG: Double = 100.0,
+    val source: String = "local",
 )
 
 @Serializable

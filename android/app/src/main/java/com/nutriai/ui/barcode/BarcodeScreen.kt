@@ -83,16 +83,16 @@ class BarcodeViewModel @Inject constructor(
     }
 
     fun logIt() {
-        val code = _state.value.code
+        val food = _state.value.food ?: return
         val grams = _state.value.grams.toDoubleOrNull() ?: 100.0
         val slot = _state.value.slot
         _state.value = _state.value.copy(loading = true, message = null)
         viewModelScope.launch {
-            val r = repository.logFood(slot, "barcode:$code", grams)
+            val r = repository.logBarcodeFood(slot, food, grams)
             _state.value = _state.value.copy(
                 loading = false,
                 message = if (r.isSuccess) {
-                    "Logged ${grams.toInt()} g to $slot"
+                    "Logged ${grams.toInt()} g of ${food.name} to $slot"
                 } else {
                     r.exceptionOrNull()?.message ?: "Could not log"
                 },
