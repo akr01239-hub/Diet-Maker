@@ -6,6 +6,7 @@ import com.nutriai.data.remote.dto.ChatEnvelope
 import com.nutriai.data.remote.dto.ChatRequest
 import com.nutriai.data.remote.dto.DashboardEnvelope
 import com.nutriai.data.remote.dto.FoodLogRequest
+import com.nutriai.data.remote.dto.FoodsEnvelope
 import com.nutriai.data.remote.dto.LoginRequest
 import com.nutriai.data.remote.dto.PlanEnvelope
 import com.nutriai.data.remote.dto.ProfileEnvelope
@@ -16,6 +17,7 @@ import retrofit2.http.Body
 import retrofit2.http.GET
 import retrofit2.http.POST
 import retrofit2.http.PUT
+import retrofit2.http.Query
 
 interface NutriApi {
     @POST("auth/register")
@@ -47,6 +49,9 @@ interface NutriApi {
 
     @POST("chat")
     suspend fun chat(@Body body: ChatRequest): ChatEnvelope
+
+    @GET("foods")
+    suspend fun foods(@Query("q") q: String?): FoodsEnvelope
 
     @POST("logs/food")
     suspend fun logFood(@Body body: FoodLogRequest)

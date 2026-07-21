@@ -120,6 +120,64 @@ class ChatViewModel @Inject constructor(
     }
 }
 
+// ---- Food logging ----
+data class LogState(
+    val query: String = "",
+    val results: List<com.nutriai.data.remote.dto.FoodDto> = emptyList(),
+    val slot: String = "breakfast",
+    val grams: String = "150",
+    val loading: Boolean = false,
+    val message: String? = null,
+)
+
+@HiltViewModel
+class LogFoodViewModel @Inject constructor(
+    private val repository: AppRepository,
+) : ViewModel() {
+    private val _state = MutableStateFlow(LogState())
+    val state: StateFlow<LogState> = _state.asStateFlow()
+
+    val slots = listOf("breakfast", "midmorning", "lunch", "eveningsnack", "dinner", "bedtime")
+
+    init {
+        search("")
+    }
+
+    fun onQuery(q: String) {
+        _state.value = _state.value.copy(query = q)
+    }
+
+    fun onSlot(s: String) {
+        _state.value = _state.value.copy(slot = s)
+    }
+
+    fun onGrams(g: String) {
+        _state.value = _state.value.copy(grams = g.filter { it.isDigit() })
+    }
+
+    fun search(q: String) {
+        _state.value = _state.value.copy(loading = true, message = null)
+        viewModelScope.launch {
+            val r = repository.searchFoods(q)
+            _state.value = _state.value.copy(loading = false, results = r.getOrDefault(emptyList()))
+        }
+    }
+
+    fun log(food: com.nutriai.data.remote.dto.FoodDto) {
+        val grams = _state.value.grams.toDoubleOrNull() ?: food.typicalServingG
+        viewModelScope.launch {
+            val r = repository.logFood(_state.value.slot, food.id, grams)
+            _state.value = _state.value.copy(
+                message = if (r.isSuccess) {
+                    "Logged ${grams.toInt()} g of ${food.name} to ${_state.value.slot}"
+                } else {
+                    r.exceptionOrNull()?.message ?: "Could not log"
+                },
+            )
+        }
+    }
+}
+
 // ---- Session (login state at the nav root) ----
 @HiltViewModel
 class SessionViewModel @Inject constructor(

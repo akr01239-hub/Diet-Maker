@@ -53,6 +53,10 @@ class AppRepository @Inject constructor(
 
     suspend fun chat(message: String): Result<ChatReply> = runCatching { api.chat(ChatRequest(message)).reply }
 
+    suspend fun searchFoods(q: String): Result<List<com.nutriai.data.remote.dto.FoodDto>> = runCatching {
+        api.foods(if (q.isBlank()) null else q).foods
+    }
+
     suspend fun logFood(slot: String, foodId: String, grams: Double): Result<Unit> = runCatching {
         api.logFood(FoodLogRequest(mealSlot = slot, grams = grams, foodId = foodId))
     }

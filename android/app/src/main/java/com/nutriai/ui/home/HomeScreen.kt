@@ -1,5 +1,7 @@
 package com.nutriai.ui.home
 
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -9,10 +11,12 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.FilterChip
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.NavigationBar
@@ -22,6 +26,7 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -29,6 +34,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -41,7 +47,7 @@ fun HomeScreen(
     onCompleteProfile: () -> Unit,
 ) {
     var tab by remember { mutableIntStateOf(0) }
-    val tabs = listOf("🏠" to "Home", "🍽️" to "Plan", "💬" to "Coach")
+    val tabs = listOf("🏠" to "Home", "🍽️" to "Plan", "➕" to "Log", "💬" to "Coach")
 
     Scaffold(
         bottomBar = {
@@ -61,6 +67,7 @@ fun HomeScreen(
             when (tab) {
                 0 -> DashboardTab(onLogout = onLogout, onCompleteProfile = onCompleteProfile)
                 1 -> PlanTab()
+                2 -> LogTab()
                 else -> ChatTab()
             }
         }
@@ -74,6 +81,9 @@ private fun DashboardTab(
     viewModel: DashboardViewModel = hiltViewModel(),
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
+
+    // Refresh every time the Home tab becomes visible (e.g. after logging food).
+    LaunchedEffect(Unit) { viewModel.refresh() }
 
     Column(
         Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(16.dp),
@@ -176,6 +186,74 @@ private fun PlanTab(viewModel: PlanViewModel = hiltViewModel()) {
             else -> {
                 Text(state.error ?: "No plan yet.")
                 Button(onClick = { viewModel.generate() }) { Text("Generate my 7-day plan") }
+            }
+        }
+    }
+}
+
+@Composable
+private fun LogTab(viewModel: LogFoodViewModel = hiltViewModel()) {
+    val state by viewModel.state.collectAsStateWithLifecycle()
+
+    Column(Modifier.fillMaxSize().padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+        Text("Log food", style = MaterialTheme.typography.headlineSmall, color = MaterialTheme.colorScheme.primary)
+
+        Text("Meal", style = MaterialTheme.typography.labelLarge)
+        Row(
+            Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            viewModel.slots.forEach { s ->
+                FilterChip(
+                    selected = s == state.slot,
+                    onClick = { viewModel.onSlot(s) },
+                    label = { Text(s) },
+                )
+            }
+        }
+
+        OutlinedTextField(
+            value = state.grams,
+            onValueChange = viewModel::onGrams,
+            label = { Text("Grams") },
+            singleLine = true,
+            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+            modifier = Modifier.fillMaxWidth(),
+        )
+
+        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+            OutlinedTextField(
+                value = state.query,
+                onValueChange = viewModel::onQuery,
+                modifier = Modifier.weight(1f),
+                placeholder = { Text("Search foods…") },
+                singleLine = true,
+            )
+            Button(onClick = { viewModel.search(state.query) }, modifier = Modifier.padding(start = 8.dp)) {
+                Text("Search")
+            }
+        }
+
+        state.message?.let {
+            Text(it, color = MaterialTheme.colorScheme.primary, style = MaterialTheme.typography.bodyMedium)
+        }
+        if (state.loading) CircularProgressIndicator()
+
+        LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            items(state.results) { food ->
+                Card(Modifier.fillMaxWidth().clickable { viewModel.log(food) }) {
+                    Row(
+                        Modifier.fillMaxWidth().padding(12.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Column(Modifier.weight(1f)) {
+                            Text(food.name, style = MaterialTheme.typography.titleSmall)
+                            Text("${food.kcal.toInt()} kcal / 100 g", style = MaterialTheme.typography.bodySmall)
+                        }
+                        Text("+ Add", color = MaterialTheme.colorScheme.primary, style = MaterialTheme.typography.labelLarge)
+                    }
+                }
             }
         }
     }

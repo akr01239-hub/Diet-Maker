@@ -177,3 +177,15 @@ data class FoodLogRequest(
 
 @Serializable
 data class WaterLogRequest(val amountMl: Int)
+
+@Serializable
+data class FoodDto(
+    val id: String,
+    val name: String,
+    val kcal: Double,
+    val proteinG: Double = 0.0,
+    val typicalServingG: Double = 100.0,
+)
+
+@Serializable
+data class FoodsEnvelope(val foods: List<FoodDto> = emptyList())
