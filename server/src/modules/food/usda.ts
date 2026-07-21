@@ -40,10 +40,14 @@ export async function searchUsda(query: string, limit = 15): Promise<FoodSearchI
   const key = env.USDA_FDC_API_KEY;
   if (!key || !query.trim()) return [];
 
+  // Include Branded (~600k products, incl. many Indian/packaged foods) alongside the
+  // curated Foundation/SR Legacy sets, sorted by relevance.
   const url =
     `${FDC_SEARCH}?api_key=${encodeURIComponent(key)}` +
     `&query=${encodeURIComponent(query)}` +
-    `&pageSize=${limit}&dataType=${encodeURIComponent('Foundation,SR Legacy')}`;
+    `&pageSize=${limit}` +
+    `&dataType=${encodeURIComponent('Foundation,SR Legacy,Branded')}` +
+    `&sortBy=dataType.keyword&sortOrder=asc`;
 
   try {
     const res = await fetch(url, { signal: AbortSignal.timeout(8000) });

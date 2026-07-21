@@ -1,11 +1,9 @@
 package com.nutriai.ui.barcode
 
 import android.Manifest
-import androidx.camera.core.CameraSelector
 import androidx.camera.core.ExperimentalGetImage
 import androidx.camera.core.ImageAnalysis
-import androidx.camera.core.Preview
-import androidx.camera.lifecycle.ProcessCameraProvider
+import androidx.camera.view.LifecycleCameraController
 import androidx.camera.view.PreviewView
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
@@ -27,8 +25,11 @@ import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
@@ -231,53 +232,42 @@ fun BarcodeScreen(
     }
 }
 
-/** CameraX preview + ML Kit barcode analysis. Calls [onBarcode] with the first detected value. */
+/**
+ * CameraX preview + ML Kit barcode analysis via [LifecycleCameraController] (the high-level
+ * camera-view API — avoids the ProcessCameraProvider ListenableFuture entirely).
+ * Calls [onBarcode] with the first detected value.
+ */
 @androidx.annotation.OptIn(ExperimentalGetImage::class)
 @Composable
 private fun CameraScanner(onBarcode: (String) -> Unit, modifier: Modifier = Modifier) {
+    val context = LocalContext.current
     val lifecycleOwner = LocalLifecycleOwner.current
+    val controller = remember { LifecycleCameraController(context) }
+
+    LaunchedEffect(controller) {
+        val scanner = BarcodeScanning.getClient()
+        val executor = ContextCompat.getMainExecutor(context)
+        controller.setImageAnalysisAnalyzer(
+            executor,
+            ImageAnalysis.Analyzer { proxy ->
+                val media = proxy.image
+                if (media != null) {
+                    val image = InputImage.fromMediaImage(media, proxy.imageInfo.rotationDegrees)
+                    scanner.process(image)
+                        .addOnSuccessListener { barcodes ->
+                            barcodes.firstOrNull()?.rawValue?.let(onBarcode)
+                        }
+                        .addOnCompleteListener { proxy.close() }
+                } else {
+                    proxy.close()
+                }
+            },
+        )
+        controller.bindToLifecycle(lifecycleOwner)
+    }
 
     AndroidView(
         modifier = modifier,
-        factory = { ctx ->
-            val previewView = PreviewView(ctx)
-            val executor = ContextCompat.getMainExecutor(ctx)
-            val scanner = BarcodeScanning.getClient()
-            val future = ProcessCameraProvider.getInstance(ctx)
-            future.addListener({
-                val provider = future.get()
-                val preview = Preview.Builder().build().also {
-                    it.setSurfaceProvider(previewView.surfaceProvider)
-                }
-                val analysis = ImageAnalysis.Builder()
-                    .setBackpressureStrategy(ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST)
-                    .build()
-                analysis.setAnalyzer(executor) { proxy ->
-                    val media = proxy.image
-                    if (media != null) {
-                        val image = InputImage.fromMediaImage(media, proxy.imageInfo.rotationDegrees)
-                        scanner.process(image)
-                            .addOnSuccessListener { barcodes ->
-                                barcodes.firstOrNull()?.rawValue?.let(onBarcode)
-                            }
-                            .addOnCompleteListener { proxy.close() }
-                    } else {
-                        proxy.close()
-                    }
-                }
-                try {
-                    provider.unbindAll()
-                    provider.bindToLifecycle(
-                        lifecycleOwner,
-                        CameraSelector.DEFAULT_BACK_CAMERA,
-                        preview,
-                        analysis,
-                    )
-                } catch (_: Exception) {
-                    // Camera unavailable — the manual-entry fallback still works.
-                }
-            }, executor)
-            previewView
-        },
+        factory = { ctx -> PreviewView(ctx).apply { this.controller = controller } },
     )
 }

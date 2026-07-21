@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
@@ -15,6 +16,7 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.LinearProgressIndicator
@@ -268,14 +270,31 @@ private fun ChatTab(viewModel: ChatViewModel = hiltViewModel()) {
     Column(Modifier.fillMaxSize().padding(12.dp)) {
         LazyColumn(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             items(state.messages) { m ->
-                Card(
+                Row(
                     Modifier.fillMaxWidth(),
+                    horizontalArrangement = if (m.fromUser) Arrangement.End else Arrangement.Start,
                 ) {
-                    Text(
-                        m.text,
-                        modifier = Modifier.padding(12.dp),
-                        style = MaterialTheme.typography.bodyMedium,
-                    )
+                    Card(
+                        modifier = Modifier.widthIn(max = 300.dp),
+                        colors = CardDefaults.cardColors(
+                            containerColor = if (m.fromUser) {
+                                MaterialTheme.colorScheme.primary
+                            } else {
+                                MaterialTheme.colorScheme.surfaceVariant
+                            },
+                        ),
+                    ) {
+                        Text(
+                            m.text,
+                            modifier = Modifier.padding(12.dp),
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = if (m.fromUser) {
+                                MaterialTheme.colorScheme.onPrimary
+                            } else {
+                                MaterialTheme.colorScheme.onSurfaceVariant
+                            },
+                        )
+                    }
                 }
             }
         }
@@ -293,5 +312,12 @@ private fun ChatTab(viewModel: ChatViewModel = hiltViewModel()) {
                 modifier = Modifier.padding(start = 8.dp),
             ) { Text("Send") }
         }
+        // Disclaimer shown ONCE here, not on every message.
+        Text(
+            "Educational guidance, not medical advice — consult a professional.",
+            style = MaterialTheme.typography.labelSmall,
+            textAlign = TextAlign.Center,
+            modifier = Modifier.fillMaxWidth().padding(top = 6.dp),
+        )
     }
 }

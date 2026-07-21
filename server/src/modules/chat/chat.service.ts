@@ -7,8 +7,10 @@ import { getAiProvider } from '../../ai';
 const DISCLAIMER =
   'This is educational guidance, not medical advice — please consult a professional.';
 
-function withDisclaimer(text: string): string {
-  return text.includes(DISCLAIMER) ? text : `${text}\n\n${DISCLAIMER}`;
+// The disclaimer is shown ONCE in the chat UI (a persistent footer), not on every reply.
+// Strip it from individual answers so the conversation isn't spammed with it.
+function stripDisclaimer(text: string): string {
+  return text.split(DISCLAIMER).join('').replace(/\s+$/g, '').trim();
 }
 
 function toFoodItem(f: {
@@ -76,18 +78,19 @@ export async function chat(userId: string, message: string, firstName?: string):
   if (provider) {
     const llm = await provider.chatReply(message, { targets, conditions, firstName });
     if (llm && llm.trim()) {
-      const reply: ChatReply = { intent: 'llm', reply: withDisclaimer(llm.trim()), sources: [] };
+      const reply: ChatReply = { intent: 'llm', reply: stripDisclaimer(llm.trim()), sources: [] };
       await prisma.auditLog.create({ data: { userId, action: 'chat.query', detail: reply.intent } });
       return reply;
     }
   }
 
-  const reply = answer(message, {
+  const base = answer(message, {
     targets,
     conditions,
     findFood: makeFindFood(foods.map(toFoodItem)),
     firstName,
   });
+  const reply: ChatReply = { ...base, reply: stripDisclaimer(base.reply) };
 
   await prisma.auditLog.create({ data: { userId, action: 'chat.query', detail: reply.intent } });
   return reply;
