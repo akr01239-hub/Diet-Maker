@@ -13,6 +13,7 @@ import { loggingRouter } from './modules/logging/logging.routes';
 import { chatRouter } from './modules/chat/chat.routes';
 import { reportsRouter } from './modules/reports/reports.routes';
 import { accountRouter } from './modules/account/account.routes';
+import { familyRouter } from './modules/family/family.routes';
 
 /**
  * Builds the Express app. Kept free of `listen()` so tests can import it directly
@@ -56,6 +57,7 @@ export function createApp(): Express {
   api.use('/', chatRouter);
   api.use('/', reportsRouter);
   api.use('/', accountRouter);
+  api.use('/', familyRouter);
   app.use('/api/v1', api);
 
   app.use(notFound);

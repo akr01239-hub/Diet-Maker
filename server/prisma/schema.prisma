@@ -56,8 +56,31 @@ model User {
   foodLogs      FoodLog[]
   waterLogs     WaterLog[]
   checkins      WeeklyCheckin[]
+  familyMembers FamilyMember[]
 
   @@map("users")
+}
+
+/// A family member owned by a User — each has its own encrypted health profile and gets
+/// its own calc/plan (a "separate AI"). Scoped to the owner via ownerId.
+model FamilyMember {
+  id              String   @id @default(uuid())
+  ownerId         String
+  owner           User     @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  firstName       String
+  relation        String? // e.g. spouse, child, parent
+  heightCm        Float
+  activityLevel   String   @default("moderate")
+  goal            String   @default("maintain")
+  dietType        String   @default("nonveg")
+  reducedMobility Boolean  @default(false)
+  /// AES-256-GCM JSON: sex, dob, weights, conditions, allergies, ...
+  sensitiveEnc    String
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([ownerId])
+  @@map("family_members")
 }
 
 model RefreshToken {
