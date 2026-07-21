@@ -2,10 +2,22 @@ package com.nutriai.ui.theme
 
 import androidx.compose.ui.graphics.Color
 
-// Brand greens — a health/nutrition palette. Dynamic color overrides these on Android 12+.
-val Green40 = Color(0xFF0E7C3A)
-val Green80 = Color(0xFF7FD79E)
-val GreenGrey40 = Color(0xFF4E6353)
-val GreenGrey80 = Color(0xFFB6CCB9)
-val Amber40 = Color(0xFF7C5800)
-val Amber80 = Color(0xFFF2C14E)
+// ---- NutriAI brand palette (green, premium) ----
+val BrandGreen = Color(0xFF16A34A)      // primary
+val BrandGreenDark = Color(0xFF0B6B37)
+val BrandGreenDeep = Color(0xFF0A3D2A)  // splash/gradient base
+val BrandGreenLight = Color(0xFF4ADE80)
+val BrandMint = Color(0xFFDCFCE7)       // light container
+val BrandLime = Color(0xFF84CC16)
+val BrandAmber = Color(0xFFF59E0B)      // accent (tertiary)
+val BrandAmberContainer = Color(0xFFFDE68A)
+
+val AppBackgroundLight = Color(0xFFF6FBF7)
+val AppSurfaceLight = Color(0xFFFFFFFF)
+val AppSurfaceVariantLight = Color(0xFFE7F3EC)
+val OnSurfaceLight = Color(0xFF10251A)
+
+val AppBackgroundDark = Color(0xFF0A140F)
+val AppSurfaceDark = Color(0xFF12211A)
+val AppSurfaceVariantDark = Color(0xFF1D3327)
+val OnSurfaceDark = Color(0xFFE6F4EC)

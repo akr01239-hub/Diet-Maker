@@ -5,6 +5,9 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -17,6 +20,7 @@ import com.nutriai.ui.auth.RegisterScreen
 import com.nutriai.ui.home.HomeScreen
 import com.nutriai.ui.home.SessionViewModel
 import com.nutriai.ui.onboarding.OnboardingScreen
+import com.nutriai.ui.splash.SplashScreen
 
 private object Routes {
     const val LOGIN = "login"
@@ -28,6 +32,12 @@ private object Routes {
 @Composable
 fun AppRoot(sessionViewModel: SessionViewModel = hiltViewModel()) {
     val loggedIn by sessionViewModel.isLoggedIn.collectAsStateWithLifecycle()
+
+    var splashDone by remember { mutableStateOf(false) }
+    if (!splashDone) {
+        SplashScreen(onFinished = { splashDone = true })
+        return
+    }
 
     if (loggedIn == null) {
         Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { CircularProgressIndicator() }

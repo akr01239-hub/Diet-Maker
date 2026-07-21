@@ -1,5 +1,10 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <!-- Base theme; Compose Material 3 drives the actual colors at runtime. -->
-    <style name="Theme.NutriAI" parent="android:Theme.Material.Light.NoActionBar" />
+    <!-- Window chrome shown during cold start, before Compose loads. On-brand dark green so
+         it blends straight into the Compose splash. Compose Material 3 drives all in-app colors. -->
+    <style name="Theme.NutriAI" parent="android:Theme.Material.NoActionBar">
+        <item name="android:windowBackground">@color/brand_splash</item>
+        <item name="android:statusBarColor">@color/brand_splash</item>
+        <item name="android:navigationBarColor">@color/brand_splash</item>
+    </style>
 </resources>

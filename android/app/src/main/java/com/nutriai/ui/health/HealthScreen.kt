@@ -104,7 +104,7 @@ private fun HealthContent(
 @Preview(showBackground = true)
 @Composable
 private fun HealthContentConnectedPreview() {
-    NutriAiTheme(dynamicColor = false) {
+    NutriAiTheme {
         HealthContent(
             state = HealthUiState.Connected(
                 HealthStatus(service = "nutriai-api", version = "0.1.0", aiProvider = "rules"),

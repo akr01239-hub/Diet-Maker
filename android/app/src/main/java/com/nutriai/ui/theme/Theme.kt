@@ -1,42 +1,61 @@
 package com.nutriai.ui.theme
 
-import android.os.Build
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.darkColorScheme
-import androidx.compose.material3.dynamicDarkColorScheme
-import androidx.compose.material3.dynamicLightColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
-import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.graphics.Color
 
 private val LightColors = lightColorScheme(
-    primary = Green40,
-    secondary = GreenGrey40,
-    tertiary = Amber40,
+    primary = BrandGreen,
+    onPrimary = Color.White,
+    primaryContainer = BrandMint,
+    onPrimaryContainer = BrandGreenDeep,
+    secondary = BrandGreenDark,
+    onSecondary = Color.White,
+    secondaryContainer = BrandMint,
+    onSecondaryContainer = BrandGreenDeep,
+    tertiary = BrandAmber,
+    onTertiary = Color.White,
+    tertiaryContainer = BrandAmberContainer,
+    background = AppBackgroundLight,
+    onBackground = OnSurfaceLight,
+    surface = AppSurfaceLight,
+    onSurface = OnSurfaceLight,
+    surfaceVariant = AppSurfaceVariantLight,
+    onSurfaceVariant = Color(0xFF3A5347),
+    outline = Color(0xFF9DBCA9),
 )
 
 private val DarkColors = darkColorScheme(
-    primary = Green80,
-    secondary = GreenGrey80,
-    tertiary = Amber80,
+    primary = BrandGreenLight,
+    onPrimary = Color(0xFF042713),
+    primaryContainer = BrandGreenDark,
+    onPrimaryContainer = BrandMint,
+    secondary = BrandGreenLight,
+    onSecondary = Color(0xFF042713),
+    secondaryContainer = Color(0xFF1D3327),
+    onSecondaryContainer = BrandMint,
+    tertiary = BrandAmber,
+    onTertiary = Color(0xFF3A2A00),
+    tertiaryContainer = Color(0xFF6B4E00),
+    background = AppBackgroundDark,
+    onBackground = OnSurfaceDark,
+    surface = AppSurfaceDark,
+    onSurface = OnSurfaceDark,
+    surfaceVariant = AppSurfaceVariantDark,
+    onSurfaceVariant = Color(0xFFB9CFC0),
+    outline = Color(0xFF3E5A49),
 )
 
 @Composable
 fun NutriAiTheme(
     darkTheme: Boolean = isSystemInDarkTheme(),
-    // Dynamic color is available on Android 12+.
-    dynamicColor: Boolean = true,
     content: @Composable () -> Unit,
 ) {
-    val context = LocalContext.current
-    val colorScheme = when {
-        dynamicColor && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S ->
-            if (darkTheme) dynamicDarkColorScheme(context) else dynamicLightColorScheme(context)
-        darkTheme -> DarkColors
-        else -> LightColors
-    }
-
+    // Fixed brand palette (no dynamic color) so every screen looks consistent + colorful.
+    val colorScheme = if (darkTheme) DarkColors else LightColors
     MaterialTheme(
         colorScheme = colorScheme,
         typography = NutriTypography,
