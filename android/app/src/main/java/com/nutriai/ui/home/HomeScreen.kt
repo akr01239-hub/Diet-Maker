@@ -40,8 +40,11 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 fun HomeScreen(
     onLogout: () -> Unit,
     onCompleteProfile: () -> Unit,
+    initialTab: Int = 0,
 ) {
-    var tab by remember { mutableIntStateOf(0) }
+    var tab by remember { mutableIntStateOf(initialTab) }
+    // A notification tap (or new intent) can change the requested tab while Home is showing.
+    LaunchedEffect(initialTab) { if (initialTab in 0..4) tab = initialTab }
     val tabs = listOf("🏠" to "Home", "🍽️" to "Plan", "➕" to "Log", "💬" to "Coach", "☰" to "More")
 
     Scaffold(

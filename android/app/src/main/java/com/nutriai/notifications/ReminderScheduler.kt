@@ -47,6 +47,7 @@ class ReminderScheduler @Inject constructor(
             .putString(ReminderWorker.KEY_TITLE, job.title)
             .putString(ReminderWorker.KEY_TEXT, job.text)
             .putInt(ReminderWorker.KEY_NOTIF_ID, job.key.hashCode())
+            .putInt(ReminderWorker.KEY_TAB, job.tab)
             .build()
 
         val request = PeriodicWorkRequestBuilder<ReminderWorker>(repeatMs, TimeUnit.MILLISECONDS)

@@ -30,7 +30,7 @@ private object Routes {
 }
 
 @Composable
-fun AppRoot(sessionViewModel: SessionViewModel = hiltViewModel()) {
+fun AppRoot(startTab: Int = 0, sessionViewModel: SessionViewModel = hiltViewModel()) {
     val loggedIn by sessionViewModel.isLoggedIn.collectAsStateWithLifecycle()
 
     var splashDone by remember { mutableStateOf(false) }
@@ -78,6 +78,7 @@ fun AppRoot(sessionViewModel: SessionViewModel = hiltViewModel()) {
                     navController.navigate(Routes.LOGIN) { popUpTo(Routes.HOME) { inclusive = true } }
                 },
                 onCompleteProfile = { navController.navigate(Routes.ONBOARDING) },
+                initialTab = startTab,
             )
         }
     }

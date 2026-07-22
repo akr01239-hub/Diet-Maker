@@ -3,6 +3,7 @@ package com.nutriai
 import android.Manifest
 import android.content.pm.PackageManager
 import android.os.Build
+import android.content.Intent
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -13,11 +14,14 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.systemBarsPadding
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.ui.Modifier
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.lifecycleScope
 import com.nutriai.notifications.ReminderPrefs
 import com.nutriai.notifications.ReminderScheduler
+import com.nutriai.notifications.ReminderWorker
 import com.nutriai.ui.navigation.AppRoot
 import com.nutriai.ui.theme.NutriAiTheme
 import dagger.hilt.android.AndroidEntryPoint
@@ -30,12 +34,16 @@ class MainActivity : ComponentActivity() {
     @Inject lateinit var reminderPrefs: ReminderPrefs
     @Inject lateinit var reminderScheduler: ReminderScheduler
 
+    private val openTab = mutableIntStateOf(0)
+
     private val notifPermissionLauncher =
         registerForActivityResult(ActivityResultContracts.RequestPermission()) { /* worker re-checks at fire time */ }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
+
+        openTab.intValue = intent?.getIntExtra(ReminderWorker.EXTRA_TAB, 0) ?: 0
 
         // Ensure the user's enabled reminders are scheduled (survives reboot via WorkManager).
         lifecycleScope.launch { reminderScheduler.apply(reminderPrefs.snapshot()) }
@@ -48,12 +56,20 @@ class MainActivity : ComponentActivity() {
                     modifier = Modifier.fillMaxSize(),
                     color = MaterialTheme.colorScheme.background,
                 ) {
+                    val startTab by openTab
                     Box(Modifier.fillMaxSize().systemBarsPadding()) {
-                        AppRoot()
+                        AppRoot(startTab = startTab)
                     }
                 }
             }
         }
+    }
+
+    // A notification tapped while the app is already running switches to its tab.
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        setIntent(intent)
+        openTab.intValue = intent.getIntExtra(ReminderWorker.EXTRA_TAB, 0)
     }
 
     private fun maybeRequestNotificationPermission() {

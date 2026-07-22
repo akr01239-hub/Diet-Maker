@@ -36,6 +36,7 @@ class ReminderWorker(
 
         val openIntent = Intent(applicationContext, MainActivity::class.java).apply {
             flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
+            putExtra(EXTRA_TAB, inputData.getInt(KEY_TAB, 0))
         }
         val pending = android.app.PendingIntent.getActivity(
             applicationContext,
@@ -63,6 +64,8 @@ class ReminderWorker(
         const val KEY_TITLE = "title"
         const val KEY_TEXT = "text"
         const val KEY_NOTIF_ID = "notif_id"
+        const val KEY_TAB = "tab"
+        const val EXTRA_TAB = "com.nutriai.OPEN_TAB"
 
         fun ensureChannel(context: Context) {
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
