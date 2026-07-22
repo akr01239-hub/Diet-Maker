@@ -78,7 +78,7 @@ fun PremiumDashboard(
         item { HeroCard(greetingName = greetingName, streakDays = d.streakDays) }
 
         // 2. Calorie ring
-        item { CalorieRingCard(dashboard = d, onCompleteProfile = onCompleteProfile) }
+        item { CalorieRingCard(dashboard = d, burnedKcal = stepsKcal, onCompleteProfile = onCompleteProfile) }
 
         // 3. Macro row
         item { MacroRow(dashboard = d) }
@@ -189,7 +189,7 @@ private fun HeroCard(greetingName: String?, streakDays: Int) {
 // ---------------------------------------------------------------------------
 
 @Composable
-private fun CalorieRingCard(dashboard: Dashboard, onCompleteProfile: () -> Unit) {
+private fun CalorieRingCard(dashboard: Dashboard, burnedKcal: Int = 0, onCompleteProfile: () -> Unit) {
     val cal = dashboard.calories
     Card(
         modifier = Modifier.fillMaxWidth(),
@@ -223,8 +223,11 @@ private fun CalorieRingCard(dashboard: Dashboard, onCompleteProfile: () -> Unit)
                     colors = ButtonDefaults.buttonColors(containerColor = BrandGreen),
                 ) { Text("Set your goal") }
             } else {
-                val percent = (cal.percent ?: 0.0).coerceIn(0.0, 100.0).toFloat()
-                val remaining = cal.remaining ?: (cal.target - cal.consumed)
+                // Exercise calories add to the budget (like Fitbit / MyFitnessPal):
+                // budget = goal + burned; left = budget − eaten.
+                val budget = cal.target + burnedKcal
+                val remaining = budget - cal.consumed
+                val percent = if (budget > 0) (cal.consumed / budget * 100).coerceIn(0.0, 100.0).toFloat() else 0f
                 val trackColor = MaterialTheme.colorScheme.surfaceVariant
                 Box(
                     modifier = Modifier.size(200.dp),
@@ -247,16 +250,27 @@ private fun CalorieRingCard(dashboard: Dashboard, onCompleteProfile: () -> Unit)
                             style = MaterialTheme.typography.bodyMedium,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
-                        Text(
-                            "${cal.consumed.toInt()} / ${cal.target.toInt()}",
-                            style = MaterialTheme.typography.labelMedium,
-                            color = BrandGreen,
-                            fontWeight = FontWeight.SemiBold,
-                        )
                     }
+                }
+                // Budget breakdown: Goal + Burned − Eaten.
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceEvenly,
+                ) {
+                    BudgetPart("🎯 Goal", "${cal.target.toInt()}", MaterialTheme.colorScheme.onSurface)
+                    BudgetPart("🔥 Burned", "+$burnedKcal", BrandGreen)
+                    BudgetPart("🍽️ Eaten", "-${cal.consumed.toInt()}", BrandAmber)
                 }
             }
         }
+    }
+}
+
+@Composable
+private fun BudgetPart(label: String, value: String, color: Color) {
+    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+        Text(value, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, color = color)
+        Text(label, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
     }
 }
 
