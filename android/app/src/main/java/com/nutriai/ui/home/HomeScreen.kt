@@ -149,6 +149,9 @@ private fun DashboardTab(
             stepsAvailable = state.stepsAvailable,
             heartRate = state.heartRate,
             sleepHours = state.sleepHours,
+            manualHeartRate = state.manualHeartRate,
+            stress = state.stress,
+            onSaveVitals = { hr, s -> viewModel.saveManualVitals(hr, s) },
             safetyFlags = state.safetyFlags,
             onConnectSteps = {
                 if (state.stepsAvailable) {

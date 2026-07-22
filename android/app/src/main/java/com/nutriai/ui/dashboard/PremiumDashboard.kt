@@ -24,8 +24,17 @@ import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -69,6 +78,9 @@ fun PremiumDashboard(
     onConnectSteps: () -> Unit = {},
     heartRate: Int? = null,
     sleepHours: Double? = null,
+    manualHeartRate: Int? = null,
+    stress: Int? = null,
+    onSaveVitals: (Int?, Int?) -> Unit = { _, _ -> },
     safetyFlags: List<com.nutriai.data.remote.dto.Flag> = emptyList(),
     modifier: Modifier = Modifier,
 ) {
@@ -97,9 +109,15 @@ fun PremiumDashboard(
         // 4. Steps (Health Connect) — above hydration
         item { StepsCard(steps = steps, stepsKcal = stepsKcal, hasPermission = stepsPermission, available = stepsAvailable, onConnect = onConnectSteps) }
 
-        // 4b. Watch vitals (heart rate + sleep) — only when a band/watch syncs them.
-        if (heartRate != null || sleepHours != null) {
-            item { VitalsCard(heartRate = heartRate, sleepHours = sleepHours) }
+        // 4b. Vitals — Health Connect if a band syncs, else manual entry (many watches don't sync).
+        item {
+            VitalsCard(
+                heartRate = heartRate,
+                sleepHours = sleepHours,
+                manualHeartRate = manualHeartRate,
+                stress = stress,
+                onSaveVitals = onSaveVitals,
+            )
         }
 
         // 5. Hydration
@@ -468,7 +486,28 @@ private fun HydrationCard(water: DashMetric, onAddWater: () -> Unit) {
 // ---------------------------------------------------------------------------
 
 @Composable
-private fun VitalsCard(heartRate: Int?, sleepHours: Double?) {
+private fun VitalsCard(
+    heartRate: Int?,
+    sleepHours: Double?,
+    manualHeartRate: Int?,
+    stress: Int?,
+    onSaveVitals: (Int?, Int?) -> Unit,
+) {
+    var editing by remember { mutableStateOf(false) }
+    // Prefer a live Health Connect reading; fall back to the manually-entered value.
+    val hr = heartRate ?: manualHeartRate
+    val hrFromWatch = heartRate != null
+    val stressLabel = stress?.let { listOf("", "😌 Calm", "🙂 Low", "😐 Medium", "😣 High", "😖 Very high").getOrElse(it) { "" } }
+
+    if (editing) {
+        VitalsEntryDialog(
+            initialHr = manualHeartRate,
+            initialStress = stress,
+            onDismiss = { editing = false },
+            onSave = { newHr, newStress -> onSaveVitals(newHr, newStress); editing = false },
+        )
+    }
+
     Card(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(20.dp),
@@ -481,18 +520,85 @@ private fun VitalsCard(heartRate: Int?, sleepHours: Double?) {
         ) {
             Text("⌚", style = MaterialTheme.typography.headlineSmall)
             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                Text("From your watch", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                Row(horizontalArrangement = Arrangement.spacedBy(18.dp)) {
-                    heartRate?.let {
-                        Text("❤️ $it bpm", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.error)
+                Text(
+                    if (hrFromWatch || sleepHours != null) "Vitals · via Health Connect" else "Vitals · tap edit to log",
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                if (hr != null || sleepHours != null || stressLabel != null) {
+                    Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+                        hr?.let {
+                            Text(
+                                "❤️ $it bpm" + if (!hrFromWatch) "*" else "",
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.Bold,
+                                color = MaterialTheme.colorScheme.error,
+                            )
+                        }
+                        sleepHours?.let {
+                            Text("😴 ${it}h", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, color = BrandGreenDeep)
+                        }
+                        stressLabel?.let {
+                            Text(it, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, color = BrandGreenDeep)
+                        }
                     }
-                    sleepHours?.let {
-                        Text("😴 ${it}h", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, color = BrandGreenDeep)
+                    if (hr != null && !hrFromWatch) {
+                        Text("*manually logged", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    }
+                } else {
+                    Text(
+                        "Your watch (e.g. Fastrack) only shows here if its app syncs to Health Connect. Otherwise tap edit to log manually.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+            }
+            TextButton(onClick = { editing = true }) { Text("Edit") }
+        }
+    }
+}
+
+@Composable
+private fun VitalsEntryDialog(
+    initialHr: Int?,
+    initialStress: Int?,
+    onDismiss: () -> Unit,
+    onSave: (Int?, Int?) -> Unit,
+) {
+    var hrText by remember { mutableStateOf(initialHr?.toString() ?: "") }
+    var stress by remember { mutableStateOf(initialStress) }
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Log your vitals") },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
+                OutlinedTextField(
+                    value = hrText,
+                    onValueChange = { hrText = it.filter { c -> c.isDigit() }.take(3) },
+                    label = { Text("Resting heart rate (bpm)") },
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                    singleLine = true,
+                )
+                Text("How stressed do you feel today?", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    val faces = listOf(1 to "😌", 2 to "🙂", 3 to "😐", 4 to "😣", 5 to "😖")
+                    faces.forEach { (lvl, face) ->
+                        val selected = stress == lvl
+                        Box(
+                            Modifier
+                                .size(46.dp)
+                                .clip(RoundedCornerShape(12.dp))
+                                .background(if (selected) BrandGreen else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))
+                                .clickable { stress = if (selected) null else lvl },
+                            contentAlignment = Alignment.Center,
+                        ) { Text(face, style = MaterialTheme.typography.titleLarge) }
                     }
                 }
             }
-        }
-    }
+        },
+        confirmButton = { TextButton(onClick = { onSave(hrText.toIntOrNull(), stress) }) { Text("Save") } },
+        dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel") } },
+    )
 }
 
 @Composable
