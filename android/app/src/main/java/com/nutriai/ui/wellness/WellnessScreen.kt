@@ -24,7 +24,9 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
+import android.speech.tts.TextToSpeech
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
@@ -38,6 +40,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -58,6 +61,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import java.util.Locale
 import javax.inject.Inject
 
 data class WellnessUiState(val loading: Boolean = true, val wellness: Wellness? = null)
@@ -185,6 +189,23 @@ private fun MeditationSession(med: Meditation, onClose: () -> Unit) {
     var scaleTarget by remember { mutableFloatStateOf(0.5f) }
     var phaseSec by remember { mutableIntStateOf(1) }
 
+    // Spoken breathing cues so you can follow with your eyes closed.
+    val context = LocalContext.current
+    var soundOn by remember { mutableStateOf(true) }
+    var ttsReady by remember { mutableStateOf(false) }
+    val tts = remember { TextToSpeech(context) { s -> ttsReady = s == TextToSpeech.SUCCESS } }
+    DisposableEffect(Unit) { onDispose { runCatching { tts.stop(); tts.shutdown() } } }
+    LaunchedEffect(ttsReady) {
+        if (ttsReady) runCatching { tts.language = Locale.ENGLISH; tts.setSpeechRate(0.85f) }
+    }
+    LaunchedEffect(phaseLabel, soundOn, ttsReady) {
+        if (soundOn && ttsReady && pattern != null && phaseLabel != "Get ready") {
+            runCatching { tts.speak(phaseLabel, TextToSpeech.QUEUE_FLUSH, null, phaseLabel) }
+        } else if (!soundOn) {
+            runCatching { tts.stop() }
+        }
+    }
+
     if (pattern != null) {
         LaunchedEffect(med.id) {
             val steps = buildList {
@@ -219,6 +240,15 @@ private fun MeditationSession(med: Meditation, onClose: () -> Unit) {
     ) {
         Text(med.name, style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold, color = BrandGreenDeep)
         Text(med.goal, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+
+        if (pattern != null) {
+            Text(
+                if (soundOn) "🔊 Voice cues on — close your eyes and follow" else "🔇 Voice cues off",
+                style = MaterialTheme.typography.labelLarge,
+                color = BrandGreen,
+                modifier = Modifier.clickable { soundOn = !soundOn },
+            )
+        }
 
         if (pattern != null) {
             Box(Modifier.fillMaxWidth().padding(vertical = 12.dp), contentAlignment = Alignment.Center) {
