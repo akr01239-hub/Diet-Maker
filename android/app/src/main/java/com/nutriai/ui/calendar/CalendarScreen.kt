@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
@@ -22,6 +23,7 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
@@ -425,22 +427,28 @@ fun CalendarScreen(
                                     modifier = Modifier.clickable { viewModel.swapMeal(dietDay.dayIndex, meal.slot) },
                                 )
                             }
+                            // Column header for the meal's items (grid-style like the grocery table).
+                            Row(Modifier.fillMaxWidth().padding(top = 2.dp)) {
+                                Text("Food", Modifier.weight(1f), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                Text("Qty", Modifier.width(56.dp), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant, textAlign = TextAlign.End)
+                                Text("kcal", Modifier.width(48.dp), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant, textAlign = TextAlign.End)
+                                Spacer(Modifier.width(28.dp))
+                            }
+                            HorizontalDivider(thickness = 1.dp, color = MaterialTheme.colorScheme.outlineVariant)
                             meal.items.forEach { mealItem ->
                                 Row(
-                                    Modifier.fillMaxWidth(),
-                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                    Modifier.fillMaxWidth().padding(vertical = 3.dp),
                                     verticalAlignment = Alignment.CenterVertically,
                                 ) {
-                                    Text(
-                                        "• ${mealItem.name} — ${mealItem.grams.toInt()}g (${mealItem.kcal.toInt()}kcal)",
-                                        style = MaterialTheme.typography.bodyMedium,
-                                        modifier = Modifier.weight(1f),
-                                    )
+                                    Text(mealItem.name, Modifier.weight(1f), style = MaterialTheme.typography.bodyMedium)
+                                    Text("${mealItem.grams.toInt()} g", Modifier.width(56.dp), style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold, textAlign = TextAlign.End)
+                                    Text("${mealItem.kcal.toInt()}", Modifier.width(48.dp), style = MaterialTheme.typography.bodyMedium, textAlign = TextAlign.End, color = MaterialTheme.colorScheme.onSurfaceVariant)
                                     Text(
                                         "📖",
                                         modifier = Modifier
-                                            .clickable { viewModel.loadRecipe(mealItem.name, mealItem.foodId) }
-                                            .padding(start = 8.dp),
+                                            .width(28.dp)
+                                            .clickable { viewModel.loadRecipe(mealItem.name, mealItem.foodId) },
+                                        textAlign = TextAlign.End,
                                     )
                                 }
                             }
@@ -792,7 +800,6 @@ private fun ExerciseRow(
 ) {
     Row(
         Modifier.fillMaxWidth().padding(vertical = 2.dp),
-        horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Column(Modifier.weight(1f)) {
@@ -801,15 +808,23 @@ private fun ExerciseRow(
                 style = MaterialTheme.typography.bodyMedium,
                 fontWeight = if (done) FontWeight.SemiBold else FontWeight.Normal,
             )
-            val hint = buildString {
-                append("Target: $prescription")
-                last?.weightKg?.let {
-                    append("   ·   last ${fmtNum(it)} kg")
+            last?.weightKg?.let {
+                val hint = buildString {
+                    append("last ${fmtNum(it)} kg")
                     last.reps?.let { r -> append(" × $r") }
                 }
+                Text(hint, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
-            Text(hint, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
+        // Aligned "Sets × Reps" target column.
+        Text(
+            prescription,
+            Modifier.width(72.dp),
+            style = MaterialTheme.typography.bodyMedium,
+            fontWeight = FontWeight.SemiBold,
+            textAlign = TextAlign.Center,
+            color = MaterialTheme.colorScheme.primary,
+        )
         OutlinedButton(onClick = onLog, modifier = Modifier.padding(start = 8.dp)) {
             Text(if (done) "Log again" else "Log")
         }
