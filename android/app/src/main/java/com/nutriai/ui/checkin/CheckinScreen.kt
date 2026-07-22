@@ -1,30 +1,39 @@
 package com.nutriai.ui.checkin
 
-import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.FilterChip
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -34,6 +43,10 @@ import androidx.lifecycle.viewModelScope
 import com.nutriai.data.AppRepository
 import com.nutriai.data.remote.dto.CheckinDto
 import com.nutriai.data.remote.dto.CheckinRequest
+import com.nutriai.ui.theme.BrandAmber
+import com.nutriai.ui.theme.BrandGreen
+import com.nutriai.ui.theme.BrandGreenDeep
+import com.nutriai.ui.theme.BrandGreenLight
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -118,147 +131,383 @@ fun CheckinScreen(
     var energy by remember { mutableStateOf<Int?>(null) }
     var mood by remember { mutableStateOf<Int?>(null) }
 
-    Column(
+    LazyColumn(
         modifier = modifier
             .fillMaxSize()
-            .verticalScroll(rememberScrollState())
-            .padding(16.dp),
-        verticalArrangement = Arrangement.spacedBy(12.dp),
+            .padding(horizontal = 16.dp),
+        verticalArrangement = Arrangement.spacedBy(16.dp),
+        contentPadding = androidx.compose.foundation.layout.PaddingValues(vertical = 20.dp),
     ) {
-        Text(
-            "Weekly check-in",
-            style = MaterialTheme.typography.headlineSmall,
-            color = MaterialTheme.colorScheme.primary,
-        )
+        // 1. Header
+        item { CheckinHeader() }
 
-        OutlinedTextField(
-            value = weight,
-            onValueChange = { weight = it },
-            label = { Text("Weight (kg)") },
-            singleLine = true,
-            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
-            modifier = Modifier.fillMaxWidth(),
-        )
-        OutlinedTextField(
-            value = waist,
-            onValueChange = { waist = it },
-            label = { Text("Waist (cm, optional)") },
-            singleLine = true,
-            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
-            modifier = Modifier.fillMaxWidth(),
-        )
-
-        Text("Energy", style = MaterialTheme.typography.labelLarge)
-        RatingChips(selected = energy) { energy = it }
-
-        Text("Mood", style = MaterialTheme.typography.labelLarge)
-        RatingChips(selected = mood) { mood = it }
-
-        OutlinedTextField(
-            value = sleep,
-            onValueChange = { sleep = it },
-            label = { Text("Sleep hours (optional)") },
-            singleLine = true,
-            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
-            modifier = Modifier.fillMaxWidth(),
-        )
-        OutlinedTextField(
-            value = notes,
-            onValueChange = { notes = it },
-            label = { Text("Notes") },
-            modifier = Modifier.fillMaxWidth(),
-        )
-
-        Button(
-            onClick = {
-                val w = weight.toDoubleOrNull()
-                if (w != null) {
-                    viewModel.submit(
-                        weightKg = w,
-                        waistCm = waist.toDoubleOrNull(),
-                        energy = energy,
-                        sleepHours = sleep.toDoubleOrNull(),
-                        mood = mood,
-                        notes = notes.trim().ifBlank { null },
-                    )
-                }
-            },
-            enabled = weight.isNotBlank() && !state.submitting,
-            modifier = Modifier.fillMaxWidth(),
-        ) {
-            if (state.submitting) CircularProgressIndicator(Modifier.padding(4.dp)) else Text("Save check-in")
-        }
-
-        state.message?.let {
-            Text(it, color = MaterialTheme.colorScheme.primary, style = MaterialTheme.typography.bodyMedium)
-        }
-
-        if (state.loading) {
-            CircularProgressIndicator()
-        } else {
-            WeightTrend(state.checkins)
-
-            LazyColumn(
+        // 2. Input form card
+        item {
+            Card(
                 modifier = Modifier.fillMaxWidth(),
-                verticalArrangement = Arrangement.spacedBy(8.dp),
+                shape = RoundedCornerShape(28.dp),
+                elevation = CardDefaults.cardElevation(defaultElevation = 6.dp),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
             ) {
-                items(state.checkins) { c ->
-                    Card(Modifier.fillMaxWidth()) {
-                        Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                            Text(c.date, style = MaterialTheme.typography.titleSmall)
-                            Text(
-                                "Weight: ${c.measurements?.weightKg?.let { "$it kg" } ?: "—"}",
-                                style = MaterialTheme.typography.bodyMedium,
+                Column(
+                    modifier = Modifier.fillMaxWidth().padding(20.dp),
+                    verticalArrangement = Arrangement.spacedBy(16.dp),
+                ) {
+                    Text(
+                        "Log your week",
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.SemiBold,
+                        color = MaterialTheme.colorScheme.onSurface,
+                    )
+
+                    BrandField(
+                        value = weight,
+                        onValueChange = { weight = it },
+                        label = "Weight (kg)",
+                        keyboardType = KeyboardType.Decimal,
+                    )
+                    BrandField(
+                        value = waist,
+                        onValueChange = { waist = it },
+                        label = "Waist (cm, optional)",
+                        keyboardType = KeyboardType.Decimal,
+                    )
+
+                    Text(
+                        "Energy",
+                        style = MaterialTheme.typography.labelLarge,
+                        fontWeight = FontWeight.SemiBold,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                    RatingChips(selected = energy) { energy = it }
+
+                    Text(
+                        "Mood",
+                        style = MaterialTheme.typography.labelLarge,
+                        fontWeight = FontWeight.SemiBold,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                    RatingChips(selected = mood) { mood = it }
+
+                    BrandField(
+                        value = sleep,
+                        onValueChange = { sleep = it },
+                        label = "Sleep hours (optional)",
+                        keyboardType = KeyboardType.Decimal,
+                    )
+                    BrandField(
+                        value = notes,
+                        onValueChange = { notes = it },
+                        label = "Notes",
+                        keyboardType = KeyboardType.Text,
+                    )
+
+                    Button(
+                        onClick = {
+                            val w = weight.toDoubleOrNull()
+                            if (w != null) {
+                                viewModel.submit(
+                                    weightKg = w,
+                                    waistCm = waist.toDoubleOrNull(),
+                                    energy = energy,
+                                    sleepHours = sleep.toDoubleOrNull(),
+                                    mood = mood,
+                                    notes = notes.trim().ifBlank { null },
+                                )
+                            }
+                        },
+                        enabled = weight.isNotBlank() && !state.submitting,
+                        modifier = Modifier.fillMaxWidth().height(54.dp),
+                        shape = RoundedCornerShape(24.dp),
+                        colors = ButtonDefaults.buttonColors(containerColor = BrandGreen),
+                    ) {
+                        if (state.submitting) {
+                            CircularProgressIndicator(
+                                modifier = Modifier.height(22.dp),
+                                color = Color.White,
                             )
+                        } else {
                             Text(
-                                "Energy: ${c.energy ?: "—"}  ·  Mood: ${c.mood ?: "—"}",
-                                style = MaterialTheme.typography.bodySmall,
+                                "Save check-in",
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.SemiBold,
                             )
                         }
                     }
+
+                    state.message?.let {
+                        Text(
+                            it,
+                            color = BrandGreenDeep,
+                            style = MaterialTheme.typography.bodyMedium,
+                            fontWeight = FontWeight.Medium,
+                        )
+                    }
                 }
+            }
+        }
+
+        // 3. Weight trend + history
+        if (state.loading) {
+            item {
+                Box(
+                    modifier = Modifier.fillMaxWidth().padding(24.dp),
+                    contentAlignment = Alignment.Center,
+                ) { CircularProgressIndicator(color = BrandGreen) }
+            }
+        } else {
+            item { WeightTrend(state.checkins) }
+
+            if (state.checkins.isNotEmpty()) {
+                item {
+                    Text(
+                        "Past check-ins",
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.onSurface,
+                        modifier = Modifier.padding(start = 4.dp),
+                    )
+                }
+            }
+
+            items(state.checkins) { c ->
+                PastCheckinCard(c)
             }
         }
     }
 }
 
 @Composable
-private fun RatingChips(selected: Int?, onSelect: (Int) -> Unit) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .horizontalScroll(rememberScrollState()),
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
+private fun CheckinHeader() {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(28.dp),
+        elevation = CardDefaults.cardElevation(defaultElevation = 8.dp),
+        colors = CardDefaults.cardColors(containerColor = Color.Transparent),
     ) {
-        (1..5).forEach { n ->
-            FilterChip(
-                selected = n == selected,
-                onClick = { onSelect(n) },
-                label = { Text(n.toString()) },
-            )
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .background(
+                    Brush.verticalGradient(
+                        colors = listOf(BrandGreenLight, BrandGreen, BrandGreenDeep),
+                    ),
+                )
+                .padding(24.dp),
+        ) {
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Text(
+                    "Weekly check-in 📝",
+                    style = MaterialTheme.typography.headlineMedium,
+                    fontWeight = FontWeight.Bold,
+                    color = Color.White,
+                )
+                Text(
+                    "Track your progress — small steps, steady wins.",
+                    style = MaterialTheme.typography.bodyLarge,
+                    color = Color.White.copy(alpha = 0.9f),
+                )
+            }
         }
     }
 }
+
+@Composable
+private fun BrandField(
+    value: String,
+    onValueChange: (String) -> Unit,
+    label: String,
+    keyboardType: KeyboardType,
+) {
+    OutlinedTextField(
+        value = value,
+        onValueChange = onValueChange,
+        label = { Text(label) },
+        singleLine = keyboardType != KeyboardType.Text,
+        keyboardOptions = KeyboardOptions(keyboardType = keyboardType),
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(16.dp),
+        colors = OutlinedTextFieldDefaults.colors(
+            focusedBorderColor = BrandGreen,
+            focusedLabelColor = BrandGreen,
+            cursorColor = BrandGreen,
+        ),
+    )
+}
+
+@Composable
+private fun RatingChips(selected: Int?, onSelect: (Int) -> Unit) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(10.dp),
+    ) {
+        (1..5).forEach { n ->
+            val isSelected = n == selected
+            Box(
+                modifier = Modifier
+                    .weight(1f)
+                    .height(48.dp)
+                    .clip(RoundedCornerShape(16.dp))
+                    .background(
+                        if (isSelected) BrandGreen else BrandGreen.copy(alpha = 0.10f),
+                    )
+                    .clickableChip { onSelect(n) },
+                contentAlignment = Alignment.Center,
+            ) {
+                Text(
+                    n.toString(),
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold,
+                    color = if (isSelected) Color.White else BrandGreenDeep,
+                )
+            }
+        }
+    }
+}
+
+// Small helper so we don't need to import clickable at call site repeatedly.
+private fun Modifier.clickableChip(onClick: () -> Unit): Modifier =
+    this.then(androidx.compose.foundation.clickable(onClick = onClick))
 
 @Composable
 private fun WeightTrend(checkins: List<CheckinDto>) {
     if (checkins.isEmpty()) return
     val latest = checkins.first().measurements?.weightKg
     val first = checkins.last().measurements?.weightKg
+    val delta = if (checkins.size >= 2 && latest != null && first != null) {
+        round((latest - first) * 10.0) / 10.0
+    } else {
+        null
+    }
 
-    Card(Modifier.fillMaxWidth()) {
-        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-            Text("Weight trend", style = MaterialTheme.typography.titleMedium)
-            if (latest != null) {
-                Text("Latest: $latest kg", style = MaterialTheme.typography.bodyMedium)
-            }
-            if (checkins.size >= 2 && latest != null && first != null) {
-                val delta = round((latest - first) * 10.0) / 10.0
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(28.dp),
+        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer),
+    ) {
+        Column(
+            modifier = Modifier.fillMaxWidth().padding(20.dp),
+            verticalArrangement = Arrangement.spacedBy(6.dp),
+        ) {
+            Text(
+                "Weight trend 📈",
+                style = MaterialTheme.typography.titleLarge,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.onPrimaryContainer,
+            )
+            latest?.let {
                 Text(
-                    "Change since first: ${if (delta > 0) "+$delta" else "$delta"} kg",
-                    style = MaterialTheme.typography.bodyMedium,
+                    "Latest: $it kg",
+                    style = MaterialTheme.typography.bodyLarge,
+                    color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.85f),
                 )
             }
+            if (delta != null) {
+                Spacer(Modifier.height(4.dp))
+                val down = delta < 0
+                val flat = delta == 0.0
+                val arrow = when {
+                    flat -> "▬"
+                    down -> "▼"
+                    else -> "▲"
+                }
+                // Weight loss (down) is framed positively in brand green; gain in amber.
+                val accent = when {
+                    flat -> MaterialTheme.colorScheme.onPrimaryContainer
+                    down -> BrandGreenDeep
+                    else -> BrandAmber
+                }
+                Row(verticalAlignment = Alignment.Bottom) {
+                    Text(
+                        arrow,
+                        style = MaterialTheme.typography.headlineMedium,
+                        fontWeight = FontWeight.Bold,
+                        color = accent,
+                    )
+                    Text(
+                        " ${if (delta > 0) "+" else ""}$delta kg",
+                        style = MaterialTheme.typography.displaySmall,
+                        fontWeight = FontWeight.Bold,
+                        color = accent,
+                        modifier = Modifier.padding(start = 4.dp),
+                    )
+                }
+                Text(
+                    "since your first check-in",
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.7f),
+                )
+            } else if (checkins.size < 2) {
+                Text(
+                    "Log again next week to see your trend.",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.7f),
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun PastCheckinCard(c: CheckinDto) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(24.dp),
+        elevation = CardDefaults.cardElevation(defaultElevation = 3.dp),
+        colors = CardDefaults.cardColors(containerColor = BrandGreen.copy(alpha = 0.08f)),
+    ) {
+        Column(
+            modifier = Modifier.fillMaxWidth().padding(18.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Text(
+                    c.date,
+                    style = MaterialTheme.typography.titleSmall,
+                    fontWeight = FontWeight.SemiBold,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                Text(
+                    c.measurements?.weightKg?.let { "$it kg" } ?: "—",
+                    style = MaterialTheme.typography.titleLarge,
+                    fontWeight = FontWeight.Bold,
+                    color = BrandGreenDeep,
+                )
+            }
+            Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                MetricPill("⚡ Energy", c.energy?.toString() ?: "—")
+                MetricPill("😊 Mood", c.mood?.toString() ?: "—")
+                c.measurements?.waistCm?.let { MetricPill("📏 Waist", "$it cm") }
+            }
+        }
+    }
+}
+
+@Composable
+private fun MetricPill(label: String, value: String) {
+    Box(
+        modifier = Modifier
+            .clip(RoundedCornerShape(14.dp))
+            .background(MaterialTheme.colorScheme.surface)
+            .padding(horizontal = 12.dp, vertical = 8.dp),
+    ) {
+        Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+            Text(
+                label,
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            Text(
+                value,
+                style = MaterialTheme.typography.titleSmall,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.onSurface,
+            )
         }
     }
 }

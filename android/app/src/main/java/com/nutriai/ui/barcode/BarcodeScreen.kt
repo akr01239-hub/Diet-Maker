@@ -5,31 +5,45 @@ import androidx.camera.core.ExperimentalGetImage
 import androidx.camera.core.ImageAnalysis
 import androidx.camera.view.LifecycleCameraController
 import androidx.camera.view.PreviewView
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.FilterChip
+import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
@@ -46,6 +60,10 @@ import com.google.mlkit.vision.barcode.BarcodeScanning
 import com.google.mlkit.vision.common.InputImage
 import com.nutriai.data.AppRepository
 import com.nutriai.data.remote.dto.BarcodeFood
+import com.nutriai.ui.theme.BrandAmber
+import com.nutriai.ui.theme.BrandGreen
+import com.nutriai.ui.theme.BrandGreenDeep
+import com.nutriai.ui.theme.BrandGreenLight
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -139,95 +157,245 @@ fun BarcodeScreen(
     val cameraPermission = rememberPermissionState(Manifest.permission.CAMERA)
 
     Column(
-        modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(16.dp),
-        verticalArrangement = Arrangement.spacedBy(12.dp),
+        modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal = 16.dp),
+        verticalArrangement = Arrangement.spacedBy(16.dp),
     ) {
-        Text(
-            "Scan barcode",
-            style = MaterialTheme.typography.headlineSmall,
-            color = MaterialTheme.colorScheme.primary,
-        )
+        Spacer(Modifier.height(4.dp))
 
+        ScanHeader()
+
+        // ---- Camera preview framed in a rounded brand card ----
         if (cameraPermission.status.isGranted) {
-            Card(Modifier.fillMaxWidth()) {
-                CameraScanner(
-                    onBarcode = viewModel::onScanned,
-                    modifier = Modifier.fillMaxWidth().height(230.dp),
-                )
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(24.dp),
+                elevation = CardDefaults.cardElevation(defaultElevation = 6.dp),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+            ) {
+                Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(230.dp)
+                            .clip(RoundedCornerShape(20.dp))
+                            .border(
+                                width = 2.dp,
+                                brush = Brush.verticalGradient(listOf(BrandGreenLight, BrandGreen)),
+                                shape = RoundedCornerShape(20.dp),
+                            ),
+                    ) {
+                        CameraScanner(
+                            onBarcode = viewModel::onScanned,
+                            modifier = Modifier.fillMaxSize().clip(RoundedCornerShape(20.dp)),
+                        )
+                    }
+                    Text(
+                        "🎯  Point at a barcode",
+                        style = MaterialTheme.typography.labelLarge,
+                        fontWeight = FontWeight.SemiBold,
+                        color = BrandGreenDeep,
+                        modifier = Modifier.padding(start = 4.dp),
+                    )
+                }
             }
-            Text("Point your camera at a barcode", style = MaterialTheme.typography.bodySmall)
         } else {
             OutlinedButton(
                 onClick = { cameraPermission.launchPermissionRequest() },
-                modifier = Modifier.fillMaxWidth(),
+                modifier = Modifier.fillMaxWidth().height(54.dp),
+                shape = RoundedCornerShape(24.dp),
             ) {
-                Text("📷  Enable camera to scan")
+                Text("📷  Enable camera to scan", fontWeight = FontWeight.SemiBold)
             }
         }
 
-        OutlinedTextField(
-            value = state.code,
-            onValueChange = viewModel::onCode,
-            label = { Text("Or enter barcode number") },
-            singleLine = true,
-            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+        // ---- Manual entry card ----
+        Card(
             modifier = Modifier.fillMaxWidth(),
-        )
-        Button(
-            onClick = { viewModel.lookup() },
-            enabled = state.code.isNotBlank() && !state.loading,
-            modifier = Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(24.dp),
+            elevation = CardDefaults.cardElevation(defaultElevation = 4.dp),
+            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
         ) {
-            Text("Look up")
+            Column(Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
+                Text(
+                    "Enter it manually",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onSurface,
+                )
+                OutlinedTextField(
+                    value = state.code,
+                    onValueChange = viewModel::onCode,
+                    label = { Text("Barcode number") },
+                    singleLine = true,
+                    shape = RoundedCornerShape(16.dp),
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedBorderColor = BrandGreen,
+                        focusedLabelColor = BrandGreen,
+                        cursorColor = BrandGreen,
+                    ),
+                    modifier = Modifier.fillMaxWidth(),
+                )
+                Button(
+                    onClick = { viewModel.lookup() },
+                    enabled = state.code.isNotBlank() && !state.loading,
+                    modifier = Modifier.fillMaxWidth().height(52.dp),
+                    shape = RoundedCornerShape(24.dp),
+                    colors = ButtonDefaults.buttonColors(containerColor = BrandGreen),
+                ) {
+                    Text("Look up", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
+                }
+            }
         }
 
-        if (state.loading) CircularProgressIndicator()
+        if (state.loading) {
+            Box(Modifier.fillMaxWidth().padding(vertical = 4.dp), contentAlignment = Alignment.Center) {
+                CircularProgressIndicator(color = BrandGreen)
+            }
+        }
 
+        // ---- Found food + grams + meal + log ----
         state.food?.let { food ->
-            Card(Modifier.fillMaxWidth()) {
-                Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                    Text(food.name, style = MaterialTheme.typography.titleMedium)
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(28.dp),
+                elevation = CardDefaults.cardElevation(defaultElevation = 6.dp),
+                colors = CardDefaults.cardColors(containerColor = BrandGreen.copy(alpha = 0.10f)),
+            ) {
+                Column(Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
+                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(14.dp)) {
+                        Box(
+                            modifier = Modifier
+                                .height(48.dp)
+                                .clip(RoundedCornerShape(16.dp))
+                                .background(Brush.verticalGradient(listOf(BrandGreenLight, BrandGreen)))
+                                .padding(horizontal = 14.dp),
+                            contentAlignment = Alignment.Center,
+                        ) {
+                            Text("🍽", style = MaterialTheme.typography.titleLarge)
+                        }
+                        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                            Text(
+                                food.name,
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.Bold,
+                                color = MaterialTheme.colorScheme.onSurface,
+                            )
+                            Text(
+                                "${food.per100g.kcal.toInt()} kcal / 100 g",
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                        }
+                    }
+
+                    OutlinedTextField(
+                        value = state.grams,
+                        onValueChange = viewModel::onGrams,
+                        label = { Text("Grams") },
+                        singleLine = true,
+                        shape = RoundedCornerShape(16.dp),
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedBorderColor = BrandGreen,
+                            focusedLabelColor = BrandGreen,
+                            cursorColor = BrandGreen,
+                        ),
+                        modifier = Modifier.fillMaxWidth(),
+                    )
+
                     Text(
-                        "${food.per100g.kcal.toInt()} kcal / 100 g",
-                        style = MaterialTheme.typography.bodyMedium,
+                        "Meal",
+                        style = MaterialTheme.typography.labelLarge,
+                        fontWeight = FontWeight.SemiBold,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
+                    Row(
+                        Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    ) {
+                        viewModel.slots.forEach { s ->
+                            FilterChip(
+                                selected = s == state.slot,
+                                onClick = { viewModel.onSlot(s) },
+                                label = { Text(s) },
+                                shape = RoundedCornerShape(16.dp),
+                                colors = FilterChipDefaults.filterChipColors(
+                                    selectedContainerColor = BrandGreen,
+                                    selectedLabelColor = Color.White,
+                                ),
+                            )
+                        }
+                    }
+
+                    Button(
+                        onClick = { viewModel.logIt() },
+                        enabled = !state.loading,
+                        modifier = Modifier.fillMaxWidth().height(54.dp),
+                        shape = RoundedCornerShape(24.dp),
+                        colors = ButtonDefaults.buttonColors(containerColor = BrandGreenDeep),
+                    ) {
+                        Text("Log it", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
+                    }
                 }
-            }
-
-            OutlinedTextField(
-                value = state.grams,
-                onValueChange = viewModel::onGrams,
-                label = { Text("Grams") },
-                singleLine = true,
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                modifier = Modifier.fillMaxWidth(),
-            )
-
-            Text("Meal", style = MaterialTheme.typography.labelLarge)
-            Row(
-                Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-            ) {
-                viewModel.slots.forEach { s ->
-                    FilterChip(
-                        selected = s == state.slot,
-                        onClick = { viewModel.onSlot(s) },
-                        label = { Text(s) },
-                    )
-                }
-            }
-
-            Button(
-                onClick = { viewModel.logIt() },
-                enabled = !state.loading,
-                modifier = Modifier.fillMaxWidth(),
-            ) {
-                Text("Log it")
             }
         }
 
+        // ---- Friendly message (kept as-is text) ----
         state.message?.let {
-            Text(it, color = MaterialTheme.colorScheme.primary, style = MaterialTheme.typography.bodyMedium)
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(16.dp))
+                    .background(BrandAmber.copy(alpha = 0.14f))
+                    .padding(16.dp),
+            ) {
+                Text(
+                    it,
+                    style = MaterialTheme.typography.bodyMedium,
+                    fontWeight = FontWeight.Medium,
+                    color = MaterialTheme.colorScheme.onSurface,
+                )
+            }
+        }
+
+        Spacer(Modifier.height(8.dp))
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Header
+// ---------------------------------------------------------------------------
+
+@Composable
+private fun ScanHeader() {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(28.dp),
+        elevation = CardDefaults.cardElevation(defaultElevation = 8.dp),
+        colors = CardDefaults.cardColors(containerColor = Color.Transparent),
+    ) {
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .background(
+                    Brush.verticalGradient(listOf(BrandGreenLight, BrandGreen, BrandGreenDeep)),
+                )
+                .padding(24.dp),
+        ) {
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Text(
+                    "Scan barcode 📦",
+                    style = MaterialTheme.typography.headlineMedium,
+                    fontWeight = FontWeight.Bold,
+                    color = Color.White,
+                )
+                Text(
+                    "Point, scan, and log packaged food in seconds.",
+                    style = MaterialTheme.typography.bodyLarge,
+                    color = Color.White.copy(alpha = 0.9f),
+                )
+            }
         }
     }
 }

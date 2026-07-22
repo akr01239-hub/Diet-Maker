@@ -1,11 +1,21 @@
 package com.nutriai.ui.home
 
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -14,27 +24,34 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
-import androidx.compose.foundation.clickable
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.nutriai.ui.badges.BadgesScreen
 import com.nutriai.ui.barcode.BarcodeScreen
 import com.nutriai.ui.checkin.CheckinScreen
 import com.nutriai.ui.family.FamilyScreen
 import com.nutriai.ui.grocery.GroceryScreen
 import com.nutriai.ui.reports.ReportsScreen
+import com.nutriai.ui.theme.BrandGreen
+import com.nutriai.ui.theme.BrandGreenDeep
 import com.nutriai.ui.workout.WorkoutScreen
 
-private data class MoreItem(val key: String, val icon: String, val label: String)
+private data class MoreItem(val key: String, val icon: String, val label: String, val subtitle: String)
 
 private val MORE_ITEMS = listOf(
-    MoreItem("workout", "💪", "Workout plan"),
-    MoreItem("checkin", "⚖️", "Weekly check-in"),
-    MoreItem("barcode", "📷", "Scan barcode"),
-    MoreItem("grocery", "🛒", "Grocery list"),
-    MoreItem("reports", "📄", "Weekly report"),
-    MoreItem("badges", "🏅", "Achievements"),
-    MoreItem("family", "👨‍👩‍👧", "Family"),
+    MoreItem("workout", "💪", "Workout plan", "Your split + 4-week rotation"),
+    MoreItem("checkin", "⚖️", "Weekly check-in", "Log weight & measurements"),
+    MoreItem("barcode", "📷", "Scan barcode", "Camera food lookup"),
+    MoreItem("grocery", "🛒", "Grocery list", "This week's shopping"),
+    MoreItem("reports", "📄", "Weekly report", "Progress + share PDF"),
+    MoreItem("badges", "🏅", "Achievements", "Streaks & milestones"),
+    MoreItem("family", "👨‍👩‍👧", "Family", "Members with their own plan"),
 )
 
 @Composable
@@ -63,23 +80,50 @@ fun MoreScreen(modifier: Modifier = Modifier) {
 @Composable
 private fun MoreMenu(modifier: Modifier = Modifier, onSelect: (String) -> Unit) {
     Column(
-        modifier
-            .fillMaxSize()
-            .padding(16.dp),
-        verticalArrangement = Arrangement.spacedBy(10.dp),
+        modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(16.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
-        Text("More", style = MaterialTheme.typography.headlineSmall, color = MaterialTheme.colorScheme.primary)
+        Card(
+            Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(24.dp),
+            elevation = CardDefaults.cardElevation(defaultElevation = 6.dp),
+            colors = CardDefaults.cardColors(containerColor = Color.Transparent),
+        ) {
+            Box(
+                Modifier.fillMaxWidth()
+                    .background(Brush.verticalGradient(listOf(BrandGreen, BrandGreenDeep)))
+                    .padding(22.dp),
+            ) {
+                Column {
+                    Text("More", style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold, color = Color.White)
+                    Text("Tools, insights & extras", style = MaterialTheme.typography.bodyMedium, color = Color.White.copy(alpha = 0.85f))
+                }
+            }
+        }
+
         MORE_ITEMS.forEach { item ->
             Card(
-                Modifier
-                    .fillMaxWidth()
-                    .clickable { onSelect(item.key) },
+                Modifier.fillMaxWidth().clickable { onSelect(item.key) },
+                shape = RoundedCornerShape(20.dp),
+                elevation = CardDefaults.cardElevation(defaultElevation = 3.dp),
             ) {
-                Text(
-                    "${item.icon}   ${item.label}",
-                    modifier = Modifier.padding(18.dp),
-                    style = MaterialTheme.typography.titleMedium,
-                )
+                Row(
+                    Modifier.fillMaxWidth().padding(14.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(14.dp)) {
+                        Box(
+                            Modifier.size(48.dp).clip(CircleShape).background(MaterialTheme.colorScheme.primaryContainer),
+                            contentAlignment = Alignment.Center,
+                        ) { Text(item.icon, fontSize = 22.sp) }
+                        Column {
+                            Text(item.label, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
+                            Text(item.subtitle, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        }
+                    }
+                    Text("›", style = MaterialTheme.typography.headlineSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
             }
         }
     }
