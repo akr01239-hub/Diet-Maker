@@ -5,9 +5,11 @@ export interface GroceryLine {
   name: string;
   /** How many meals across the week use this ingredient (times to buy for). */
   meals: number;
-  /** Approx amount to buy this week (rounded). */
+  /** Approx amount PER serving (per meal), rounded. */
+  perServing: number;
+  /** Approx TOTAL amount to buy this week (≈ perServing × meals), rounded. */
   qty: number;
-  /** Unit for qty: 'g' (grams) or 'pcs' (pieces, for eggs/fruit). */
+  /** Unit for qty/perServing: 'g' (grams) or 'pcs' (pieces, for eggs/fruit). */
   unit: 'g' | 'pcs';
   /** Approx total calories this ingredient contributes across the week. */
   kcal: number;
@@ -24,6 +26,8 @@ export interface GroceryCategory {
 export interface GroceryResult {
   categories: GroceryCategory[];
   totalItems: number;
+  /** Sum of all ingredient calories for the week (≈ the plan's total calories). */
+  weeklyKcal: number;
 }
 
 /**
@@ -60,12 +64,22 @@ export function buildGroceryList(days: DayPlan[], foods: FoodItem[]): GroceryRes
   }
 
   const catMap = new Map<string, GroceryLine[]>();
+  let weeklyKcalSum = 0;
   for (const [name, { category, meals, grams, kcal }] of acc) {
+    weeklyKcalSum += kcal;
     const piece = PIECE_ITEM.test(name);
     const totalKcal = Math.round(kcal);
+    const perServingG = Math.max(5, Math.round(grams / Math.max(1, meals) / 5) * 5);
     const line: GroceryLine = piece
-      ? { name, meals, qty: meals, unit: 'pcs', kcal: totalKcal } // ~1 piece per meal (egg, fruit)
-      : { name, meals, qty: Math.max(5, Math.round(grams / 5) * 5), unit: 'g', kcal: totalKcal };
+      ? { name, meals, perServing: 1, qty: meals, unit: 'pcs', kcal: totalKcal } // 1 piece/meal
+      : {
+          name,
+          meals,
+          perServing: perServingG,
+          qty: Math.max(5, Math.round(grams / 5) * 5),
+          unit: 'g',
+          kcal: totalKcal,
+        };
     const arr = catMap.get(category) ?? [];
     arr.push(line);
     catMap.set(category, arr);
@@ -80,5 +94,5 @@ export function buildGroceryList(days: DayPlan[], foods: FoodItem[]): GroceryRes
     }),
   );
 
-  return { categories, totalItems: acc.size };
+  return { categories, totalItems: acc.size, weeklyKcal: Math.round(weeklyKcalSum) };
 }

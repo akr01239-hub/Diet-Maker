@@ -93,7 +93,13 @@ fun GroceryScreen(
         verticalArrangement = Arrangement.spacedBy(12.dp),
         contentPadding = PaddingValues(vertical = 16.dp),
     ) {
-        item { HeroHeader(totalItems = grocery?.totalItems ?: 0) }
+        item {
+            HeroHeader(
+                totalItems = grocery?.totalItems ?: 0,
+                weeklyKcal = grocery?.weeklyKcal ?: 0,
+                targetWeeklyKcal = grocery?.targetWeeklyKcal,
+            )
+        }
 
         if (state.loading) {
             item {
@@ -121,7 +127,7 @@ fun GroceryScreen(
 }
 
 @Composable
-private fun HeroHeader(totalItems: Int) {
+private fun HeroHeader(totalItems: Int, weeklyKcal: Int, targetWeeklyKcal: Int?) {
     Card(
         Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(24.dp),
@@ -136,6 +142,15 @@ private fun HeroHeader(totalItems: Int) {
                     style = MaterialTheme.typography.bodySmall,
                     color = Color.White.copy(alpha = 0.9f),
                 )
+                if (weeklyKcal > 0) {
+                    val target = targetWeeklyKcal?.let { " · target ${"%,d".format(it)}" } ?: ""
+                    Text(
+                        "🔥 ${"%,d".format(weeklyKcal)} kcal this week$target",
+                        style = MaterialTheme.typography.labelMedium,
+                        fontWeight = FontWeight.SemiBold,
+                        color = Color.White,
+                    )
+                }
             }
         }
     }
@@ -162,19 +177,22 @@ private fun CategoryCard(cat: GroceryCategory) {
             ) {
                 GroceryRow(
                     item = "Item",
-                    amount = "Amount",
+                    serving = "Serving",
                     times = "×wk",
-                    kcal = "kcal",
+                    totalTop = "Total",
+                    totalBottom = null,
                     border = border,
                     header = true,
                 )
                 cat.items.forEach { line ->
                     HorizontalDivider(thickness = 1.dp, color = border)
+                    val u = if (line.unit == "pcs") "pcs" else "g"
                     GroceryRow(
                         item = line.name,
-                        amount = if (line.unit == "pcs") "${line.qty} pcs" else "${line.qty} g",
+                        serving = "${line.perServing} $u",
                         times = "×${line.meals}",
-                        kcal = if (line.kcal > 0) "${line.kcal}" else "—",
+                        totalTop = "${line.qty} $u",
+                        totalBottom = if (line.kcal > 0) "${line.kcal} kcal" else null,
                         border = border,
                         header = false,
                     )
@@ -187,51 +205,59 @@ private fun CategoryCard(cat: GroceryCategory) {
 @Composable
 private fun GroceryRow(
     item: String,
-    amount: String,
+    serving: String,
     times: String,
-    kcal: String,
+    totalTop: String,
+    totalBottom: String?,
     border: Color,
     header: Boolean,
 ) {
     val cellStyle = MaterialTheme.typography.bodySmall
     val labelStyle = MaterialTheme.typography.labelSmall
+    val onVar = MaterialTheme.colorScheme.onSurfaceVariant
     Row(
         Modifier.fillMaxWidth().height(IntrinsicSize.Min),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Text(
             item,
-            Modifier.weight(0.40f).padding(horizontal = 8.dp, vertical = 8.dp),
+            Modifier.weight(0.36f).padding(horizontal = 8.dp, vertical = 8.dp),
             style = if (header) labelStyle else cellStyle,
             fontWeight = if (header) FontWeight.SemiBold else FontWeight.Normal,
-            color = if (header) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.onSurface,
+            color = if (header) onVar else MaterialTheme.colorScheme.onSurface,
         )
         Box(Modifier.width(1.dp).fillMaxHeight().background(border))
         Text(
-            amount,
-            Modifier.weight(0.24f).padding(horizontal = 6.dp, vertical = 8.dp),
+            serving,
+            Modifier.weight(0.22f).padding(horizontal = 4.dp, vertical = 8.dp),
             style = if (header) labelStyle else cellStyle,
             fontWeight = FontWeight.SemiBold,
             textAlign = TextAlign.Center,
-            color = if (header) MaterialTheme.colorScheme.onSurfaceVariant else BrandGreenDeep,
+            color = if (header) onVar else BrandGreenDeep,
         )
         Box(Modifier.width(1.dp).fillMaxHeight().background(border))
         Text(
             times,
-            Modifier.weight(0.15f).padding(horizontal = 4.dp, vertical = 8.dp),
+            Modifier.weight(0.14f).padding(horizontal = 2.dp, vertical = 8.dp),
             style = if (header) labelStyle else cellStyle,
-            fontWeight = FontWeight.Normal,
             textAlign = TextAlign.Center,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            color = onVar,
         )
         Box(Modifier.width(1.dp).fillMaxHeight().background(border))
-        Text(
-            kcal,
-            Modifier.weight(0.21f).padding(horizontal = 4.dp, vertical = 8.dp),
-            style = if (header) labelStyle else cellStyle,
-            fontWeight = if (header) FontWeight.SemiBold else FontWeight.Normal,
-            textAlign = TextAlign.Center,
-            color = if (header) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.onSurface,
-        )
+        Column(
+            Modifier.weight(0.28f).padding(horizontal = 4.dp, vertical = 8.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+        ) {
+            Text(
+                totalTop,
+                style = if (header) labelStyle else cellStyle,
+                fontWeight = if (header) FontWeight.SemiBold else FontWeight.SemiBold,
+                textAlign = TextAlign.Center,
+                color = if (header) onVar else MaterialTheme.colorScheme.onSurface,
+            )
+            totalBottom?.let {
+                Text(it, style = MaterialTheme.typography.labelSmall, textAlign = TextAlign.Center, color = onVar)
+            }
+        }
     }
 }

@@ -54,7 +54,11 @@ export async function getGrocery(userId: string) {
   if (!plan) throw new HttpError(404, 'Generate a plan first');
   const foods = await prisma.food.findMany();
   const days = plan.days as unknown as DayPlan[];
-  return buildGroceryList(days, foods.map(toFoodItem));
+  const grocery = buildGroceryList(days, foods.map(toFoodItem));
+  // The user's weekly calorie target (daily × 7) so the UI can show the grocery total against it.
+  const targets = await latestTargets(userId);
+  const targetWeeklyKcal = targets ? Math.round(targets.dailyKcal * days.length) : null;
+  return { ...grocery, targetWeeklyKcal };
 }
 
 async function last7Days(userId: string, now: Date): Promise<ReportDay[]> {
