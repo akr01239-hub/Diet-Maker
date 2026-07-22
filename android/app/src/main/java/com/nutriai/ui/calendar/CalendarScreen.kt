@@ -45,6 +45,7 @@ data class CalendarState(
     val workoutError: String? = null,
     val dietDays: List<DayPlan> = emptyList(),
     val workoutDays: List<WorkoutDay> = emptyList(),
+    val workoutBlockLabel: String? = null,
     val selectedDate: String? = null,
 )
 
@@ -66,7 +67,8 @@ class CalendarViewModel @Inject constructor(
             val workout = repository.exercisePlan()
 
             val dietDays = plan.getOrNull()?.days.orEmpty()
-            val workoutDays = workout.getOrNull()?.days.orEmpty()
+            val workoutPlan = workout.getOrNull()
+            val workoutDays = workoutPlan?.days.orEmpty()
 
             // Default the selection to the "Today" diet day when present,
             // otherwise the first day, otherwise a "Today" workout day.
@@ -81,6 +83,7 @@ class CalendarViewModel @Inject constructor(
                 workoutError = workout.exceptionOrNull()?.message,
                 dietDays = dietDays,
                 workoutDays = workoutDays,
+                workoutBlockLabel = workoutPlan?.blockLabel?.takeIf { it.isNotBlank() },
                 selectedDate = defaultDate,
             )
         }
@@ -215,6 +218,23 @@ fun CalendarScreen(
 
             // Workout section.
             item { Text("🏋️ Workout", style = MaterialTheme.typography.titleSmall) }
+            state.workoutBlockLabel?.let { block ->
+                item {
+                    Card(
+                        Modifier.fillMaxWidth(),
+                        colors = CardDefaults.cardColors(
+                            containerColor = MaterialTheme.colorScheme.tertiaryContainer,
+                        ),
+                    ) {
+                        Text(
+                            "🔄 $block — new exercises next month",
+                            style = MaterialTheme.typography.labelMedium,
+                            color = MaterialTheme.colorScheme.onTertiaryContainer,
+                            modifier = Modifier.padding(10.dp),
+                        )
+                    }
+                }
+            }
             item {
                 Card(
                     Modifier.fillMaxWidth(),
