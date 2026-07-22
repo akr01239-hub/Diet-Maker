@@ -39,6 +39,7 @@ import com.nutriai.ui.family.FamilyScreen
 import com.nutriai.ui.grocery.GroceryScreen
 import com.nutriai.ui.reports.ReportsScreen
 import com.nutriai.ui.settings.SettingsScreen
+import com.nutriai.ui.wellness.WellnessScreen
 import com.nutriai.ui.theme.BrandGreen
 import com.nutriai.ui.theme.BrandGreenDeep
 
@@ -50,6 +51,7 @@ private val MORE_ITEMS = listOf(
     MoreItem("grocery", "🛒", "Grocery list", "This week's shopping"),
     MoreItem("reports", "📄", "Weekly report", "Progress + share PDF"),
     MoreItem("badges", "🏅", "Achievements", "Streaks & milestones"),
+    MoreItem("wellness", "🧘", "Mind & Body", "Yoga flows & meditation"),
     MoreItem("family", "👨‍👩‍👧", "Family", "Members with their own plan"),
     MoreItem("settings", "⚙️", "Settings", "Profile, account & more"),
 )
@@ -74,6 +76,7 @@ fun MoreScreen(
                 "grocery" -> GroceryScreen(Modifier.fillMaxSize())
                 "reports" -> ReportsScreen(Modifier.fillMaxSize())
                 "badges" -> BadgesScreen(Modifier.fillMaxSize())
+                "wellness" -> WellnessScreen(Modifier.fillMaxSize())
                 "family" -> FamilyScreen(Modifier.fillMaxSize())
                 "settings" -> SettingsScreen(
                     onEditProfile = onEditProfile,
