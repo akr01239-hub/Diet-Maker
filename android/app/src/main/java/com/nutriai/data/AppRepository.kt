@@ -100,6 +100,17 @@ class AppRepository @Inject constructor(
     suspend fun guidance(): Result<com.nutriai.data.remote.dto.Guidance> =
         runCatching { api.guidance().guidance }
 
+    // ---- Cycle ----
+    suspend fun cycle(): Result<com.nutriai.data.remote.dto.Cycle> =
+        runCatching { api.cycle().cycle }
+
+    suspend fun logPeriod(startDate: String? = null): Result<Unit> =
+        runCatching { api.logPeriod(com.nutriai.data.remote.dto.LogPeriodRequest(startDate)) }
+
+    // ---- Wellness ----
+    suspend fun wellness(): Result<com.nutriai.data.remote.dto.Wellness> =
+        runCatching { api.wellness() }
+
     suspend fun applyAdaptation(): Result<com.nutriai.data.remote.dto.AdaptApplyResponse> =
         runCatching { api.applyAdaptation() }
 

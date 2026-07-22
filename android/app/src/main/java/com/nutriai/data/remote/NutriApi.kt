@@ -70,6 +70,15 @@ interface NutriApi {
     @GET("guidance")
     suspend fun guidance(): com.nutriai.data.remote.dto.GuidanceEnvelope
 
+    @GET("cycle")
+    suspend fun cycle(): com.nutriai.data.remote.dto.CycleEnvelope
+
+    @POST("cycle/period")
+    suspend fun logPeriod(@Body body: com.nutriai.data.remote.dto.LogPeriodRequest)
+
+    @GET("wellness")
+    suspend fun wellness(): com.nutriai.data.remote.dto.Wellness
+
     @POST("adapt/apply")
     suspend fun applyAdaptation(): com.nutriai.data.remote.dto.AdaptApplyResponse
 

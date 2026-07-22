@@ -252,6 +252,9 @@ fun CalendarScreen(
             item { GuidanceCard(g) }
         }
 
+        // Menstrual-cycle section (renders only for female profiles).
+        item { com.nutriai.ui.cycle.CycleSection() }
+
         if (state.loading) {
             item { CircularProgressIndicator() }
         }

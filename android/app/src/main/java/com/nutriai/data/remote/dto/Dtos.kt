@@ -303,6 +303,74 @@ data class Guidance(
 @Serializable
 data class GuidanceEnvelope(val guidance: Guidance)
 
+// ---- Menstrual cycle ----
+@Serializable
+data class CyclePhaseGuidance(
+    val summary: String = "",
+    val dietTips: List<String> = emptyList(),
+    val exerciseTips: List<String> = emptyList(),
+    val yogaTips: List<String> = emptyList(),
+)
+
+@Serializable
+data class Cycle(
+    val applicable: Boolean = false,
+    val needsSetup: Boolean = false,
+    val lastPeriodStart: String? = null,
+    val cycleDay: Int? = null,
+    val cycleLengthDays: Int? = null,
+    val periodLengthDays: Int? = null,
+    val phase: String? = null,
+    val phaseLabel: String? = null,
+    val nextPeriodInDays: Int? = null,
+    val shouldPromptPeriod: Boolean = false,
+    val guidance: CyclePhaseGuidance? = null,
+)
+
+@Serializable
+data class CycleEnvelope(val cycle: Cycle)
+
+@Serializable
+data class LogPeriodRequest(val startDate: String? = null, val endDate: String? = null)
+
+// ---- Wellness (yoga + meditation) ----
+@Serializable
+data class YogaPose(val name: String, val hold: String, val cue: String)
+
+@Serializable
+data class YogaFlow(
+    val id: String,
+    val name: String,
+    val focus: String,
+    val durationMin: Int,
+    val level: String = "all",
+    val poses: List<YogaPose> = emptyList(),
+)
+
+@Serializable
+data class BreathPattern(
+    val inhaleSec: Int = 0,
+    val hold1Sec: Int = 0,
+    val exhaleSec: Int = 0,
+    val hold2Sec: Int = 0,
+)
+
+@Serializable
+data class Meditation(
+    val id: String,
+    val name: String,
+    val goal: String,
+    val durationMin: Int,
+    val steps: List<String> = emptyList(),
+    val pattern: BreathPattern? = null,
+)
+
+@Serializable
+data class Wellness(
+    val yoga: List<YogaFlow> = emptyList(),
+    val meditation: List<Meditation> = emptyList(),
+)
+
 // ---- Chat ----
 @Serializable
 data class ChatRequest(val message: String)
