@@ -75,6 +75,8 @@ data class WeeklyWorkout(
     val location: String,
     val goal: String,
     val days: List<WorkoutDay> = emptyList(),
+    val block: Int = 0,
+    val blockLabel: String = "",
     val note: String = "",
     val disclaimer: String = "",
 )

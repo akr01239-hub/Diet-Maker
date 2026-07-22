@@ -21,6 +21,9 @@ export interface WeeklyWorkout {
   location: ExerciseLocation;
   goal: BodyGoal;
   days: WorkoutDay[];
+  /** 0-based mesocycle block; rotates every 4 weeks so training keeps progressing. */
+  block: number;
+  blockLabel: string; // "Month 1 · Block A"
   note: string;
   disclaimer: string;
 }

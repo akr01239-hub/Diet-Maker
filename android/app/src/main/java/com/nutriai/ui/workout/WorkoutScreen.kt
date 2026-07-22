@@ -80,6 +80,22 @@ fun WorkoutScreen(
         state.error?.let { err -> item { Text(err, color = MaterialTheme.colorScheme.error) } }
 
         if (plan != null) {
+            if (plan.blockLabel.isNotBlank()) {
+                item {
+                    Card(
+                        Modifier.fillMaxWidth(),
+                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.tertiaryContainer),
+                    ) {
+                        Column(Modifier.padding(12.dp)) {
+                            Text("🔄 ${plan.blockLabel}", style = MaterialTheme.typography.titleSmall)
+                            Text(
+                                "Exercises rotate every 4 weeks so your muscles keep growing and never fully adapt.",
+                                style = MaterialTheme.typography.bodySmall,
+                            )
+                        }
+                    }
+                }
+            }
             item {
                 Text(
                     "${plan.goal.replaceFirstChar { it.uppercase() }} · ${plan.location} — ${plan.note}",

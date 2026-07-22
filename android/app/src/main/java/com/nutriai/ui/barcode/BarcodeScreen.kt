@@ -104,7 +104,7 @@ class BarcodeViewModel @Inject constructor(
                 _state.value.copy(
                     loading = false,
                     food = null,
-                    message = r.exceptionOrNull()?.message ?: "No food found for that barcode",
+                    message = "Couldn't find that barcode. Try again, or search the food by name in the Log tab.",
                 )
             }
         }

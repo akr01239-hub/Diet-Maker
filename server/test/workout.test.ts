@@ -26,12 +26,27 @@ describe('workout generator', () => {
     expect(plan.note.toLowerCase()).toContain('no equipment');
   });
 
-  it('gym muscular uses a push/pull/legs split', () => {
+  it('gym muscular uses a dedicated bro-split', () => {
     const plan = generateWeeklyWorkout('muscular', 'gym', {});
     const focuses = plan.days.map((d) => d.focus.toLowerCase()).join(' ');
-    expect(focuses).toContain('push');
-    expect(focuses).toContain('pull');
+    expect(focuses).toContain('chest');
+    expect(focuses).toContain('back');
+    expect(focuses).toContain('shoulders');
+    expect(focuses).toContain('biceps');
+    expect(focuses).toContain('triceps');
     expect(focuses).toContain('legs');
+  });
+
+  it('mesocycle rotates the block every 4 weeks', () => {
+    // Two dates ~4.5 weeks apart should land in different blocks (different exercises).
+    const wk1 = generateWeeklyWorkout('muscular', 'gym', { startDate: new Date('2026-01-05T00:00:00Z') });
+    const wk6 = generateWeeklyWorkout('muscular', 'gym', { startDate: new Date('2026-02-16T00:00:00Z') });
+    expect(wk1.block).not.toBe(wk6.block);
+    // The chest-day exercises differ between blocks.
+    const chest1 = wk1.days.find((d) => d.focus === 'Chest')!.exercises[0]!.name;
+    const chest6 = wk6.days.find((d) => d.focus === 'Chest')!.exercises[0]!.name;
+    expect(chest1).not.toBe(chest6);
+    expect(wk1.blockLabel).toMatch(/Block/);
   });
 
   it('carries dates + labels when startDate is given', () => {
