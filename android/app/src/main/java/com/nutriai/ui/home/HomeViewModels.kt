@@ -164,6 +164,10 @@ data class LogState(
     val grams: String = "150",
     val loading: Boolean = false,
     val message: String? = null,
+    val recents: List<com.nutriai.data.remote.dto.RecentFood> = emptyList(),
+    val saved: List<com.nutriai.data.remote.dto.SavedFood> = emptyList(),
+    val photoItems: List<com.nutriai.data.remote.dto.VisionFoodItem> = emptyList(),
+    val analyzing: Boolean = false,
 )
 
 @HiltViewModel
@@ -178,6 +182,7 @@ class LogFoodViewModel @Inject constructor(
     init {
         search("")
         loadToday()
+        loadExtras()
     }
 
     fun loadToday() {
@@ -185,6 +190,80 @@ class LogFoodViewModel @Inject constructor(
             val r = repository.todayLogs()
             r.getOrNull()?.let { _state.value = _state.value.copy(today = it) }
         }
+    }
+
+    fun loadExtras() {
+        viewModelScope.launch {
+            val recents = repository.recentFoods().getOrDefault(emptyList())
+            val saved = repository.savedFoods().getOrDefault(emptyList())
+            _state.value = _state.value.copy(recents = recents, saved = saved)
+        }
+    }
+
+    /** Sends a meal photo to AI vision and shows the detected items to add. */
+    fun analyzePhoto(imageBase64: String) {
+        _state.value = _state.value.copy(analyzing = true, message = null, photoItems = emptyList())
+        viewModelScope.launch {
+            val r = repository.mealPhoto(imageBase64)
+            val res = r.getOrNull()
+            _state.value = _state.value.copy(
+                analyzing = false,
+                photoItems = res?.items ?: emptyList(),
+                message = res?.note ?: "Couldn't analyse the photo.",
+            )
+        }
+    }
+
+    fun clearPhotoItems() { _state.value = _state.value.copy(photoItems = emptyList()) }
+
+    fun logVisionItem(item: com.nutriai.data.remote.dto.VisionFoodItem) {
+        viewModelScope.launch {
+            val r = repository.logNamed(_state.value.slot, item.name, item.per100g, item.grams, "photo")
+            if (r.isSuccess) {
+                _state.value = _state.value.copy(
+                    message = "✓ Logged ${item.name}",
+                    photoItems = _state.value.photoItems.filter { it !== item },
+                )
+                loadToday(); loadExtras()
+            }
+        }
+    }
+
+    fun logRecent(recent: com.nutriai.data.remote.dto.RecentFood, grams: Double) {
+        viewModelScope.launch {
+            val r = repository.logNamed(_state.value.slot, recent.name, recent.per100g, grams)
+            if (r.isSuccess) { _state.value = _state.value.copy(message = "✓ Logged ${recent.name}"); loadToday() }
+        }
+    }
+
+    fun logSaved(saved: com.nutriai.data.remote.dto.SavedFood, grams: Double) {
+        val per = com.nutriai.data.remote.dto.FoodLogPer100g(
+            kcal = saved.kcal, proteinG = saved.proteinG, carbG = saved.carbG, fatG = saved.fatG,
+            fiberG = saved.fiberG, sugarG = saved.sugarG, sodiumMg = saved.sodiumMg,
+        )
+        viewModelScope.launch {
+            val r = repository.logNamed(_state.value.slot, saved.name, per, grams)
+            if (r.isSuccess) { _state.value = _state.value.copy(message = "✓ Logged ${saved.name}"); loadToday() }
+        }
+    }
+
+    fun saveCustom(req: com.nutriai.data.remote.dto.SavedFoodRequest) {
+        viewModelScope.launch {
+            if (repository.saveFood(req).isSuccess) { _state.value = _state.value.copy(message = "★ Saved ${req.name}"); loadExtras() }
+        }
+    }
+
+    fun favorite(food: com.nutriai.data.remote.dto.FoodDto) {
+        saveCustom(
+            com.nutriai.data.remote.dto.SavedFoodRequest(
+                name = food.name, kcal = food.kcal, proteinG = food.proteinG, carbG = food.carbG,
+                fatG = food.fatG, fiberG = food.fiberG, sugarG = food.sugarG, sodiumMg = food.sodiumMg,
+            ),
+        )
+    }
+
+    fun deleteSaved(id: String) {
+        viewModelScope.launch { if (repository.deleteSavedFood(id).isSuccess) loadExtras() }
     }
 
     fun onQuery(q: String) {

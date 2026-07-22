@@ -1,5 +1,10 @@
 package com.nutriai.ui.log
 
+import android.Manifest
+import android.content.pm.PackageManager
+import android.net.Uri
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
@@ -25,6 +30,7 @@ import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -39,18 +45,29 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.core.content.ContextCompat
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.nutriai.data.remote.dto.FoodDto
 import com.nutriai.data.remote.dto.FoodLogEntry
+import com.nutriai.data.remote.dto.RecentFood
+import com.nutriai.data.remote.dto.SavedFood
+import com.nutriai.data.remote.dto.SavedFoodRequest
+import com.nutriai.data.remote.dto.VisionFoodItem
 import com.nutriai.ui.home.LogFoodViewModel
 import com.nutriai.ui.theme.BrandGreen
 import com.nutriai.ui.theme.BrandGreenDeep
 import com.nutriai.ui.theme.BrandGreenLight
+import com.nutriai.util.ImageUtil
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+import androidx.compose.runtime.rememberCoroutineScope
 
 // ---------------------------------------------------------------------------
 // Premium food-logging screen for NutriAI.
@@ -65,6 +82,44 @@ fun LogScreen(
     val state by viewModel.state.collectAsStateWithLifecycle()
     var pendingFood by remember { mutableStateOf<FoodDto?>(null) }
     var qtyText by remember { mutableStateOf("") }
+
+    val context = LocalContext.current
+    val scope = rememberCoroutineScope()
+    var pendingQty by remember { mutableStateOf<PendingQty?>(null) }
+    var showCustom by remember { mutableStateOf(false) }
+    var cameraUri by remember { mutableStateOf<Uri?>(null) }
+
+    fun analyze(uri: Uri) {
+        scope.launch {
+            val b64 = withContext(Dispatchers.IO) { ImageUtil.downscaledJpegBytes(context, uri)?.let(ImageUtil::toBase64) }
+            if (b64 != null) viewModel.analyzePhoto(b64)
+        }
+    }
+    val galleryLauncher = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri ->
+        if (uri != null) analyze(uri)
+    }
+    val cameraLauncher = rememberLauncherForActivityResult(ActivityResultContracts.TakePicture()) { ok ->
+        cameraUri?.let { if (ok) analyze(it) }
+    }
+    val camPermLauncher = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
+        if (granted) {
+            val (uri, _) = ImageUtil.newCameraOutput(context, System.currentTimeMillis())
+            cameraUri = uri; cameraLauncher.launch(uri)
+        }
+    }
+    fun snapMeal() {
+        if (ContextCompat.checkSelfPermission(context, Manifest.permission.CAMERA) == PackageManager.PERMISSION_GRANTED) {
+            val (uri, _) = ImageUtil.newCameraOutput(context, System.currentTimeMillis())
+            cameraUri = uri; cameraLauncher.launch(uri)
+        } else camPermLauncher.launch(Manifest.permission.CAMERA)
+    }
+
+    pendingQty?.let { pq ->
+        GenericQtyDialog(pq, onConfirm = { grams -> pq.onLog(grams); pendingQty = null }, onDismiss = { pendingQty = null })
+    }
+    if (showCustom) {
+        CustomFoodDialog(onSave = { viewModel.saveCustom(it); showCustom = false }, onDismiss = { showCustom = false })
+    }
 
     // Quantity dialog — set exact grams for THIS food before logging (accurate calories).
     pendingFood?.let { food ->
@@ -109,6 +164,40 @@ fun LogScreen(
             )
         }
 
+        // 3b. Snap a meal (AI photo logging)
+        item {
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                Button(
+                    onClick = { snapMeal() },
+                    modifier = Modifier.weight(1f),
+                    enabled = !state.analyzing,
+                    shape = RoundedCornerShape(18.dp),
+                    colors = ButtonDefaults.buttonColors(containerColor = BrandGreen),
+                ) { if (state.analyzing) CircularProgressIndicator(Modifier.size(20.dp), color = Color.White) else Text("📷 Snap a meal") }
+                OutlinedButton(onClick = { galleryLauncher.launch("image/*") }, modifier = Modifier.weight(1f), shape = RoundedCornerShape(18.dp)) {
+                    Text("🖼️ Photo")
+                }
+            }
+        }
+
+        // 3c. AI-detected items from the photo
+        if (state.photoItems.isNotEmpty()) {
+            item { SectionLabel("Detected in photo", "AI estimates — tap Add (adjust grams anytime)") }
+            items(state.photoItems, key = { it.name + it.grams }) { it2 ->
+                DetectedItemCard(it2, onAdd = { viewModel.logVisionItem(it2) })
+            }
+        }
+
+        // 3d. Recent + saved quick-log
+        if (state.recents.isNotEmpty()) {
+            item { QuickRow("🕘 Recent", state.recents.map { it.name }) { idx -> val r = state.recents[idx]; pendingQty = PendingQty(r.name, r.per100g.kcal) { g -> viewModel.logRecent(r, g) } } }
+        }
+        item {
+            QuickRow("⭐ Saved", state.saved.map { it.name }, trailingLabel = "＋ Custom", onTrailing = { showCustom = true }) { idx ->
+                val s = state.saved[idx]; pendingQty = PendingQty(s.name, s.kcal) { g -> viewModel.logSaved(s, g) }
+            }
+        }
+
         // 4. Status message
         state.message?.let { msg ->
             item { MessageBanner(msg) }
@@ -133,6 +222,7 @@ fun LogScreen(
                         pendingFood = food
                         qtyText = food.typicalServingG.toInt().toString()
                     },
+                    onFavorite = { viewModel.favorite(food) },
                 )
             }
         }
@@ -369,7 +459,7 @@ private fun SectionLabel(title: String, subtitle: String) {
 // ---------------------------------------------------------------------------
 
 @Composable
-private fun ResultCard(food: FoodDto, onAdd: () -> Unit) {
+private fun ResultCard(food: FoodDto, onAdd: () -> Unit, onFavorite: () -> Unit) {
     Card(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(24.dp),
@@ -378,7 +468,7 @@ private fun ResultCard(food: FoodDto, onAdd: () -> Unit) {
     ) {
         Row(
             Modifier.fillMaxWidth().padding(18.dp),
-            horizontalArrangement = Arrangement.spacedBy(12.dp),
+            horizontalArrangement = Arrangement.spacedBy(10.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
@@ -394,6 +484,7 @@ private fun ResultCard(food: FoodDto, onAdd: () -> Unit) {
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             }
+            Text("☆", style = MaterialTheme.typography.titleLarge, color = BrandGreen, modifier = Modifier.clickable { onFavorite() }.padding(4.dp))
             Button(
                 onClick = onAdd,
                 shape = RoundedCornerShape(18.dp),
@@ -401,6 +492,112 @@ private fun ResultCard(food: FoodDto, onAdd: () -> Unit) {
             ) { Text("Add") }
         }
     }
+}
+
+private data class PendingQty(val name: String, val kcalPer100: Double, val onLog: (Double) -> Unit)
+
+@Composable
+private fun DetectedItemCard(item: VisionFoodItem, onAdd: () -> Unit) {
+    Card(Modifier.fillMaxWidth(), shape = RoundedCornerShape(20.dp), colors = CardDefaults.cardColors(containerColor = BrandGreen.copy(alpha = 0.08f))) {
+        Row(Modifier.fillMaxWidth().padding(16.dp), horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = Alignment.CenterVertically) {
+            Column(Modifier.weight(1f)) {
+                Text(item.name, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold)
+                Text("≈ ${item.grams.toInt()} g · ${(item.per100g.kcal * item.grams / 100).toInt()} kcal", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
+            Button(onClick = onAdd, shape = RoundedCornerShape(16.dp), colors = ButtonDefaults.buttonColors(containerColor = BrandGreen)) { Text("Add") }
+        }
+    }
+}
+
+@Composable
+private fun QuickRow(
+    title: String,
+    names: List<String>,
+    trailingLabel: String? = null,
+    onTrailing: (() -> Unit)? = null,
+    onPick: (Int) -> Unit,
+) {
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        Text(title, style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            names.forEachIndexed { i, n -> QuickChip(n) { onPick(i) } }
+            if (trailingLabel != null && onTrailing != null) QuickChip(trailingLabel, accent = true) { onTrailing() }
+        }
+    }
+}
+
+@Composable
+private fun QuickChip(label: String, accent: Boolean = false, onClick: () -> Unit) {
+    Box(
+        Modifier.clip(RoundedCornerShape(20.dp))
+            .background(if (accent) BrandGreen else BrandGreen.copy(alpha = 0.12f))
+            .clickable { onClick() }
+            .padding(horizontal = 14.dp, vertical = 8.dp),
+    ) {
+        Text(label, style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.Medium, color = if (accent) Color.White else BrandGreenDeep)
+    }
+}
+
+@Composable
+private fun GenericQtyDialog(pq: PendingQty, onConfirm: (Double) -> Unit, onDismiss: () -> Unit) {
+    var g by remember(pq) { mutableStateOf("150") }
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        shape = RoundedCornerShape(24.dp),
+        title = { Text("How much ${pq.name}?", fontWeight = FontWeight.Bold) },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                OutlinedTextField(
+                    value = g, onValueChange = { g = it.filter { c -> c.isDigit() } },
+                    label = { Text("Grams") }, singleLine = true,
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                    modifier = Modifier.fillMaxWidth(),
+                )
+                val grams = g.toDoubleOrNull() ?: 0.0
+                Text("= ${(pq.kcalPer100 * grams / 100).toInt()} kcal", color = BrandGreenDeep, fontWeight = FontWeight.Bold)
+            }
+        },
+        confirmButton = { Button(onClick = { g.toDoubleOrNull()?.takeIf { it > 0 }?.let(onConfirm) }, colors = ButtonDefaults.buttonColors(containerColor = BrandGreen)) { Text("Add") } },
+        dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel") } },
+    )
+}
+
+@Composable
+private fun CustomFoodDialog(onSave: (SavedFoodRequest) -> Unit, onDismiss: () -> Unit) {
+    var name by remember { mutableStateOf("") }
+    var kcal by remember { mutableStateOf("") }
+    var protein by remember { mutableStateOf("") }
+    var carb by remember { mutableStateOf("") }
+    var fat by remember { mutableStateOf("") }
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        shape = RoundedCornerShape(24.dp),
+        title = { Text("Create a food", fontWeight = FontWeight.Bold) },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Text("Per 100 g", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                OutlinedTextField(name, { name = it }, label = { Text("Name") }, singleLine = true, modifier = Modifier.fillMaxWidth())
+                OutlinedTextField(kcal, { kcal = it.filter { c -> c.isDigit() } }, label = { Text("Calories") }, singleLine = true, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number), modifier = Modifier.fillMaxWidth())
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    OutlinedTextField(protein, { protein = it.filter { c -> c.isDigit() || c == '.' } }, label = { Text("Protein") }, singleLine = true, modifier = Modifier.weight(1f))
+                    OutlinedTextField(carb, { carb = it.filter { c -> c.isDigit() || c == '.' } }, label = { Text("Carbs") }, singleLine = true, modifier = Modifier.weight(1f))
+                    OutlinedTextField(fat, { fat = it.filter { c -> c.isDigit() || c == '.' } }, label = { Text("Fat") }, singleLine = true, modifier = Modifier.weight(1f))
+                }
+            }
+        },
+        confirmButton = {
+            Button(
+                onClick = {
+                    val k = kcal.toDoubleOrNull()
+                    if (name.isNotBlank() && k != null) {
+                        onSave(SavedFoodRequest(name = name.trim(), kcal = k, proteinG = protein.toDoubleOrNull() ?: 0.0, carbG = carb.toDoubleOrNull() ?: 0.0, fatG = fat.toDoubleOrNull() ?: 0.0))
+                    }
+                },
+                colors = ButtonDefaults.buttonColors(containerColor = BrandGreen),
+            ) { Text("Save") }
+        },
+        dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel") } },
+    )
 }
 
 // ---------------------------------------------------------------------------

@@ -174,6 +174,19 @@ class AppRepository @Inject constructor(
         )
     }
 
+    /** Logs any food by name + per-100g (used by recents, saved foods and photo detection). */
+    suspend fun logNamed(
+        slot: String,
+        name: String,
+        per100g: com.nutriai.data.remote.dto.FoodLogPer100g,
+        grams: Double,
+        method: String = "text",
+    ): Result<Unit> = runCatching {
+        api.logFood(
+            FoodLogRequest(mealSlot = slot, grams = grams, foodName = name, per100g = per100g, entryMethod = method),
+        )
+    }
+
     suspend fun logWater(ml: Int): Result<Unit> = runCatching { api.logWater(WaterLogRequest(ml)) }
 
     suspend fun todayLogs(): Result<List<com.nutriai.data.remote.dto.FoodLogEntry>> =
