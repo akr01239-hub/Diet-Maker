@@ -12,8 +12,13 @@ import androidx.compose.material3.AssistChip
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.DatePicker
+import androidx.compose.material3.DatePickerDialog
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
+import androidx.compose.material3.rememberDatePickerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -77,6 +82,17 @@ class CycleViewModel @Inject constructor(
             _state.value = _state.value.copy(submitting = false, cycle = c)
         }
     }
+
+    /** Logs a period start on a calendar-picked date (UTC millis), then refreshes. */
+    fun logPeriodOn(millis: Long) {
+        _state.value = _state.value.copy(submitting = true)
+        viewModelScope.launch {
+            val iso = java.time.Instant.ofEpochMilli(millis).atZone(ZoneOffset.UTC)
+                .toLocalDate().atTime(12, 0).atOffset(ZoneOffset.UTC).toInstant().toString()
+            repository.logPeriod(iso)
+            _state.value = _state.value.copy(submitting = false, cycle = repository.cycle().getOrNull())
+        }
+    }
 }
 
 @Composable
@@ -84,6 +100,14 @@ fun CycleSection(modifier: Modifier = Modifier, viewModel: CycleViewModel = hilt
     val state by viewModel.state.collectAsStateWithLifecycle()
     val cycle = state.cycle ?: return
     if (!cycle.applicable) return
+
+    var showDatePicker by remember { mutableStateOf(false) }
+    if (showDatePicker) {
+        PeriodDatePicker(
+            onPick = { viewModel.logPeriodOn(it); showDatePicker = false },
+            onDismiss = { showDatePicker = false },
+        )
+    }
 
     Card(
         modifier.fillMaxWidth(),
@@ -97,7 +121,7 @@ fun CycleSection(modifier: Modifier = Modifier, viewModel: CycleViewModel = hilt
                     style = MaterialTheme.typography.bodySmall,
                 )
                 Text("When did it start?", style = MaterialTheme.typography.labelMedium)
-                DayAgoChips(enabled = !state.submitting) { viewModel.logPeriod(it) }
+                DayAgoChips(enabled = !state.submitting, onPickDate = { showDatePicker = true }) { viewModel.logPeriod(it) }
             } else {
                 Text(
                     "🌸 ${cycle.phaseLabel ?: "Your cycle"}",
@@ -149,14 +173,14 @@ fun CycleSection(modifier: Modifier = Modifier, viewModel: CycleViewModel = hilt
                     color = MaterialTheme.colorScheme.primary,
                     modifier = Modifier.clickable { showLog = !showLog },
                 )
-                if (showLog) DayAgoChips(enabled = !state.submitting) { viewModel.logPeriod(it); showLog = false }
+                if (showLog) DayAgoChips(enabled = !state.submitting, onPickDate = { showDatePicker = true; showLog = false }) { viewModel.logPeriod(it); showLog = false }
             }
         }
     }
 }
 
 @Composable
-private fun DayAgoChips(enabled: Boolean, onPick: (Int) -> Unit) {
+private fun DayAgoChips(enabled: Boolean, onPickDate: (() -> Unit)? = null, onPick: (Int) -> Unit) {
     val options = listOf("Today" to 0, "3 days ago" to 3, "1 week ago" to 7, "2 weeks ago" to 14)
     Row(
         Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
@@ -165,7 +189,23 @@ private fun DayAgoChips(enabled: Boolean, onPick: (Int) -> Unit) {
         options.forEach { (label, days) ->
             AssistChip(onClick = { if (enabled) onPick(days) }, label = { Text(label) })
         }
+        if (onPickDate != null) {
+            AssistChip(onClick = { if (enabled) onPickDate() }, label = { Text("📅 Pick date") })
+        }
     }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun PeriodDatePicker(onPick: (Long) -> Unit, onDismiss: () -> Unit) {
+    val pickerState = rememberDatePickerState()
+    DatePickerDialog(
+        onDismissRequest = onDismiss,
+        confirmButton = {
+            TextButton(onClick = { pickerState.selectedDateMillis?.let(onPick) ?: onDismiss() }) { Text("OK") }
+        },
+        dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel") } },
+    ) { DatePicker(state = pickerState) }
 }
 
 @Composable

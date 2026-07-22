@@ -1,6 +1,8 @@
 package com.nutriai.ui.onboarding
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
@@ -12,6 +14,8 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.DatePicker
+import androidx.compose.material3.DatePickerDialog
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExposedDropdownMenuBox
@@ -21,6 +25,8 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.MenuAnchorType
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
+import androidx.compose.material3.rememberDatePickerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -119,14 +125,7 @@ fun OnboardingScreen(
         numberField(height, { height = it }, "Height (cm)")
         numberField(weight, { weight = it }, "Current weight (kg)")
         numberField(target, { target = it }, "Target weight (kg)")
-        OutlinedTextField(
-            dob, { dob = it },
-            label = { Text("Date of birth (YYYY-MM-DD)") },
-            placeholder = { Text("e.g. 1995-08-21") },
-            singleLine = true,
-            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-            modifier = Modifier.fillMaxWidth(),
-        )
+        DobPicker(dob) { dob = it }
 
         Dropdown("Sex", SEX, sex) { sex = it }
         Dropdown("Activity level", ACTIVITY, activity) { activity = it }
@@ -191,6 +190,41 @@ fun OnboardingScreen(
 }
 
 private fun fmt(v: Double): String = if (v % 1.0 == 0.0) v.toLong().toString() else v.toString()
+
+/** Date-of-birth field backed by a calendar picker (no manual typing). */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun DobPicker(dob: String, onDob: (String) -> Unit) {
+    var show by remember { mutableStateOf(false) }
+    Box {
+        OutlinedTextField(
+            value = dob,
+            onValueChange = {},
+            readOnly = true,
+            label = { Text("Date of birth") },
+            placeholder = { Text("Tap to pick 📅") },
+            trailingIcon = { Text("📅", modifier = Modifier.padding(end = 12.dp)) },
+            modifier = Modifier.fillMaxWidth(),
+        )
+        // Transparent overlay so the whole (read-only) field opens the calendar.
+        Box(Modifier.matchParentSize().clickable { show = true })
+    }
+    if (show) {
+        val pickerState = rememberDatePickerState()
+        DatePickerDialog(
+            onDismissRequest = { show = false },
+            confirmButton = {
+                TextButton(onClick = {
+                    pickerState.selectedDateMillis?.let { millis ->
+                        onDob(java.time.Instant.ofEpochMilli(millis).atZone(java.time.ZoneOffset.UTC).toLocalDate().toString())
+                    }
+                    show = false
+                }) { Text("OK") }
+            },
+            dismissButton = { TextButton(onClick = { show = false }) { Text("Cancel") } },
+        ) { DatePicker(state = pickerState) }
+    }
+}
 
 @Composable
 private fun numberField(value: String, onChange: (String) -> Unit, label: String) {

@@ -109,8 +109,8 @@ fun BadgesScreen(
                 modifier = modifier
                     .fillMaxSize()
                     .padding(horizontal = 16.dp),
-                verticalArrangement = Arrangement.spacedBy(14.dp),
-                contentPadding = androidx.compose.foundation.layout.PaddingValues(vertical = 20.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp),
+                contentPadding = androidx.compose.foundation.layout.PaddingValues(vertical = 16.dp),
             ) {
                 item { BadgesHero(earned = g.earnedCount, total = g.total) }
 
@@ -164,47 +164,32 @@ private fun BadgesHero(earned: Int, total: Int) {
                         colors = listOf(BrandGreenLight, BrandGreen, BrandGreenDeep),
                     ),
                 )
-                .padding(24.dp),
+                .padding(horizontal = 18.dp, vertical = 16.dp),
         ) {
-            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                Text(
-                    "Achievements 🏆",
-                    style = MaterialTheme.typography.titleLarge,
-                    fontWeight = FontWeight.SemiBold,
-                    color = Color.White.copy(alpha = 0.95f),
-                )
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 Row(verticalAlignment = Alignment.Bottom) {
                     Text(
                         "$earned",
-                        style = MaterialTheme.typography.displayLarge,
+                        style = MaterialTheme.typography.headlineLarge,
                         fontWeight = FontWeight.Bold,
                         color = Color.White,
                     )
                     Text(
-                        " / $total earned",
-                        style = MaterialTheme.typography.headlineSmall,
+                        " / $total badges earned 🏆",
+                        style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.SemiBold,
                         color = Color.White.copy(alpha = 0.9f),
-                        modifier = Modifier.padding(bottom = 8.dp),
+                        modifier = Modifier.padding(bottom = 4.dp),
                     )
                 }
                 LinearProgressIndicator(
                     progress = { fraction.coerceIn(0f, 1f) },
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(10.dp)
-                        .clip(RoundedCornerShape(5.dp)),
+                        .height(8.dp)
+                        .clip(RoundedCornerShape(4.dp)),
                     color = Color.White,
                     trackColor = Color.White.copy(alpha = 0.28f),
-                )
-                Text(
-                    if (earned >= total && total > 0) {
-                        "All badges unlocked — outstanding! 🎉"
-                    } else {
-                        "Keep going — every check-in earns you more."
-                    },
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = Color.White.copy(alpha = 0.9f),
                 )
             }
         }
@@ -216,8 +201,8 @@ private fun BadgeCard(badge: Badge) {
     val earned = badge.earned
     Card(
         modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(24.dp),
-        elevation = CardDefaults.cardElevation(defaultElevation = if (earned) 5.dp else 1.dp),
+        shape = RoundedCornerShape(16.dp),
+        elevation = CardDefaults.cardElevation(defaultElevation = if (earned) 3.dp else 1.dp),
         colors = CardDefaults.cardColors(
             containerColor = if (earned) {
                 BrandGreen.copy(alpha = 0.12f)
@@ -227,15 +212,15 @@ private fun BadgeCard(badge: Badge) {
         ),
     ) {
         Row(
-            modifier = Modifier.fillMaxWidth().padding(18.dp),
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 10.dp),
             verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(16.dp),
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
         ) {
             // Icon medallion
             Box(
                 modifier = Modifier
-                    .size(52.dp)
-                    .clip(RoundedCornerShape(18.dp))
+                    .size(38.dp)
+                    .clip(RoundedCornerShape(12.dp))
                     .background(
                         if (earned) BrandGreen else MaterialTheme.colorScheme.outline.copy(alpha = 0.25f),
                     ),
@@ -243,43 +228,30 @@ private fun BadgeCard(badge: Badge) {
             ) {
                 Text(
                     if (earned) "✓" else "🔒",
-                    style = MaterialTheme.typography.headlineSmall,
+                    style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Bold,
                     color = if (earned) Color.White else MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             }
 
-            Column(
-                modifier = Modifier.weight(1f),
-                verticalArrangement = Arrangement.spacedBy(4.dp),
-            ) {
+            Column(modifier = Modifier.weight(1f)) {
                 Text(
                     badge.title,
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold,
+                    style = MaterialTheme.typography.titleSmall,
+                    fontWeight = FontWeight.SemiBold,
                     color = if (earned) BrandGreenDeep else MaterialTheme.colorScheme.onSurface,
                 )
                 Text(
                     badge.description,
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 1,
+                    overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
                 )
             }
 
             if (earned) {
-                Box(
-                    modifier = Modifier
-                        .clip(RoundedCornerShape(12.dp))
-                        .background(BrandGreen.copy(alpha = 0.18f))
-                        .padding(horizontal = 10.dp, vertical = 6.dp),
-                ) {
-                    Text(
-                        "Earned",
-                        style = MaterialTheme.typography.labelMedium,
-                        fontWeight = FontWeight.SemiBold,
-                        color = BrandGreenDeep,
-                    )
-                }
+                Text("Earned", style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.SemiBold, color = BrandGreenDeep)
             }
         }
     }
