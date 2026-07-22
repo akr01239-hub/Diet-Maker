@@ -547,7 +547,10 @@ private fun VitalsCard(
                     }
                 } else {
                     Text(
-                        "Your watch (e.g. Fastrack) only shows here if its app syncs to Health Connect. Otherwise tap edit to log manually.",
+                        "Your watch is connected to its OWN app (e.g. Fastrack Smart) — not to NutriAI. " +
+                            "For it to show here, that app must sync to Health Connect: open Fastrack Smart → " +
+                            "Settings and enable Health Connect / Google Fit. Many watch apps don't support this — " +
+                            "if so, just tap Edit to log manually.",
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
