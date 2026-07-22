@@ -18,6 +18,7 @@ import { exerciseRouter } from './modules/exercise/exercise.routes';
 import { guidanceRouter } from './modules/guidance/guidance.routes';
 import { cycleRouter } from './modules/cycle/cycle.routes';
 import { wellnessRouter } from './modules/wellness/wellness.routes';
+import { visionRouter } from './modules/vision/vision.routes';
 
 /**
  * Builds the Express app. Kept free of `listen()` so tests can import it directly
@@ -39,7 +40,8 @@ export function createApp(): Express {
     next();
   });
 
-  app.use(express.json({ limit: '1mb' }));
+  // 6mb accommodates base64 photo uploads (body/meal vision); downscaled on-device.
+  app.use(express.json({ limit: '6mb' }));
   app.use(express.urlencoded({ extended: true }));
 
   // Liveness/readiness at the root (Render + pingers hit /health) — not rate limited.
@@ -66,6 +68,7 @@ export function createApp(): Express {
   api.use('/', guidanceRouter);
   api.use('/', cycleRouter);
   api.use('/', wellnessRouter);
+  api.use('/', visionRouter);
   app.use('/api/v1', api);
 
   app.use(notFound);
