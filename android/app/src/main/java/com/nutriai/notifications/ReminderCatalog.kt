@@ -43,4 +43,9 @@ object ReminderCatalog {
     }
 
     val allGroups: List<ReminderGroup> = ReminderGroup.entries
+
+    /** All jobs across every group (used to look one up by key when rescheduling). */
+    val allJobs: List<ReminderJob> = allGroups.flatMap { jobs(it) }
+
+    fun jobByKey(key: String): ReminderJob? = allJobs.firstOrNull { it.key == key }
 }

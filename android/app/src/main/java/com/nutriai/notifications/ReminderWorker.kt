@@ -11,6 +11,7 @@ import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
 import androidx.core.content.ContextCompat
 import androidx.work.CoroutineWorker
+import androidx.work.ExistingWorkPolicy
 import androidx.work.WorkerParameters
 import com.nutriai.MainActivity
 import com.nutriai.R
@@ -56,11 +57,20 @@ class ReminderWorker(
             .build()
 
         runCatching { NotificationManagerCompat.from(applicationContext).notify(notifId, notification) }
+
+        // Re-schedule this reminder for its next occurrence (tomorrow / next weekly day).
+        // This is what keeps a one-time job repeating at the exact clock time without drift.
+        inputData.getString(KEY_JOB_KEY)?.let { key ->
+            ReminderCatalog.jobByKey(key)?.let { job ->
+                runCatching { ReminderScheduler.enqueue(applicationContext, job, ExistingWorkPolicy.REPLACE) }
+            }
+        }
         return Result.success()
     }
 
     companion object {
         const val CHANNEL_ID = "nutriai_reminders"
+        const val KEY_JOB_KEY = "job_key"
         const val KEY_TITLE = "title"
         const val KEY_TEXT = "text"
         const val KEY_NOTIF_ID = "notif_id"
