@@ -36,4 +36,10 @@ describe('computeCycle', () => {
       expect(g.yogaTips.length).toBeGreaterThan(0);
     }
   });
+
+  it('gives craving-buster tips in the period and pre-period phases', () => {
+    expect(cycleGuidance('menstrual').cravingTips.length).toBeGreaterThan(0);
+    expect(cycleGuidance('luteal').cravingTips.length).toBeGreaterThan(0);
+    expect(cycleGuidance('follicular').cravingTips.length).toBe(0);
+  });
 });

@@ -19,7 +19,19 @@ export interface CycleGuidance {
   dietTips: string[];
   exerciseTips: string[];
   yogaTips: string[];
+  /** Smart swaps for the cravings that spike before and during the period. */
+  cravingTips: string[];
 }
+
+/** Craving-buster swaps — shared by the phases where PMS/period cravings hit hardest. */
+const CRAVING_TIPS: string[] = [
+  'Craving chocolate? It is often a magnesium dip — have 1–2 squares of 70%+ dark chocolate, or cocoa in warm milk, with a few nuts.',
+  'Craving sweets? Reach for fruit (banana, dates, berries), curd with honey, or dates stuffed with peanut butter before packaged sugar.',
+  'Craving salty & crunchy? Roasted chana, makhana, air-popped popcorn, roasted seeds or cucumber with chaat masala beat chips.',
+  'Craving carbs? Your body wants serotonin — whole-grain toast, oats or sweet potato steady mood far better than maida/sugar.',
+  'Prevent the crash: eat protein + fibre at regular times so blood sugar never dips low enough to trigger a binge. Water first — thirst mimics hunger.',
+  'Do not over-restrict — one planned treat prevents an unplanned binge. Magnesium (pumpkin seeds, dark chocolate, banana) helps too.',
+];
 
 const DAY_MS = 86_400_000;
 
@@ -82,6 +94,7 @@ const GUIDANCE: Record<CyclePhase, CycleGuidance> = {
       "Restorative & cramp-relief: Child's pose, Cat-Cow, Reclining bound angle, Supine twist, Legs-up-the-wall.",
       'Avoid strong inversions and intense core work; breathe slow and long.',
     ],
+    cravingTips: CRAVING_TIPS,
   },
   follicular: {
     summary: 'Post-period: energy climbing — the best window to push.',
@@ -95,6 +108,7 @@ const GUIDANCE: Record<CyclePhase, CycleGuidance> = {
       'Push progressive overload now: add reps or load while recovery is strong.',
     ],
     yogaTips: ['Energising flow: Sun Salutations, Warrior I/II, Triangle, gentle backbends.'],
+    cravingTips: [],
   },
   ovulation: {
     summary: 'Ovulation: peak strength — go for your best efforts.',
@@ -107,6 +121,7 @@ const GUIDANCE: Record<CyclePhase, CycleGuidance> = {
       'Warm up thoroughly: joints are a little laxer mid-cycle, so protect your knees on jumps/heavy squats.',
     ],
     yogaTips: ['Dynamic, heat-building flow: Sun Salutation B, standing balances, twists.'],
+    cravingTips: [],
   },
   luteal: {
     summary: 'Pre-period: steady the mood, ease off intensity toward the end.',
@@ -123,6 +138,7 @@ const GUIDANCE: Record<CyclePhase, CycleGuidance> = {
     yogaTips: [
       'Calming & grounding: forward folds, hip openers (Pigeon, Garland), gentle twists; go restorative as the period nears.',
     ],
+    cravingTips: CRAVING_TIPS,
   },
 };
 

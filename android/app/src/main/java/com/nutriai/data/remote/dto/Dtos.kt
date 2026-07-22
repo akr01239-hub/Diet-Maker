@@ -310,6 +310,7 @@ data class CyclePhaseGuidance(
     val dietTips: List<String> = emptyList(),
     val exerciseTips: List<String> = emptyList(),
     val yogaTips: List<String> = emptyList(),
+    val cravingTips: List<String> = emptyList(),
 )
 
 @Serializable

@@ -117,7 +117,9 @@ fun CycleSection(modifier: Modifier = Modifier, viewModel: CycleViewModel = hilt
                     }
                 }
 
-                cycle.guidance?.let { g -> CyclePhaseTips(g.summary, g.dietTips, g.exerciseTips, g.yogaTips) }
+                cycle.guidance?.let { g ->
+                    CyclePhaseTips(g.summary, g.dietTips, g.exerciseTips, g.yogaTips, g.cravingTips)
+                }
 
                 var showLog by remember { mutableStateOf(false) }
                 Text(
@@ -152,6 +154,7 @@ private fun CyclePhaseTips(
     diet: List<String>,
     exercise: List<String>,
     yoga: List<String>,
+    cravings: List<String>,
 ) {
     var expanded by remember { mutableStateOf(false) }
     Row(
@@ -169,6 +172,7 @@ private fun CyclePhaseTips(
     }
     if (expanded) {
         TipGroup("🥗 Diet", diet)
+        TipGroup("🍫 Cravings", cravings)
         TipGroup("🏃 Exercise", exercise)
         TipGroup("🧘 Yoga", yoga)
     }
