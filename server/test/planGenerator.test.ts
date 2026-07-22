@@ -124,6 +124,17 @@ describe('generateWeekPlan', () => {
     }
   });
 
+  it('each non-fasting day lands within ~7% of the calorie target', () => {
+    for (const dailyKcal of [1600, 2000, 2400]) {
+      const plan = generateWeekPlan(SEED_FOODS, { ...targets, dailyKcal }, prefs());
+      for (const day of plan.days) {
+        const ratio = day.totals.kcal / dailyKcal;
+        expect(ratio).toBeGreaterThan(0.93);
+        expect(ratio).toBeLessThan(1.08);
+      }
+    }
+  })
+
   it('intermittent fasting collapses to 3 eating windows', () => {
     const plan = generateWeekPlan(SEED_FOODS, targets, prefs({ dietType: 'if' }));
     expect(plan.days[0]!.meals.map((m) => m.slot)).toEqual(['lunch', 'eveningsnack', 'dinner']);

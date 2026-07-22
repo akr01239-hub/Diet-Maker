@@ -199,6 +199,39 @@ export function buildSwapMeal(
   return { slot, items, kcal, proteinG };
 }
 
+/** Scales a meal item's grams (and every nutrient, linearly) by `factor`, capped at MAX_GRAMS. */
+function scaleItem(it: MealItem, factor: number): void {
+  const newGrams = Math.min(MAX_GRAMS, Math.round((it.grams * factor) / 5) * 5);
+  const r = it.grams > 0 ? newGrams / it.grams : 1;
+  if (r === 1) return;
+  it.grams = newGrams;
+  it.kcal = round(it.kcal * r, 0);
+  it.proteinG = round(it.proteinG * r, 1);
+  it.carbG = round(it.carbG * r, 1);
+  it.fatG = round(it.fatG * r, 1);
+  it.fiberG = round(it.fiberG * r, 1);
+  it.sugarG = round(it.sugarG * r, 1);
+  it.sodiumMg = round(it.sodiumMg * r, 0);
+}
+
+/**
+ * Nudges a day's portions so its calories land on `dailyKcal`. Scales substantial items
+ * (skips near-zero drinks like plain tea) up by up to +30%, never past MAX_GRAMS per serving,
+ * then refreshes each meal's kcal/protein totals. Mutates in place.
+ */
+function normaliseDayToTarget(meals: Meal[], dailyKcal: number): void {
+  const scalable = meals.flatMap((m) => m.items).filter((i) => i.kcal >= 20);
+  const rawKcal = scalable.reduce((s, i) => s + i.kcal, 0);
+  if (rawKcal <= 0) return;
+  const factor = Math.min(1.3, Math.max(1, dailyKcal / rawKcal));
+  if (factor <= 1.01) return;
+  for (const it of scalable) scaleItem(it, factor);
+  for (const m of meals) {
+    m.kcal = round(m.items.reduce((s, i) => s + i.kcal, 0), 0);
+    m.proteinG = round(m.items.reduce((s, i) => s + i.proteinG, 0), 1);
+  }
+}
+
 const LIGHT_TAGS = new Set(['fruit', 'beverage', 'light', 'probiotic', 'high-fiber']);
 
 function buildDay(
@@ -236,6 +269,11 @@ function buildDay(
     const slotKcal = (dailyKcal * SLOT_KCAL_WEIGHTS[slot]) / weightSum;
     return buildMeal(slot, pool, slotKcal, dietType, dayIndex, usedToday);
   });
+
+  // Greedy per-slot sizing tends to UNDERSHOOT the target by ~5% (grams clamping + rounding),
+  // which makes portions look unrealistically small. Nudge every item up (once) so the day lands
+  // on its calorie target. Capped so no single serving blows past MAX_GRAMS.
+  normaliseDayToTarget(meals, dailyKcal);
 
   const sum = (pick: (i: MealItem) => number) =>
     meals.reduce((s, m) => s + m.items.reduce((t, i) => t + pick(i), 0), 0);

@@ -113,7 +113,7 @@ fun PremiumDashboard(
         // 4. Steps (Health Connect) — above hydration
         item { StepsCard(steps = steps, stepsKcal = stepsKcal, hasPermission = stepsPermission, available = stepsAvailable, onConnect = onConnectSteps) }
 
-        // 4b. Vitals — Health Connect if a band syncs, else manual entry (many watches don't sync).
+        // 4b. Vitals — reads heart rate & sleep from Health Connect (fed by Google Fit / your band).
         item {
             VitalsCard(
                 heartRate = heartRate,
@@ -121,6 +121,8 @@ fun PremiumDashboard(
                 manualHeartRate = manualHeartRate,
                 stress = stress,
                 onSaveVitals = onSaveVitals,
+                onConnect = onConnectSteps,
+                connected = stepsPermission,
             )
         }
 
@@ -496,6 +498,8 @@ private fun VitalsCard(
     manualHeartRate: Int?,
     stress: Int?,
     onSaveVitals: (Int?, Int?) -> Unit,
+    onConnect: () -> Unit = {},
+    connected: Boolean = false,
 ) {
     var editing by remember { mutableStateOf(false) }
     // Prefer a live Health Connect reading; fall back to the manually-entered value.
@@ -549,12 +553,23 @@ private fun VitalsCard(
                     if (hr != null && !hrFromWatch) {
                         Text("*manually logged", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
+                } else if (!connected) {
+                    Text(
+                        "Connect Google Fit / Health Connect to auto-read your heart rate & sleep " +
+                            "(your Fastrack watch feeds Google Fit, which syncs to Health Connect).",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                    Button(
+                        onClick = onConnect,
+                        shape = RoundedCornerShape(20.dp),
+                        colors = ButtonDefaults.buttonColors(containerColor = BrandGreen),
+                        contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 14.dp, vertical = 6.dp),
+                    ) { Text("Connect Google Fit", style = MaterialTheme.typography.labelLarge) }
                 } else {
                     Text(
-                        "Your watch is connected to its OWN app (e.g. Fastrack Smart) — not to NutriAI. " +
-                            "For it to show here, that app must sync to Health Connect: open Fastrack Smart → " +
-                            "Settings and enable Health Connect / Google Fit. Many watch apps don't support this — " +
-                            "if so, just tap Edit to log manually.",
+                        "Connected. No recent heart rate / sleep yet — make sure Fastrack Smart has " +
+                            "Google Fit + Auto HR on, then check back after it syncs. Or tap Edit to log now.",
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
@@ -781,8 +796,8 @@ private fun JourneyRow(when_: String, weight: String, bmi: String, line: Color, 
             weight,
             Modifier.weight(0.6f).padding(horizontal = 10.dp, vertical = 8.dp),
             style = style,
-            fontWeight = if (header) FontWeight.SemiBold else FontWeight.SemiBold,
-            textAlign = TextAlign.End,
+            fontWeight = FontWeight.SemiBold,
+            textAlign = TextAlign.Center,
             color = if (header) onC.copy(alpha = 0.75f) else onC,
         )
         Box(Modifier.width(1.dp).fillMaxHeight().background(line))
@@ -790,7 +805,7 @@ private fun JourneyRow(when_: String, weight: String, bmi: String, line: Color, 
             bmi,
             Modifier.weight(0.5f).padding(horizontal = 10.dp, vertical = 8.dp),
             style = style,
-            textAlign = TextAlign.End,
+            textAlign = TextAlign.Center,
             color = if (header) onC.copy(alpha = 0.75f) else onC,
         )
     }
