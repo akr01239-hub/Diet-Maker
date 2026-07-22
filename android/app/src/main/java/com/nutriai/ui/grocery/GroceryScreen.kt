@@ -163,7 +163,8 @@ private fun CategoryCard(cat: GroceryCategory) {
                 GroceryRow(
                     item = "Item",
                     amount = "Amount",
-                    times = "Times",
+                    times = "×wk",
+                    kcal = "kcal",
                     border = border,
                     header = true,
                 )
@@ -173,6 +174,7 @@ private fun CategoryCard(cat: GroceryCategory) {
                         item = line.name,
                         amount = if (line.unit == "pcs") "${line.qty} pcs" else "${line.qty} g",
                         times = "×${line.meals}",
+                        kcal = if (line.kcal > 0) "${line.kcal}" else "—",
                         border = border,
                         header = false,
                     )
@@ -187,38 +189,49 @@ private fun GroceryRow(
     item: String,
     amount: String,
     times: String,
+    kcal: String,
     border: Color,
     header: Boolean,
 ) {
-    val cellStyle = MaterialTheme.typography.bodyMedium
+    val cellStyle = MaterialTheme.typography.bodySmall
+    val labelStyle = MaterialTheme.typography.labelSmall
     Row(
         Modifier.fillMaxWidth().height(IntrinsicSize.Min),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Text(
             item,
-            Modifier.weight(0.48f).padding(horizontal = 10.dp, vertical = 8.dp),
-            style = if (header) MaterialTheme.typography.labelMedium else cellStyle,
+            Modifier.weight(0.40f).padding(horizontal = 8.dp, vertical = 8.dp),
+            style = if (header) labelStyle else cellStyle,
             fontWeight = if (header) FontWeight.SemiBold else FontWeight.Normal,
             color = if (header) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.onSurface,
         )
         Box(Modifier.width(1.dp).fillMaxHeight().background(border))
         Text(
             amount,
-            Modifier.weight(0.30f).padding(horizontal = 10.dp, vertical = 8.dp),
-            style = if (header) MaterialTheme.typography.labelMedium else cellStyle,
-            fontWeight = if (header) FontWeight.SemiBold else FontWeight.SemiBold,
+            Modifier.weight(0.24f).padding(horizontal = 6.dp, vertical = 8.dp),
+            style = if (header) labelStyle else cellStyle,
+            fontWeight = FontWeight.SemiBold,
             textAlign = TextAlign.Center,
             color = if (header) MaterialTheme.colorScheme.onSurfaceVariant else BrandGreenDeep,
         )
         Box(Modifier.width(1.dp).fillMaxHeight().background(border))
         Text(
             times,
-            Modifier.weight(0.22f).padding(horizontal = 10.dp, vertical = 8.dp),
-            style = if (header) MaterialTheme.typography.labelMedium else cellStyle,
-            fontWeight = if (header) FontWeight.SemiBold else FontWeight.Normal,
+            Modifier.weight(0.15f).padding(horizontal = 4.dp, vertical = 8.dp),
+            style = if (header) labelStyle else cellStyle,
+            fontWeight = FontWeight.Normal,
             textAlign = TextAlign.Center,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        Box(Modifier.width(1.dp).fillMaxHeight().background(border))
+        Text(
+            kcal,
+            Modifier.weight(0.21f).padding(horizontal = 4.dp, vertical = 8.dp),
+            style = if (header) labelStyle else cellStyle,
+            fontWeight = if (header) FontWeight.SemiBold else FontWeight.Normal,
+            textAlign = TextAlign.Center,
+            color = if (header) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.onSurface,
         )
     }
 }
