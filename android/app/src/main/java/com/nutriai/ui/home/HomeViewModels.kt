@@ -207,6 +207,17 @@ class LogFoodViewModel @Inject constructor(
         }
     }
 
+    fun delete(id: String) {
+        viewModelScope.launch {
+            val r = repository.deleteFoodLog(id)
+            if (r.isSuccess) {
+                loadToday()
+            } else {
+                _state.value = _state.value.copy(message = "Could not remove entry")
+            }
+        }
+    }
+
     fun log(food: com.nutriai.data.remote.dto.FoodDto, gramsOverride: Double? = null) {
         val grams = gramsOverride ?: _state.value.grams.toDoubleOrNull() ?: food.typicalServingG
         viewModelScope.launch {

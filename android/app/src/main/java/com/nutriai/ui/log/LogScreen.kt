@@ -163,7 +163,7 @@ fun LogScreen(
                 }
             }
             items(state.today, key = { it.id }) { entry ->
-                LogEntryCard(entry)
+                LogEntryCard(entry, onDelete = { viewModel.delete(entry.id) })
             }
         }
     }
@@ -482,51 +482,97 @@ private fun QuantityDialog(
 // Today's log entry card
 // ---------------------------------------------------------------------------
 
+private fun slotEmoji(slot: String): String = when (slot.lowercase()) {
+    "breakfast" -> "🍳"
+    "midmorning" -> "🍎"
+    "lunch" -> "🥗"
+    "eveningsnack" -> "☕"
+    "dinner" -> "🍽️"
+    "bedtime" -> "🥛"
+    else -> "🍴"
+}
+
 @Composable
-private fun LogEntryCard(entry: FoodLogEntry) {
+private fun LogEntryCard(entry: FoodLogEntry, onDelete: () -> Unit) {
     Card(
         modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(24.dp),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
-        colors = CardDefaults.cardColors(containerColor = BrandGreen.copy(alpha = 0.08f)),
+        shape = RoundedCornerShape(22.dp),
+        elevation = CardDefaults.cardElevation(defaultElevation = 3.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
     ) {
         Row(
-            Modifier.fillMaxWidth().padding(18.dp),
+            Modifier.fillMaxWidth().padding(14.dp),
             horizontalArrangement = Arrangement.spacedBy(12.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+            // Leading meal badge.
+            Box(
+                modifier = Modifier
+                    .size(46.dp)
+                    .clip(RoundedCornerShape(14.dp))
+                    .background(BrandGreen.copy(alpha = 0.14f)),
+                contentAlignment = Alignment.Center,
+            ) { Text(slotEmoji(entry.mealSlot), style = MaterialTheme.typography.titleLarge) }
+
+            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(6.dp)) {
                 Text(
                     entry.foodName,
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.SemiBold,
                     color = MaterialTheme.colorScheme.onSurface,
                 )
+                Row(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.CenterVertically) {
+                    MetaPill("${entry.grams.toInt()} g")
+                    MetaPill(entry.mealSlot.replaceFirstChar { it.uppercase() })
+                }
                 Text(
-                    "${entry.grams.toInt()} g · ${entry.mealSlot.replaceFirstChar { it.uppercase() }}",
-                    style = MaterialTheme.typography.labelMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-                Text(
-                    "P ${entry.proteinG.toInt()}g · C ${entry.carbG.toInt()}g · F ${entry.fatG.toInt()}g",
+                    "P ${entry.proteinG.toInt()} · C ${entry.carbG.toInt()} · F ${entry.fatG.toInt()} g",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             }
-            Column(horizontalAlignment = Alignment.End) {
+
+            Column(horizontalAlignment = Alignment.End, verticalArrangement = Arrangement.spacedBy(2.dp)) {
                 Text(
                     "${entry.kcal.toInt()}",
                     style = MaterialTheme.typography.titleLarge,
                     fontWeight = FontWeight.Bold,
                     color = BrandGreenDeep,
                 )
-                Text(
-                    "kcal",
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
+                Text("kcal", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Spacer(Modifier.height(2.dp))
+                Box(
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(10.dp))
+                        .clickable { onDelete() }
+                        .padding(horizontal = 8.dp, vertical = 2.dp),
+                ) {
+                    Text(
+                        "Remove",
+                        style = MaterialTheme.typography.labelSmall,
+                        fontWeight = FontWeight.Medium,
+                        color = MaterialTheme.colorScheme.error,
+                    )
+                }
             }
         }
+    }
+}
+
+@Composable
+private fun MetaPill(text: String) {
+    Box(
+        modifier = Modifier
+            .clip(RoundedCornerShape(8.dp))
+            .background(BrandGreen.copy(alpha = 0.12f))
+            .padding(horizontal = 8.dp, vertical = 3.dp),
+    ) {
+        Text(
+            text,
+            style = MaterialTheme.typography.labelSmall,
+            fontWeight = FontWeight.Medium,
+            color = BrandGreenDeep,
+        )
     }
 }
 

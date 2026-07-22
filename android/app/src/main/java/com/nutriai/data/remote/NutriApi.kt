@@ -82,6 +82,9 @@ interface NutriApi {
     @GET("logs/food")
     suspend fun todayLogs(): com.nutriai.data.remote.dto.FoodLogsEnvelope
 
+    @retrofit2.http.DELETE("logs/food/{id}")
+    suspend fun deleteFoodLog(@Path("id") id: String)
+
     @POST("logs/water")
     suspend fun logWater(@Body body: WaterLogRequest)
 

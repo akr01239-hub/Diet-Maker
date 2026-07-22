@@ -138,6 +138,8 @@ class AppRepository @Inject constructor(
     suspend fun todayLogs(): Result<List<com.nutriai.data.remote.dto.FoodLogEntry>> =
         runCatching { api.todayLogs().entries }
 
+    suspend fun deleteFoodLog(id: String): Result<Unit> = runCatching { api.deleteFoodLog(id) }
+
     suspend fun reportPdfBytes(): Result<ByteArray> = runCatching { api.weeklyPdf().bytes() }
 
     // ---- Check-ins ----
