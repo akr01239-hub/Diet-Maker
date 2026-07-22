@@ -215,7 +215,11 @@ private fun AssessmentCard(a: BodyAssessment) {
                 !a.available -> Text("AI analysis isn't enabled on the server. Your formula estimate is ${fmtPct(a.formulaEstimatePct)}.", style = MaterialTheme.typography.bodyMedium)
                 a.refused -> Text(a.reason ?: "Couldn't analyse this photo.", style = MaterialTheme.typography.bodyMedium)
                 else -> {
-                    Text("Estimated body fat", style = MaterialTheme.typography.labelLarge)
+                    val fromPhoto = a.source == "ai"
+                    Text(
+                        if (fromPhoto) "📷 Estimated body fat (from your photo)" else "📐 Estimated body fat (from your stats)",
+                        style = MaterialTheme.typography.labelLarge,
+                    )
                     Text(
                         "${trim(a.bodyFatLow)}–${trim(a.bodyFatHigh)}%",
                         style = MaterialTheme.typography.headlineMedium,
@@ -224,7 +228,9 @@ private fun AssessmentCard(a: BodyAssessment) {
                     )
                     a.category?.takeIf { it.isNotBlank() }?.let { Text("Category: $it  ·  confidence ${a.confidence ?: "low"}", style = MaterialTheme.typography.bodySmall) }
                     a.notes?.takeIf { it.isNotBlank() }?.let { Text(it, style = MaterialTheme.typography.bodyMedium) }
-                    a.formulaEstimatePct?.let { Text("Formula (BMI-based) estimate: ${fmtPct(it)}", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.8f)) }
+                    if (fromPhoto) {
+                        a.formulaEstimatePct?.let { Text("Formula (BMI-based) estimate: ${fmtPct(it)}", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.8f)) }
+                    }
                 }
             }
             Text(a.disclaimer, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.75f))

@@ -425,6 +425,7 @@ data class BodyAssessment(
     val notes: String? = null,
     val confidence: String? = null,
     val formulaEstimatePct: Double? = null,
+    val source: String? = null, // "ai" (photo) or "formula" (from your stats)
     val disclaimer: String = "",
 )
 

@@ -2,9 +2,10 @@ import { prisma } from '../../lib/prisma';
 import { requireCompleteProfile } from '../profile/profile.service';
 import { ageFromDob } from '../nutrition/calc.service';
 import { geminiVisionJson, visionAvailable } from '../../ai/vision';
+import { bmi as bmiCalc, bodyFatDeurenberg } from '../../calc/anthropometry';
 
 const DISCLAIMER =
-  'This is a rough visual estimate for motivation only — not a medical or DEXA measurement. Body composition is best tracked as a trend over time.';
+  'This is a rough estimate for motivation only — not a medical or DEXA measurement. Body composition is best tracked as a trend over time.';
 
 export interface BodyAssessment {
   available: boolean; // vision provider configured
@@ -16,7 +17,44 @@ export interface BodyAssessment {
   notes?: string;
   confidence?: string;
   formulaEstimatePct?: number | null;
+  /** Where the estimate came from: 'ai' (photo) or 'formula' (BMI/age/sex fallback). */
+  source?: 'ai' | 'formula';
   disclaimer: string;
+}
+
+/** Body-fat category from % and sex (ACE-style bands). */
+function bfCategory(pct: number, sex: string): string {
+  const male = sex === 'male';
+  if (pct < (male ? 11 : 16)) return 'lean';
+  if (pct < (male ? 18 : 24)) return 'fit';
+  if (pct < (male ? 25 : 32)) return 'average';
+  return 'higher';
+}
+
+/**
+ * Deterministic body-fat estimate from height/weight/age/sex (Deurenberg). Always available,
+ * zero-cost — used as the fallback whenever photo AI is unavailable or can't read the image.
+ */
+function formulaAssessment(
+  bfPct: number,
+  sex: string,
+  fromPhotoAttempt: boolean,
+): BodyAssessment {
+  const low = Math.max(3, Math.round((bfPct - 3.5) * 10) / 10);
+  const high = Math.round((bfPct + 3.5) * 10) / 10;
+  return {
+    available: true,
+    bodyFatLow: low,
+    bodyFatHigh: high,
+    category: bfCategory(bfPct, sex),
+    notes: fromPhotoAttempt
+      ? 'Couldn’t read the photo clearly, so this is estimated from your height, weight, age and sex. For a photo-based read, try a well-lit, front-facing shot.'
+      : 'Estimated from your height, weight, age and sex. Track the trend as your weight changes.',
+    confidence: 'low',
+    formulaEstimatePct: bfPct,
+    source: 'formula',
+    disclaimer: DISCLAIMER,
+  };
 }
 
 /**
@@ -40,16 +78,24 @@ export async function assessBodyFromPhoto(
     };
   }
 
-  if (!visionAvailable()) {
-    return { available: false, disclaimer: DISCLAIMER };
-  }
-
   const snapshot = await prisma.calcResultSnapshot.findFirst({
     where: { userId },
     orderBy: { createdAt: 'desc' },
   });
+  // Deterministic body-fat estimate (Deurenberg) — always computable, and the fallback when
+  // photo AI is down. Prefer the persisted snapshot; else compute from current stats.
   const formulaEstimatePct =
-    (snapshot?.result as { bodyFatEstimate?: number } | undefined)?.bodyFatEstimate ?? null;
+    (snapshot?.result as { bodyFatEstimate?: number } | undefined)?.bodyFatEstimate ??
+    bodyFatDeurenberg({
+      bmi: bmiCalc(sensitive.currentWeightKg, profile.heightCm),
+      ageYears: age,
+      sex: sensitive.sex,
+    });
+
+  // No photo AI configured / quota exhausted → still give a real number from the formula.
+  if (!visionAvailable()) {
+    return formulaAssessment(formulaEstimatePct, sensitive.sex, false);
+  }
 
   const prompt = [
     'You are a supportive fitness assistant giving a rough, educational body-composition estimate from a photo.',
@@ -63,26 +109,16 @@ export async function assessBodyFromPhoto(
     .join(' ');
 
   const result = await geminiVisionJson(imageBase64, mimeType, prompt);
+  // Vision failed (quota/error) or couldn't see a body → fall back to the formula estimate
+  // so the user still gets a useful number instead of a dead-end error.
   if (!result) {
-    return {
-      available: true,
-      refused: true,
-      reason: 'Could not analyse the photo right now. Please try again with a clear, well-lit, front-facing photo.',
-      formulaEstimatePct,
-      disclaimer: DISCLAIMER,
-    };
+    return formulaAssessment(formulaEstimatePct, sensitive.sex, true);
   }
 
   const low = num(result.bodyFatLow);
   const high = num(result.bodyFatHigh);
   if (low === 0 && high === 0) {
-    return {
-      available: true,
-      refused: true,
-      reason: 'No clear body photo detected — try a well-lit, front-facing photo.',
-      formulaEstimatePct,
-      disclaimer: DISCLAIMER,
-    };
+    return formulaAssessment(formulaEstimatePct, sensitive.sex, true);
   }
 
   return {
@@ -93,6 +129,7 @@ export async function assessBodyFromPhoto(
     notes: str(result.notes),
     confidence: str(result.confidence) || 'low',
     formulaEstimatePct,
+    source: 'ai',
     disclaimer: DISCLAIMER,
   };
 }
