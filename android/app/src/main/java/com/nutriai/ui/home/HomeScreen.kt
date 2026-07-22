@@ -94,7 +94,11 @@ fun HomeScreen(
                 1 -> com.nutriai.ui.calendar.CalendarScreen(Modifier.fillMaxSize())
                 2 -> com.nutriai.ui.log.LogScreen(Modifier.fillMaxSize())
                 3 -> com.nutriai.ui.coach.CoachScreen(Modifier.fillMaxSize())
-                else -> MoreScreen(Modifier.fillMaxSize())
+                else -> MoreScreen(
+                    Modifier.fillMaxSize(),
+                    onEditProfile = onCompleteProfile,
+                    onLoggedOut = onLogout,
+                )
             }
         }
     }

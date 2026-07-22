@@ -38,6 +38,7 @@ import com.nutriai.ui.checkin.CheckinScreen
 import com.nutriai.ui.family.FamilyScreen
 import com.nutriai.ui.grocery.GroceryScreen
 import com.nutriai.ui.reports.ReportsScreen
+import com.nutriai.ui.settings.SettingsScreen
 import com.nutriai.ui.theme.BrandGreen
 import com.nutriai.ui.theme.BrandGreenDeep
 
@@ -50,10 +51,15 @@ private val MORE_ITEMS = listOf(
     MoreItem("reports", "📄", "Weekly report", "Progress + share PDF"),
     MoreItem("badges", "🏅", "Achievements", "Streaks & milestones"),
     MoreItem("family", "👨‍👩‍👧", "Family", "Members with their own plan"),
+    MoreItem("settings", "⚙️", "Settings", "Profile, account & more"),
 )
 
 @Composable
-fun MoreScreen(modifier: Modifier = Modifier) {
+fun MoreScreen(
+    modifier: Modifier = Modifier,
+    onEditProfile: () -> Unit = {},
+    onLoggedOut: () -> Unit = {},
+) {
     var selected by remember { mutableStateOf<String?>(null) }
 
     when (selected) {
@@ -69,6 +75,11 @@ fun MoreScreen(modifier: Modifier = Modifier) {
                 "reports" -> ReportsScreen(Modifier.fillMaxSize())
                 "badges" -> BadgesScreen(Modifier.fillMaxSize())
                 "family" -> FamilyScreen(Modifier.fillMaxSize())
+                "settings" -> SettingsScreen(
+                    onEditProfile = onEditProfile,
+                    onLoggedOut = onLoggedOut,
+                    modifier = Modifier.fillMaxSize(),
+                )
             }
         }
     }

@@ -43,6 +43,10 @@ class AppRepository @Inject constructor(
         Unit
     }
 
+    /** Loads the saved profile so onboarding/settings can pre-fill instead of starting blank. */
+    suspend fun getProfile(): Result<com.nutriai.data.remote.dto.ProfileDto?> =
+        runCatching { api.getProfile().profile }
+
     suspend fun latestCalc(): Result<CalcResult?> = runCatching { api.latestCalc().result }
 
     suspend fun dashboard(): Result<Dashboard> = runCatching { api.dashboard().dashboard }

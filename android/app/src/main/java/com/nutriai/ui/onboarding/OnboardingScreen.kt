@@ -18,6 +18,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
@@ -58,6 +59,27 @@ fun OnboardingScreen(
     var bodyGoal by remember { mutableStateOf("fatloss") }
     var workoutRest by remember { mutableStateOf<Int?>(0) }
 
+    // Pre-fill from the saved profile the first time it loads (editing an existing profile).
+    LaunchedEffect(state.prefillLoaded) {
+        val p = state.prefill ?: return@LaunchedEffect
+        height = p.heightCm.takeIf { it > 0 }?.let { fmt(it) } ?: height
+        activity = p.activityLevel.ifBlank { activity }
+        goal = p.goal.ifBlank { goal }
+        diet = p.dietType.ifBlank { diet }
+        p.sensitive?.let { s ->
+            weight = fmt(s.currentWeightKg)
+            target = fmt(s.targetWeightKg)
+            dob = s.dob
+            sex = s.sex.ifBlank { sex }
+            conditions.clear(); conditions.addAll(s.conditions)
+            fastDay = s.fastDayOfWeek
+            exLocation = s.exerciseLocation ?: exLocation
+            bodyGoal = s.bodyGoal ?: bodyGoal
+            workoutRest = s.workoutRestDay ?: workoutRest
+        }
+    }
+    val editing = state.prefill != null
+
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -65,7 +87,11 @@ fun OnboardingScreen(
             .padding(20.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
-        Text("Your health profile", style = MaterialTheme.typography.headlineSmall, color = MaterialTheme.colorScheme.primary)
+        Text(
+            if (editing) "Edit your profile" else "Your health profile",
+            style = MaterialTheme.typography.headlineSmall,
+            color = MaterialTheme.colorScheme.primary,
+        )
         Text("We use this to compute safe, personalised targets.", style = MaterialTheme.typography.bodyMedium)
 
         numberField(height, { height = it }, "Height (cm)")
@@ -148,10 +174,18 @@ fun OnboardingScreen(
             enabled = !state.loading,
             modifier = Modifier.fillMaxWidth(),
         ) {
-            if (state.loading) CircularProgressIndicator(Modifier.padding(4.dp)) else Text("See my plan")
+            if (state.loading) {
+                CircularProgressIndicator(Modifier.padding(4.dp))
+            } else {
+                Text(if (editing) "Save changes" else "See my plan")
+            }
         }
     }
 }
+
+/** Formats a Double without a trailing ".0" so pre-filled fields read cleanly (70 not 70.0). */
+private fun fmt(v: Double): String =
+    if (v % 1.0 == 0.0) v.toLong().toString() else v.toString()
 
 @Composable
 private fun numberField(value: String, onChange: (String) -> Unit, label: String) {
