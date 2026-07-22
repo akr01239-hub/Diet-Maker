@@ -1,6 +1,7 @@
 package com.nutriai.ui.calendar
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -8,7 +9,9 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -427,29 +430,37 @@ fun CalendarScreen(
                                     modifier = Modifier.clickable { viewModel.swapMeal(dietDay.dayIndex, meal.slot) },
                                 )
                             }
-                            // Column header for the meal's items (grid-style like the grocery table).
-                            Row(Modifier.fillMaxWidth().padding(top = 2.dp)) {
-                                Text("Food", Modifier.weight(1f), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                                Text("Qty", Modifier.width(56.dp), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant, textAlign = TextAlign.End)
-                                Text("kcal", Modifier.width(48.dp), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant, textAlign = TextAlign.End)
-                                Spacer(Modifier.width(28.dp))
-                            }
-                            HorizontalDivider(thickness = 1.dp, color = MaterialTheme.colorScheme.outlineVariant)
-                            meal.items.forEach { mealItem ->
-                                Row(
-                                    Modifier.fillMaxWidth().padding(vertical = 3.dp),
-                                    verticalAlignment = Alignment.CenterVertically,
-                                ) {
-                                    Text(mealItem.name, Modifier.weight(1f), style = MaterialTheme.typography.bodyMedium)
-                                    Text("${mealItem.grams.toInt()} g", Modifier.width(56.dp), style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold, textAlign = TextAlign.End)
-                                    Text("${mealItem.kcal.toInt()}", Modifier.width(48.dp), style = MaterialTheme.typography.bodyMedium, textAlign = TextAlign.End, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                                    Text(
-                                        "📖",
-                                        modifier = Modifier
-                                            .width(28.dp)
-                                            .clickable { viewModel.loadRecipe(mealItem.name, mealItem.foodId) },
-                                        textAlign = TextAlign.End,
-                                    )
+                            // Fully-bordered grid (like the grocery table): outer border, row
+                            // dividers, vertical column separators.
+                            val b = MaterialTheme.colorScheme.outlineVariant
+                            Column(Modifier.fillMaxWidth().clip(RoundedCornerShape(8.dp)).border(1.dp, b, RoundedCornerShape(8.dp))) {
+                                Row(Modifier.fillMaxWidth().height(IntrinsicSize.Min), verticalAlignment = Alignment.CenterVertically) {
+                                    Text("Food", Modifier.weight(1f).padding(8.dp), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                    Box(Modifier.width(1.dp).fillMaxHeight().background(b))
+                                    Text("Qty", Modifier.width(52.dp).padding(6.dp), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant, textAlign = TextAlign.Center)
+                                    Box(Modifier.width(1.dp).fillMaxHeight().background(b))
+                                    Text("kcal", Modifier.width(44.dp).padding(6.dp), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant, textAlign = TextAlign.Center)
+                                    Box(Modifier.width(1.dp).fillMaxHeight().background(b))
+                                    Box(Modifier.width(34.dp))
+                                }
+                                meal.items.forEach { mealItem ->
+                                    HorizontalDivider(thickness = 1.dp, color = b)
+                                    Row(Modifier.fillMaxWidth().height(IntrinsicSize.Min), verticalAlignment = Alignment.CenterVertically) {
+                                        Text(mealItem.name, Modifier.weight(1f).padding(8.dp), style = MaterialTheme.typography.bodySmall)
+                                        Box(Modifier.width(1.dp).fillMaxHeight().background(b))
+                                        Text("${mealItem.grams.toInt()} g", Modifier.width(52.dp).padding(6.dp), style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.SemiBold, textAlign = TextAlign.Center)
+                                        Box(Modifier.width(1.dp).fillMaxHeight().background(b))
+                                        Text("${mealItem.kcal.toInt()}", Modifier.width(44.dp).padding(6.dp), style = MaterialTheme.typography.bodySmall, textAlign = TextAlign.Center, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                        Box(Modifier.width(1.dp).fillMaxHeight().background(b))
+                                        Text(
+                                            "📖",
+                                            modifier = Modifier
+                                                .width(34.dp)
+                                                .clickable { viewModel.loadRecipe(mealItem.name, mealItem.foodId) }
+                                                .padding(vertical = 6.dp),
+                                            textAlign = TextAlign.Center,
+                                        )
+                                    }
                                 }
                             }
                         }
@@ -524,24 +535,33 @@ fun CalendarScreen(
                                     Text("No exercises listed.", style = MaterialTheme.typography.bodyMedium)
                                 } else {
                                     val focus = workoutDay.focus.ifBlank { null }
-                                    workoutDay.exercises.forEach { ex ->
-                                        val last = state.lastPerf[ex.name]
-                                        val done = state.selectedLogs.any { it.exerciseName == ex.name }
-                                        ExerciseRow(
-                                            name = ex.name,
-                                            prescription = "${ex.sets} × ${ex.reps}",
-                                            last = last,
-                                            done = done,
-                                            onLog = {
-                                                pending = PendingLog(
-                                                    name = ex.name,
-                                                    focus = focus,
-                                                    weight = last?.weightKg?.let { fmtNum(it) } ?: "",
-                                                    reps = (last?.reps?.toString() ?: ex.reps.filter { c -> c.isDigit() }),
-                                                    sets = (last?.sets ?: ex.sets).toString(),
-                                                )
-                                            },
-                                        )
+                                    val wb = MaterialTheme.colorScheme.outline.copy(alpha = 0.4f)
+                                    Column(Modifier.fillMaxWidth().clip(RoundedCornerShape(10.dp)).border(1.dp, wb, RoundedCornerShape(10.dp))) {
+                                        Row(Modifier.fillMaxWidth().padding(horizontal = 10.dp, vertical = 6.dp)) {
+                                            Text("Exercise", Modifier.weight(1f), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                            Text("Sets×Reps", Modifier.width(72.dp), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant, textAlign = TextAlign.Center)
+                                            Spacer(Modifier.width(64.dp))
+                                        }
+                                        workoutDay.exercises.forEachIndexed { i, ex ->
+                                            if (i > 0) HorizontalDivider(thickness = 1.dp, color = wb)
+                                            val last = state.lastPerf[ex.name]
+                                            val done = state.selectedLogs.any { it.exerciseName == ex.name }
+                                            ExerciseRow(
+                                                name = ex.name,
+                                                prescription = "${ex.sets} × ${ex.reps}",
+                                                last = last,
+                                                done = done,
+                                                onLog = {
+                                                    pending = PendingLog(
+                                                        name = ex.name,
+                                                        focus = focus,
+                                                        weight = last?.weightKg?.let { fmtNum(it) } ?: "",
+                                                        reps = (last?.reps?.toString() ?: ex.reps.filter { c -> c.isDigit() }),
+                                                        sets = (last?.sets ?: ex.sets).toString(),
+                                                    )
+                                                },
+                                            )
+                                        }
                                     }
                                     if (state.selectedLogs.isNotEmpty()) {
                                         Text(

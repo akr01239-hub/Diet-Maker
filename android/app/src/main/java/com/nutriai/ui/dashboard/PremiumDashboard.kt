@@ -2,16 +2,20 @@ package com.nutriai.ui.dashboard
 
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -747,43 +751,48 @@ private fun JourneyCard(dashboard: Dashboard) {
             )
             Spacer(Modifier.height(2.dp))
             val onC = MaterialTheme.colorScheme.onPrimaryContainer
-            // Table header
-            Row(Modifier.fillMaxWidth()) {
-                Text("When", Modifier.weight(1f), style = MaterialTheme.typography.labelMedium, color = onC.copy(alpha = 0.7f))
-                Text("Weight", Modifier.weight(0.6f), style = MaterialTheme.typography.labelMedium, color = onC.copy(alpha = 0.7f), textAlign = TextAlign.End)
-                Text("BMI", Modifier.weight(0.5f), style = MaterialTheme.typography.labelMedium, color = onC.copy(alpha = 0.7f), textAlign = TextAlign.End)
-            }
-            HorizontalDivider(color = onC.copy(alpha = 0.15f), thickness = 1.dp)
-            dashboard.projection.forEach { p ->
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    Text(
-                        p.label,
-                        Modifier.weight(1f),
-                        style = MaterialTheme.typography.bodyMedium,
-                        fontWeight = FontWeight.Medium,
-                        color = onC,
-                    )
-                    Text(
-                        "${p.weightKg} kg",
-                        Modifier.weight(0.6f),
-                        style = MaterialTheme.typography.bodyMedium,
-                        fontWeight = FontWeight.SemiBold,
-                        textAlign = TextAlign.End,
-                        color = onC,
-                    )
-                    Text(
-                        "${p.bmi}",
-                        Modifier.weight(0.5f),
-                        style = MaterialTheme.typography.bodyMedium,
-                        textAlign = TextAlign.End,
-                        color = onC,
-                    )
+            val line = onC.copy(alpha = 0.25f)
+            Column(
+                Modifier.fillMaxWidth().clip(RoundedCornerShape(10.dp)).border(1.dp, line, RoundedCornerShape(10.dp)),
+            ) {
+                JourneyRow("When", "Weight", "BMI", line, onC, header = true)
+                dashboard.projection.forEach { p ->
+                    HorizontalDivider(thickness = 1.dp, color = line)
+                    JourneyRow(p.label, "${p.weightKg} kg", "${p.bmi}", line, onC, header = false)
                 }
             }
         }
+    }
+}
+
+@Composable
+private fun JourneyRow(when_: String, weight: String, bmi: String, line: Color, onC: Color, header: Boolean) {
+    val style = if (header) MaterialTheme.typography.labelMedium else MaterialTheme.typography.bodyMedium
+    Row(Modifier.fillMaxWidth().height(IntrinsicSize.Min), verticalAlignment = Alignment.CenterVertically) {
+        Text(
+            when_,
+            Modifier.weight(1f).padding(horizontal = 10.dp, vertical = 8.dp),
+            style = style,
+            fontWeight = if (header) FontWeight.SemiBold else FontWeight.Medium,
+            color = if (header) onC.copy(alpha = 0.75f) else onC,
+        )
+        Box(Modifier.width(1.dp).fillMaxHeight().background(line))
+        Text(
+            weight,
+            Modifier.weight(0.6f).padding(horizontal = 10.dp, vertical = 8.dp),
+            style = style,
+            fontWeight = if (header) FontWeight.SemiBold else FontWeight.SemiBold,
+            textAlign = TextAlign.End,
+            color = if (header) onC.copy(alpha = 0.75f) else onC,
+        )
+        Box(Modifier.width(1.dp).fillMaxHeight().background(line))
+        Text(
+            bmi,
+            Modifier.weight(0.5f).padding(horizontal = 10.dp, vertical = 8.dp),
+            style = style,
+            textAlign = TextAlign.End,
+            color = if (header) onC.copy(alpha = 0.75f) else onC,
+        )
     }
 }
 
