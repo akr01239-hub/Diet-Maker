@@ -71,8 +71,8 @@ fun PremiumDashboard(
         modifier = modifier
             .fillMaxSize()
             .padding(horizontal = 16.dp),
-        verticalArrangement = Arrangement.spacedBy(16.dp),
-        contentPadding = androidx.compose.foundation.layout.PaddingValues(vertical = 20.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp),
+        contentPadding = androidx.compose.foundation.layout.PaddingValues(vertical = 14.dp),
     ) {
         // 1. Hero
         item { HeroCard(greetingName = greetingName, streakDays = d.streakDays) }
@@ -83,13 +83,13 @@ fun PremiumDashboard(
         // 3. Macro row
         item { MacroRow(dashboard = d) }
 
-        // 4. Hydration
-        item { HydrationCard(water = d.water, onAddWater = onAddWater) }
-
-        // 4b. Steps (Health Connect)
+        // 4. Steps (Health Connect) — above hydration
         item { StepsCard(steps = steps, stepsKcal = stepsKcal, hasPermission = stepsPermission, available = stepsAvailable, onConnect = onConnectSteps) }
 
-        // 5. Scores
+        // 5. Hydration
+        item { HydrationCard(water = d.water, onAddWater = onAddWater) }
+
+        // 6. Scores
         item { ScoresRow(dashboard = d) }
 
         // 6. Your journey (projection)
@@ -151,7 +151,7 @@ private fun HeroCard(greetingName: String?, streakDays: Int) {
                         colors = listOf(BrandGreenLight, BrandGreen, BrandGreenDeep),
                     ),
                 )
-                .padding(24.dp),
+                .padding(18.dp),
         ) {
             Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                 Text(
@@ -198,7 +198,7 @@ private fun CalorieRingCard(dashboard: Dashboard, burnedKcal: Int = 0, onComplet
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
     ) {
         Column(
-            modifier = Modifier.fillMaxWidth().padding(20.dp),
+            modifier = Modifier.fillMaxWidth().padding(16.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.spacedBy(14.dp),
         ) {
@@ -230,7 +230,7 @@ private fun CalorieRingCard(dashboard: Dashboard, burnedKcal: Int = 0, onComplet
                 val percent = if (budget > 0) (cal.consumed / budget * 100).coerceIn(0.0, 100.0).toFloat() else 0f
                 val trackColor = MaterialTheme.colorScheme.surfaceVariant
                 Box(
-                    modifier = Modifier.size(200.dp),
+                    modifier = Modifier.size(158.dp),
                     contentAlignment = Alignment.Center,
                 ) {
                     RingCanvas(
@@ -241,7 +241,7 @@ private fun CalorieRingCard(dashboard: Dashboard, burnedKcal: Int = 0, onComplet
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
                         Text(
                             "${remaining.toInt().coerceAtLeast(0)}",
-                            style = MaterialTheme.typography.displaySmall,
+                            style = MaterialTheme.typography.headlineLarge,
                             fontWeight = FontWeight.Bold,
                             color = MaterialTheme.colorScheme.onSurface,
                         )
@@ -278,7 +278,7 @@ private fun BudgetPart(label: String, value: String, color: Color) {
 private fun RingCanvas(percent: Float, trackColor: Color, modifier: Modifier = Modifier) {
     val sweepBrush = Brush.linearGradient(colors = listOf(BrandGreenLight, BrandGreen, BrandLime))
     Canvas(modifier = modifier) {
-        val strokeWidthPx = 26.dp.toPx()
+        val strokeWidthPx = 20.dp.toPx()
         val inset = strokeWidthPx / 2f
         val arcSize = Size(size.width - strokeWidthPx, size.height - strokeWidthPx)
         val topLeft = Offset(inset, inset)
@@ -402,7 +402,7 @@ private fun HydrationCard(water: DashMetric, onAddWater: () -> Unit) {
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
     ) {
         Column(
-            modifier = Modifier.fillMaxWidth().padding(20.dp),
+            modifier = Modifier.fillMaxWidth().padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(14.dp),
         ) {
             Row(
@@ -455,7 +455,7 @@ private fun StepsCard(steps: Long, stepsKcal: Int, hasPermission: Boolean, avail
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
     ) {
         Column(
-            modifier = Modifier.fillMaxWidth().padding(20.dp),
+            modifier = Modifier.fillMaxWidth().padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(10.dp),
         ) {
             Row(
@@ -573,7 +573,7 @@ private fun JourneyCard(dashboard: Dashboard) {
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer),
     ) {
         Column(
-            modifier = Modifier.fillMaxWidth().padding(20.dp),
+            modifier = Modifier.fillMaxWidth().padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(10.dp),
         ) {
             Text(
