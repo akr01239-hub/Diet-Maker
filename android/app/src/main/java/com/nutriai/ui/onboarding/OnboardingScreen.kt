@@ -1,9 +1,9 @@
 package com.nutriai.ui.onboarding
 
-import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -12,9 +12,14 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.foundation.horizontalScroll
+import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.ExposedDropdownMenu
+import androidx.compose.material3.ExposedDropdownMenuBox
+import androidx.compose.material3.ExposedDropdownMenuDefaults
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.MenuAnchorType
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -32,11 +37,26 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.nutriai.data.remote.dto.ProfileUpsertRequest
 import com.nutriai.data.remote.dto.SensitiveData
 
-private val SEX = listOf("male", "female")
-private val ACTIVITY = listOf("sedentary", "light", "moderate", "active", "veryactive")
-private val GOAL = listOf("lose", "maintain", "gain")
-private val DIET = listOf("veg", "eggetarian", "nonveg", "vegan", "jain", "keto", "highprotein")
-private val CONDITIONS = listOf("diabetes", "hypertension", "kidney_disease", "thyroid", "pcos", "heart_disease")
+private val SEX = listOf("male" to "Male", "female" to "Female")
+private val ACTIVITY = listOf(
+    "sedentary" to "Sedentary (desk job)",
+    "light" to "Lightly active",
+    "moderate" to "Moderately active",
+    "active" to "Active",
+    "veryactive" to "Very active",
+)
+private val GOAL = listOf("lose" to "Lose weight", "maintain" to "Maintain", "gain" to "Gain muscle")
+private val DIET = listOf(
+    "veg" to "Vegetarian", "eggetarian" to "Eggetarian", "nonveg" to "Non-veg",
+    "vegan" to "Vegan", "jain" to "Jain", "keto" to "Keto", "highprotein" to "High-protein",
+)
+private val EX_LOC = listOf("gym" to "Gym", "home" to "Home", "none" to "No workouts")
+private val BODY_GOAL = listOf("fatloss" to "Fat loss", "athletic" to "Athletic / lean", "muscular" to "Muscular")
+private val DAYS: List<Pair<Int?, String>> = listOf(
+    null to "None", 0 to "Sunday", 1 to "Monday", 2 to "Tuesday",
+    3 to "Wednesday", 4 to "Thursday", 5 to "Friday", 6 to "Saturday",
+)
+private val CONDITIONS = listOf("diabetes", "hypertension", "kidney_disease", "thyroid", "pcos", "heart_disease", "fatty_liver", "gout")
 
 @Composable
 fun OnboardingScreen(
@@ -59,7 +79,6 @@ fun OnboardingScreen(
     var bodyGoal by remember { mutableStateOf("fatloss") }
     var workoutRest by remember { mutableStateOf<Int?>(0) }
 
-    // Pre-fill from the saved profile the first time it loads (editing an existing profile).
     LaunchedEffect(state.prefillLoaded) {
         val p = state.prefill ?: return@LaunchedEffect
         height = p.heightCm.takeIf { it > 0 }?.let { fmt(it) } ?: height
@@ -79,13 +98,12 @@ fun OnboardingScreen(
         }
     }
     val editing = state.prefill != null
+    val canSave = height.toDoubleOrNull() != null && weight.toDoubleOrNull() != null &&
+        target.toDoubleOrNull() != null && dob.isNotBlank()
 
     Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .verticalScroll(rememberScrollState())
-            .padding(20.dp),
-        verticalArrangement = Arrangement.spacedBy(12.dp),
+        modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(20.dp),
+        verticalArrangement = Arrangement.spacedBy(14.dp),
     ) {
         Text(
             if (editing) "Edit your profile" else "Your health profile",
@@ -97,57 +115,41 @@ fun OnboardingScreen(
         numberField(height, { height = it }, "Height (cm)")
         numberField(weight, { weight = it }, "Current weight (kg)")
         numberField(target, { target = it }, "Target weight (kg)")
-        OutlinedTextField(dob, { dob = it }, label = { Text("Date of birth (YYYY-MM-DD)") }, singleLine = true, modifier = Modifier.fillMaxWidth())
+        OutlinedTextField(
+            dob, { dob = it },
+            label = { Text("Date of birth (YYYY-MM-DD)") },
+            placeholder = { Text("e.g. 1995-08-21") },
+            singleLine = true,
+            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+            modifier = Modifier.fillMaxWidth(),
+        )
 
-        Label("Sex")
-        SingleChoiceChips(SEX, sex) { sex = it }
-        Label("Activity level")
-        SingleChoiceChips(ACTIVITY, activity) { activity = it }
-        Label("Goal")
-        SingleChoiceChips(GOAL, goal) { goal = it }
-        Label("Diet")
-        SingleChoiceChips(DIET, diet) { diet = it }
-        Label("Goal tip: choose \"gain\" to build muscle (higher protein).")
+        Dropdown("Sex", SEX, sex) { sex = it }
+        Dropdown("Activity level", ACTIVITY, activity) { activity = it }
+        Dropdown("Goal", GOAL, goal) { goal = it }
+        Dropdown("Diet", DIET, diet) { diet = it }
+        Dropdown("Where do you exercise?", EX_LOC, exLocation) { exLocation = it }
+        Dropdown("Body goal", BODY_GOAL, bodyGoal) { bodyGoal = it }
+        Dropdown("Weekly fasting day (optional)", DAYS, fastDay) { fastDay = it }
+        Dropdown("Workout rest day", DAYS, workoutRest) { workoutRest = it }
+
         Label("Conditions (optional)")
         MultiChoiceChips(CONDITIONS, conditions)
-
-        Label("Weekly fasting day (optional)")
-        Row(
-            Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-        ) {
-            val fastLabels = listOf("None", "Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat")
-            fastLabels.forEachIndexed { idx, lbl ->
-                val value = if (idx == 0) null else idx - 1
-                FilterChip(selected = fastDay == value, onClick = { fastDay = value }, label = { Text(lbl) })
-            }
-        }
-
-        Label("Where do you exercise?")
-        SingleChoiceChips(listOf("gym", "home", "none"), exLocation) { exLocation = it }
-        Label("Body goal (fat loss / athletic-lean / muscular)")
-        SingleChoiceChips(listOf("fatloss", "athletic", "muscular"), bodyGoal) { bodyGoal = it }
-        Label("Workout rest day (skip for a 7-day plan)")
-        Row(
-            Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-        ) {
-            val restLabels = listOf("None", "Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat")
-            restLabels.forEachIndexed { idx, lbl ->
-                val value = if (idx == 0) null else idx - 1
-                FilterChip(selected = workoutRest == value, onClick = { workoutRest = value }, label = { Text(lbl) })
-            }
-        }
 
         if (state.error != null) {
             Text(state.error!!, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
         }
+        if (!canSave) {
+            Text(
+                "Fill height, weight, target and date of birth to continue.",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
 
         Button(
             onClick = {
-                val h = height.toDoubleOrNull()
-                val w = weight.toDoubleOrNull()
-                val t = target.toDoubleOrNull()
+                val h = height.toDoubleOrNull(); val w = weight.toDoubleOrNull(); val t = target.toDoubleOrNull()
                 if (h != null && w != null && t != null && dob.isNotBlank()) {
                     viewModel.save(
                         ProfileUpsertRequest(
@@ -171,21 +173,16 @@ fun OnboardingScreen(
                     )
                 }
             },
-            enabled = !state.loading,
+            enabled = !state.loading && canSave,
             modifier = Modifier.fillMaxWidth(),
         ) {
-            if (state.loading) {
-                CircularProgressIndicator(Modifier.padding(4.dp))
-            } else {
-                Text(if (editing) "Save changes" else "See my plan")
-            }
+            if (state.loading) CircularProgressIndicator(Modifier.padding(4.dp))
+            else Text(if (editing) "Save changes" else "See my plan")
         }
     }
 }
 
-/** Formats a Double without a trailing ".0" so pre-filled fields read cleanly (70 not 70.0). */
-private fun fmt(v: Double): String =
-    if (v % 1.0 == 0.0) v.toLong().toString() else v.toString()
+private fun fmt(v: Double): String = if (v % 1.0 == 0.0) v.toLong().toString() else v.toString()
 
 @Composable
 private fun numberField(value: String, onChange: (String) -> Unit, label: String) {
@@ -204,28 +201,33 @@ private fun Label(text: String) {
     Text(text, style = MaterialTheme.typography.labelLarge)
 }
 
+/** A labelled dropdown (Material3 exposed menu) for single-choice selection. */
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun SingleChoiceChips(options: List<String>, selected: String, onSelect: (String) -> Unit) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .horizontalScroll(rememberScrollState()),
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
-    ) {
-        options.forEach { opt ->
-            FilterChip(selected = opt == selected, onClick = { onSelect(opt) }, label = { Text(opt) })
+private fun <T> Dropdown(label: String, options: List<Pair<T, String>>, selected: T, onSelect: (T) -> Unit) {
+    var expanded by remember { mutableStateOf(false) }
+    val selectedLabel = options.firstOrNull { it.first == selected }?.second ?: "Select"
+    ExposedDropdownMenuBox(expanded = expanded, onExpandedChange = { expanded = it }) {
+        OutlinedTextField(
+            value = selectedLabel,
+            onValueChange = {},
+            readOnly = true,
+            label = { Text(label) },
+            trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) },
+            modifier = Modifier.menuAnchor(MenuAnchorType.PrimaryNotEditable).fillMaxWidth(),
+        )
+        ExposedDropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
+            options.forEach { (value, disp) ->
+                DropdownMenuItem(text = { Text(disp) }, onClick = { onSelect(value); expanded = false })
+            }
         }
     }
 }
 
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun MultiChoiceChips(options: List<String>, selected: MutableList<String>) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .horizontalScroll(rememberScrollState()),
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
-    ) {
+    FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
         options.forEach { opt ->
             val isSel = selected.contains(opt)
             FilterChip(

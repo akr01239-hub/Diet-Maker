@@ -1,5 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <color name="brand_splash">#FF06251A</color>
+    <!-- Cold-start window background: light, matching the splash image's top so there is no
+         dark-green flash before Compose renders the branded splash. -->
+    <color name="brand_splash">#FFF4F7F3</color>
     <color name="brand_green">#FF16A34A</color>
 </resources>
