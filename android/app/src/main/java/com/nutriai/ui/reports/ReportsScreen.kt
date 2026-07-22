@@ -214,12 +214,12 @@ private fun HeroSummaryCard(report: WeeklyReport) {
                         colors = listOf(BrandGreenLight, BrandGreen, BrandGreenDeep),
                     ),
                 )
-                .padding(24.dp),
+                .padding(horizontal = 16.dp, vertical = 12.dp),
         ) {
-            Column(verticalArrangement = Arrangement.spacedBy(18.dp)) {
+            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 Text(
                     "Weekly report",
-                    style = MaterialTheme.typography.headlineMedium,
+                    style = MaterialTheme.typography.titleLarge,
                     fontWeight = FontWeight.Bold,
                     color = Color.White,
                 )

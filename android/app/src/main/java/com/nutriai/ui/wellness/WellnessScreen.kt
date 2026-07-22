@@ -122,10 +122,10 @@ private fun Hero() {
         elevation = CardDefaults.cardElevation(defaultElevation = 6.dp),
         colors = CardDefaults.cardColors(containerColor = Color.Transparent),
     ) {
-        Box(Modifier.fillMaxWidth().background(Brush.verticalGradient(listOf(BrandGreenLight, BrandGreen, BrandGreenDeep))).padding(22.dp)) {
-            Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                Text("Mind & Body", style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold, color = Color.White)
-                Text("Yoga flows and guided breathing to calm, focus and recover.", style = MaterialTheme.typography.bodyMedium, color = Color.White.copy(alpha = 0.9f))
+        Box(Modifier.fillMaxWidth().background(Brush.verticalGradient(listOf(BrandGreenLight, BrandGreen, BrandGreenDeep))).padding(horizontal = 16.dp, vertical = 12.dp)) {
+            Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                Text("Mind & Body", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold, color = Color.White)
+                Text("Yoga flows and guided breathing to calm, focus and recover.", style = MaterialTheme.typography.bodySmall, color = Color.White.copy(alpha = 0.9f))
             }
         }
     }
@@ -153,10 +153,20 @@ private fun YogaFlowCard(flow: YogaFlow) {
                 Text(if (expanded) "▲" else "▼")
             }
             if (expanded) {
+                // Aligned table: #  |  Pose + cue  |  Hold
+                Row(Modifier.fillMaxWidth().padding(top = 2.dp)) {
+                    Text("#", Modifier.size(width = 22.dp, height = 16.dp), style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text("Pose", Modifier.weight(1f), style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text("Hold", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
                 flow.poses.forEachIndexed { i, p ->
-                    Column {
-                        Text("${i + 1}. ${p.name}  —  ${p.hold}", style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Medium, color = BrandGreenDeep)
-                        Text(p.cue, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.Top) {
+                        Text("${i + 1}", Modifier.size(width = 22.dp, height = 20.dp), style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Bold, color = BrandGreen)
+                        Column(Modifier.weight(1f)) {
+                            Text(p.name, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Medium, color = BrandGreenDeep)
+                            Text(p.cue, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        }
+                        Text(p.hold, style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onSurface, modifier = Modifier.padding(start = 8.dp, top = 2.dp))
                     }
                 }
             }

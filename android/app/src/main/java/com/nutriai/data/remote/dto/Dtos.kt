@@ -594,7 +594,7 @@ data class CheckinCreatedEnvelope(val checkin: CheckinCreated)
 
 // ---- Grocery ----
 @Serializable
-data class GroceryLine(val name: String, val meals: Int = 1)
+data class GroceryLine(val name: String, val meals: Int = 1, val qty: Int = 0, val unit: String = "g")
 
 @Serializable
 data class GroceryCategory(val category: String, val items: List<GroceryLine> = emptyList())

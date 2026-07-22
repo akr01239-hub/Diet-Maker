@@ -146,16 +146,16 @@ private fun SettingsHero(name: String?, email: String?) {
         elevation = CardDefaults.cardElevation(defaultElevation = 6.dp),
         colors = CardDefaults.cardColors(containerColor = Color.Transparent),
     ) {
-        Box(Modifier.fillMaxWidth().background(Brush.verticalGradient(listOf(BrandGreen, BrandGreenDeep))).padding(20.dp)) {
-            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(14.dp)) {
+        Box(Modifier.fillMaxWidth().background(Brush.verticalGradient(listOf(BrandGreen, BrandGreenDeep))).padding(horizontal = 16.dp, vertical = 12.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                 Box(
-                    Modifier.size(56.dp).clip(CircleShape).background(Color.White.copy(alpha = 0.25f)),
+                    Modifier.size(46.dp).clip(CircleShape).background(Color.White.copy(alpha = 0.25f)),
                     contentAlignment = Alignment.Center,
-                ) { Text(name?.firstOrNull()?.uppercase() ?: "👤", style = MaterialTheme.typography.headlineSmall, color = Color.White) }
+                ) { Text(name?.firstOrNull()?.uppercase() ?: "👤", style = MaterialTheme.typography.titleLarge, color = Color.White) }
                 Column {
-                    Text(name?.ifBlank { "Your account" } ?: "Your account", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold, color = Color.White)
+                    Text(name?.ifBlank { "Your account" } ?: "Your account", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold, color = Color.White)
                     if (!email.isNullOrBlank()) {
-                        Text(email, style = MaterialTheme.typography.bodyMedium, color = Color.White.copy(alpha = 0.85f))
+                        Text(email, style = MaterialTheme.typography.bodySmall, color = Color.White.copy(alpha = 0.85f))
                     }
                 }
             }

@@ -194,10 +194,10 @@ private fun Hero() {
         elevation = CardDefaults.cardElevation(defaultElevation = 6.dp),
         colors = CardDefaults.cardColors(containerColor = Color.Transparent),
     ) {
-        Box(Modifier.fillMaxWidth().background(Brush.verticalGradient(listOf(BrandGreenLight, BrandGreen, BrandGreenDeep))).padding(22.dp)) {
-            Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                Text("Body Check 📸", style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold, color = Color.White)
-                Text("A rough AI body-fat read from a photo. Nothing is saved.", style = MaterialTheme.typography.bodyMedium, color = Color.White.copy(alpha = 0.9f))
+        Box(Modifier.fillMaxWidth().background(Brush.verticalGradient(listOf(BrandGreenLight, BrandGreen, BrandGreenDeep))).padding(horizontal = 16.dp, vertical = 12.dp)) {
+            Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                Text("Body Check 📸", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold, color = Color.White)
+                Text("A rough AI body-fat read from a photo. Nothing is saved.", style = MaterialTheme.typography.bodySmall, color = Color.White.copy(alpha = 0.9f))
             }
         }
     }

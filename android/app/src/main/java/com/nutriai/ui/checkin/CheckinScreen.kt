@@ -299,18 +299,18 @@ private fun CheckinHeader() {
                         colors = listOf(BrandGreenLight, BrandGreen, BrandGreenDeep),
                     ),
                 )
-                .padding(24.dp),
+                .padding(horizontal = 16.dp, vertical = 12.dp),
         ) {
-            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
                 Text(
                     "Weekly check-in 📝",
-                    style = MaterialTheme.typography.headlineMedium,
+                    style = MaterialTheme.typography.titleLarge,
                     fontWeight = FontWeight.Bold,
                     color = Color.White,
                 )
                 Text(
                     "Track your progress — small steps, steady wins.",
-                    style = MaterialTheme.typography.bodyLarge,
+                    style = MaterialTheme.typography.bodySmall,
                     color = Color.White.copy(alpha = 0.9f),
                 )
             }

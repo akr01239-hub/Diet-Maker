@@ -279,18 +279,18 @@ private fun LogHeader(todayCount: Int) {
                         colors = listOf(BrandGreenLight, BrandGreen, BrandGreenDeep),
                     ),
                 )
-                .padding(24.dp),
+                .padding(horizontal = 16.dp, vertical = 12.dp),
         ) {
-            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
                 Text(
                     "Log food 🍽️",
-                    style = MaterialTheme.typography.headlineMedium,
+                    style = MaterialTheme.typography.titleLarge,
                     fontWeight = FontWeight.Bold,
                     color = Color.White,
                 )
                 Text(
                     "Search, pick a portion, and track it in seconds.",
-                    style = MaterialTheme.typography.bodyLarge,
+                    style = MaterialTheme.typography.bodySmall,
                     color = Color.White.copy(alpha = 0.9f),
                 )
                 if (todayCount > 0) {

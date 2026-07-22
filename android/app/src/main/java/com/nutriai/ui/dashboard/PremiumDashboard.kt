@@ -17,6 +17,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
@@ -621,21 +622,40 @@ private fun JourneyCard(dashboard: Dashboard) {
                 color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.8f),
             )
             Spacer(Modifier.height(2.dp))
+            val onC = MaterialTheme.colorScheme.onPrimaryContainer
+            // Table header
+            Row(Modifier.fillMaxWidth()) {
+                Text("When", Modifier.weight(1f), style = MaterialTheme.typography.labelMedium, color = onC.copy(alpha = 0.7f))
+                Text("Weight", Modifier.weight(0.6f), style = MaterialTheme.typography.labelMedium, color = onC.copy(alpha = 0.7f), textAlign = TextAlign.End)
+                Text("BMI", Modifier.weight(0.5f), style = MaterialTheme.typography.labelMedium, color = onC.copy(alpha = 0.7f), textAlign = TextAlign.End)
+            }
+            HorizontalDivider(color = onC.copy(alpha = 0.15f), thickness = 1.dp)
             dashboard.projection.forEach { p ->
                 Row(
                     modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically,
                 ) {
                     Text(
                         p.label,
-                        style = MaterialTheme.typography.bodyLarge,
+                        Modifier.weight(1f),
+                        style = MaterialTheme.typography.bodyMedium,
                         fontWeight = FontWeight.Medium,
-                        color = MaterialTheme.colorScheme.onPrimaryContainer,
+                        color = onC,
                     )
                     Text(
-                        "${p.weightKg} kg · BMI ${p.bmi}",
-                        style = MaterialTheme.typography.bodyLarge,
-                        color = MaterialTheme.colorScheme.onPrimaryContainer,
+                        "${p.weightKg} kg",
+                        Modifier.weight(0.6f),
+                        style = MaterialTheme.typography.bodyMedium,
+                        fontWeight = FontWeight.SemiBold,
+                        textAlign = TextAlign.End,
+                        color = onC,
+                    )
+                    Text(
+                        "${p.bmi}",
+                        Modifier.weight(0.5f),
+                        style = MaterialTheme.typography.bodyMedium,
+                        textAlign = TextAlign.End,
+                        color = onC,
                     )
                 }
             }
