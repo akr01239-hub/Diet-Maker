@@ -11,22 +11,23 @@ const targets: PlanTargets = { dailyKcal: 2000, proteinG: 130, fatG: 60, carbG: 
 describe('grocery list', () => {
   const plan = generateWeekPlan(SEED_FOODS, targets, { dietType: 'veg', allergies: [], conditions: [] });
 
-  it('aggregates grams per food across the week', () => {
+  it('produces a categorized RAW-ingredient shopping list (not dishes)', () => {
     const g = buildGroceryList(plan.days, SEED_FOODS);
-    expect(g.items.length).toBeGreaterThan(0);
-    expect(g.items.every((i) => i.totalGrams > 0)).toBe(true);
-    // sorted by name
-    const names = g.items.map((i) => i.name);
-    expect(names).toEqual([...names].sort((a, b) => a.localeCompare(b)));
+    expect(g.categories.length).toBeGreaterThan(0);
+    expect(g.totalItems).toBeGreaterThan(0);
+    const allNames = g.categories.flatMap((c) => c.items.map((i) => i.name));
+    // raw ingredients, never the cooked dish name
+    expect(allNames).not.toContain('Aloo paratha');
+    expect(allNames.some((n) => /flour/i.test(n))).toBe(true);
+    // every line has a positive meal count
+    expect(g.categories.every((c) => c.items.every((i) => i.meals > 0))).toBe(true);
   });
 
-  it('trims tier-3 items to fit a tight budget', () => {
-    const full = buildGroceryList(plan.days, SEED_FOODS);
-    const tight = buildGroceryList(plan.days, SEED_FOODS, {
-      monthlyBudget: full.estimatedCostTierTotal * 0.5,
-    });
-    expect(tight.estimatedCostTierTotal).toBeLessThanOrEqual(full.estimatedCostTierTotal);
-    expect(tight.items.length).toBeLessThanOrEqual(full.items.length);
+  it('groups ingredients into aisles and de-duplicates', () => {
+    const g = buildGroceryList(plan.days, SEED_FOODS);
+    // total items equals the sum of unique lines across categories
+    const lineCount = g.categories.reduce((s, c) => s + c.items.length, 0);
+    expect(lineCount).toBe(g.totalItems);
   });
 });
 

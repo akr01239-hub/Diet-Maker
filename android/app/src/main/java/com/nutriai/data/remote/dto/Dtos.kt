@@ -323,19 +323,15 @@ data class CheckinCreatedEnvelope(val checkin: CheckinCreated)
 
 // ---- Grocery ----
 @Serializable
-data class GroceryItem(
-    val foodId: String,
-    val name: String,
-    val totalGrams: Double,
-    val servings: Double,
-    val costTier: Int,
-)
+data class GroceryLine(val name: String, val meals: Int = 1)
+
+@Serializable
+data class GroceryCategory(val category: String, val items: List<GroceryLine> = emptyList())
 
 @Serializable
 data class Grocery(
-    val items: List<GroceryItem> = emptyList(),
-    val estimatedCostTierTotal: Double = 0.0,
-    val trimmed: List<String> = emptyList(),
+    val categories: List<GroceryCategory> = emptyList(),
+    val totalItems: Int = 0,
 )
 
 @Serializable

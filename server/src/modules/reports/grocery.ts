@@ -1,64 +1,65 @@
-import { round } from '../../calc/anthropometry';
 import type { DayPlan, FoodItem } from '../food/food.types';
+import { CATEGORY_ORDER, FOOD_INGREDIENTS } from '../../data/ingredients';
 
-export interface GroceryItem {
-  foodId: string;
+export interface GroceryLine {
   name: string;
-  totalGrams: number;
-  servings: number;
-  costTier: 1 | 2 | 3;
+  /** How many meals across the week use this ingredient (a "buy more" hint). */
+  meals: number;
+}
+
+export interface GroceryCategory {
+  category: string;
+  items: GroceryLine[];
+}
+
+export interface GroceryResult {
+  categories: GroceryCategory[];
+  totalItems: number;
 }
 
 /**
- * Aggregates every meal item across the plan's days into a shopping list (total grams +
- * serving count per food). Pure. Optionally trims to a budget by dropping the priciest
- * tier-3 extras first (never core staples).
+ * Turns the week's meal plan into a RAW-INGREDIENT shopping list grouped by aisle/category
+ * (flour, potato, onion…) — not a list of cooked dishes. `meals` counts how many meals use
+ * each ingredient so you know roughly how much to buy. Pure.
  */
-export function buildGroceryList(
-  days: DayPlan[],
-  foods: FoodItem[],
-  opts: { monthlyBudget?: number } = {},
-): { items: GroceryItem[]; estimatedCostTierTotal: number; trimmed: string[] } {
+export function buildGroceryList(days: DayPlan[], foods: FoodItem[]): GroceryResult {
   const byId = new Map(foods.map((f) => [f.id, f]));
-  const grams = new Map<string, number>();
+  const acc = new Map<string, { category: string; meals: number }>();
 
   for (const day of days) {
     for (const meal of day.meals) {
+      // Count each ingredient at most once per meal.
+      const seen = new Set<string>();
       for (const item of meal.items) {
-        grams.set(item.foodId, (grams.get(item.foodId) ?? 0) + item.grams);
+        const ings =
+          FOOD_INGREDIENTS[item.foodId] ??
+          [{ name: byId.get(item.foodId)?.name ?? item.name, category: 'Other' }];
+        for (const ing of ings) {
+          if (seen.has(ing.name)) continue;
+          seen.add(ing.name);
+          const cur = acc.get(ing.name);
+          if (cur) cur.meals += 1;
+          else acc.set(ing.name, { category: ing.category, meals: 1 });
+        }
       }
     }
   }
 
-  let items: GroceryItem[] = [...grams.entries()]
-    .map(([foodId, totalGrams]) => {
-      const food = byId.get(foodId);
-      const serving = food?.typicalServingG ?? 100;
-      return {
-        foodId,
-        name: food?.name ?? foodId,
-        totalGrams: round(totalGrams, 0),
-        servings: round(totalGrams / serving, 1),
-        costTier: (food?.costTier ?? 2) as 1 | 2 | 3,
-      };
-    })
-    .sort((a, b) => a.name.localeCompare(b.name));
-
-  const trimmed: string[] = [];
-  // Cost model: tier * grams/100 as arbitrary "cost points".
-  const cost = (i: GroceryItem) => i.costTier * (i.totalGrams / 100);
-  let total = round(items.reduce((s, i) => s + cost(i), 0), 1);
-
-  // If a (unitless) budget is given, drop the priciest tier-3 items until under budget.
-  if (opts.monthlyBudget && total > opts.monthlyBudget) {
-    const droppable = items.filter((i) => i.costTier === 3).sort((a, b) => cost(b) - cost(a));
-    for (const d of droppable) {
-      if (total <= opts.monthlyBudget) break;
-      items = items.filter((i) => i.foodId !== d.foodId);
-      trimmed.push(d.name);
-      total = round(total - cost(d), 1);
-    }
+  const catMap = new Map<string, GroceryLine[]>();
+  for (const [name, { category, meals }] of acc) {
+    const arr = catMap.get(category) ?? [];
+    arr.push({ name, meals });
+    catMap.set(category, arr);
   }
 
-  return { items, estimatedCostTierTotal: total, trimmed };
+  const categories: GroceryCategory[] = CATEGORY_ORDER.filter((c) => catMap.has(c)).map(
+    (category) => ({
+      category,
+      items: catMap
+        .get(category)!
+        .sort((a, b) => b.meals - a.meals || a.name.localeCompare(b.name)),
+    }),
+  );
+
+  return { categories, totalItems: acc.size };
 }
