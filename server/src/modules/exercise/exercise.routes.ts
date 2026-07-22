@@ -10,6 +10,7 @@ import { localSunday, localToday, tzOffsetMin } from '../../lib/tz';
 import type { BodyGoal, ExerciseLocation } from './exercise.types';
 import { exerciseLogSchema } from './exerciseLog.schemas';
 import * as logSvc from './exerciseLog.service';
+import { adaptWorkoutToCycle } from './cycleAdapt';
 
 export const exerciseRouter = Router();
 
@@ -37,11 +38,30 @@ exerciseRouter.get(
     const goal: BodyGoal = s.bodyGoal ?? goalToBody(profile.goal);
 
     const offset = tzOffsetMin(req);
-    const plan = generateWeeklyWorkout(goal, location, {
+    let plan = generateWeeklyWorkout(goal, location, {
       restDayOfWeek: s.workoutRestDay,
       startDate: localSunday(offset),
       today: localToday(offset),
     });
+
+    // Period-aware: for female profiles, ease period days to gentle recovery.
+    if (s.sex === 'female') {
+      const periods = await prisma.periodLog.findMany({
+        where: { userId: req.user!.id },
+        orderBy: { startDate: 'desc' },
+        take: 12,
+      });
+      if (periods.length > 0) {
+        const durations = periods
+          .filter((p) => p.endDate)
+          .map((p) => Math.round((p.endDate!.getTime() - p.startDate.getTime()) / 86_400_000) + 1)
+          .filter((d) => d >= 2 && d <= 10);
+        const periodLen = durations.length
+          ? Math.round(durations.reduce((a, b) => a + b, 0) / durations.length)
+          : 5;
+        plan = adaptWorkoutToCycle(plan, periods.map((p) => p.startDate), periodLen);
+      }
+    }
 
     res.json({ plan });
   }),
