@@ -45,6 +45,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -107,6 +108,7 @@ private fun DashboardTab(
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
     var showDelete by remember { mutableStateOf(false) }
+    val context = LocalContext.current
 
     // Health Connect step-permission request.
     val stepPerms = remember { setOf(HealthPermission.getReadPermission(StepsRecord::class)) }
@@ -143,7 +145,22 @@ private fun DashboardTab(
             steps = state.steps,
             stepsKcal = state.stepsKcal,
             stepsPermission = state.stepsPermission,
-            onConnectSteps = { runCatching { stepLauncher.launch(stepPerms) } },
+            stepsAvailable = state.stepsAvailable,
+            onConnectSteps = {
+                if (state.stepsAvailable) {
+                    runCatching { stepLauncher.launch(stepPerms) }
+                } else {
+                    // Health Connect not installed — send them to the Play Store.
+                    runCatching {
+                        context.startActivity(
+                            android.content.Intent(
+                                android.content.Intent.ACTION_VIEW,
+                                android.net.Uri.parse("market://details?id=com.google.android.apps.healthdata"),
+                            ),
+                        )
+                    }
+                }
+            },
             modifier = Modifier.fillMaxSize(),
         )
         state.loading -> Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { CircularProgressIndicator() }

@@ -62,6 +62,7 @@ fun PremiumDashboard(
     steps: Long = 0,
     stepsKcal: Int = 0,
     stepsPermission: Boolean = true,
+    stepsAvailable: Boolean = false,
     onConnectSteps: () -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
@@ -86,7 +87,7 @@ fun PremiumDashboard(
         item { HydrationCard(water = d.water, onAddWater = onAddWater) }
 
         // 4b. Steps (Health Connect)
-        item { StepsCard(steps = steps, stepsKcal = stepsKcal, hasPermission = stepsPermission, onConnect = onConnectSteps) }
+        item { StepsCard(steps = steps, stepsKcal = stepsKcal, hasPermission = stepsPermission, available = stepsAvailable, onConnect = onConnectSteps) }
 
         // 5. Scores
         item { ScoresRow(dashboard = d) }
@@ -432,7 +433,7 @@ private fun HydrationCard(water: DashMetric, onAddWater: () -> Unit) {
 // ---------------------------------------------------------------------------
 
 @Composable
-private fun StepsCard(steps: Long, stepsKcal: Int, hasPermission: Boolean, onConnect: () -> Unit) {
+private fun StepsCard(steps: Long, stepsKcal: Int, hasPermission: Boolean, available: Boolean, onConnect: () -> Unit) {
     Card(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(28.dp),
@@ -469,7 +470,11 @@ private fun StepsCard(steps: Long, stepsKcal: Int, hasPermission: Boolean, onCon
                 )
             } else {
                 Text(
-                    "Connect Health Connect to auto-track your steps and calories burned.",
+                    if (available) {
+                        "Connect Health Connect to auto-track your steps and calories burned."
+                    } else {
+                        "Install Health Connect (free) to auto-track your steps and calories burned."
+                    },
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
@@ -478,7 +483,7 @@ private fun StepsCard(steps: Long, stepsKcal: Int, hasPermission: Boolean, onCon
                     modifier = Modifier.fillMaxWidth(),
                     shape = RoundedCornerShape(24.dp),
                     colors = ButtonDefaults.buttonColors(containerColor = BrandGreen),
-                ) { Text("Connect steps") }
+                ) { Text(if (available) "Connect steps" else "Install Health Connect") }
             }
         }
     }
@@ -495,54 +500,47 @@ private fun ScoresRow(dashboard: Dashboard) {
     val bmiText = dashboard.bmi?.let { String.format("%.1f", it) } ?: "—"
     Row(
         modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.spacedBy(14.dp),
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
     ) {
-        ScoreTile("Adherence", "$adherence", "%", BrandGreen, Modifier.weight(1f))
-        ScoreTile("Hydration", "$hydration", "%", BrandGreenLight, Modifier.weight(1f))
-        ScoreTile("BMI", bmiText, "", BrandAmber, Modifier.weight(1f))
+        ScoreTile("🎯", "Adherence", "$adherence%", listOf(BrandGreen, BrandGreenDeep), Modifier.weight(1f))
+        ScoreTile("💧", "Hydration", "$hydration%", listOf(Color(0xFF38BDF8), Color(0xFF0369A1)), Modifier.weight(1f))
+        ScoreTile("⚖️", "BMI", bmiText, listOf(BrandAmber, Color(0xFFB45309)), Modifier.weight(1f))
     }
 }
 
 @Composable
 private fun ScoreTile(
+    icon: String,
     label: String,
     value: String,
-    unit: String,
-    accent: Color,
+    gradient: List<Color>,
     modifier: Modifier = Modifier,
 ) {
     Card(
         modifier = modifier,
-        shape = RoundedCornerShape(24.dp),
-        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp),
-        colors = CardDefaults.cardColors(containerColor = accent.copy(alpha = 0.10f)),
+        shape = RoundedCornerShape(22.dp),
+        elevation = CardDefaults.cardElevation(defaultElevation = 6.dp),
+        colors = CardDefaults.cardColors(containerColor = Color.Transparent),
     ) {
         Column(
-            modifier = Modifier.fillMaxWidth().padding(vertical = 20.dp, horizontal = 12.dp),
+            modifier = Modifier
+                .fillMaxWidth()
+                .background(Brush.verticalGradient(gradient))
+                .padding(vertical = 16.dp, horizontal = 8.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(6.dp),
+            verticalArrangement = Arrangement.spacedBy(4.dp),
         ) {
-            Row(verticalAlignment = Alignment.Bottom) {
-                Text(
-                    value,
-                    style = MaterialTheme.typography.headlineMedium,
-                    fontWeight = FontWeight.Bold,
-                    color = accent,
-                )
-                if (unit.isNotEmpty()) {
-                    Text(
-                        unit,
-                        style = MaterialTheme.typography.titleSmall,
-                        fontWeight = FontWeight.SemiBold,
-                        color = accent,
-                        modifier = Modifier.padding(bottom = 4.dp, start = 1.dp),
-                    )
-                }
-            }
+            Text(icon, style = MaterialTheme.typography.titleLarge)
+            Text(
+                value,
+                style = MaterialTheme.typography.titleLarge,
+                fontWeight = FontWeight.Bold,
+                color = Color.White,
+            )
             Text(
                 label,
                 style = MaterialTheme.typography.labelMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                color = Color.White.copy(alpha = 0.9f),
             )
         }
     }
