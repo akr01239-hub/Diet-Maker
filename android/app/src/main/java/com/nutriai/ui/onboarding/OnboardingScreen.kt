@@ -56,6 +56,7 @@ private val DAYS: List<Pair<Int?, String>> = listOf(
     3 to "Wednesday", 4 to "Thursday", 5 to "Friday", 6 to "Saturday",
 )
 private val CONDITIONS = listOf("diabetes", "hypertension", "kidney_disease", "thyroid", "pcos", "heart_disease", "fatty_liver", "gout")
+private val FREQ = listOf("no" to "No", "occasional" to "Occasionally", "regular" to "Regularly")
 
 @Composable
 fun OnboardingScreen(
@@ -77,6 +78,8 @@ fun OnboardingScreen(
     var exLocation by remember { mutableStateOf("home") }
     var bodyGoal by remember { mutableStateOf("fatloss") }
     var workoutRest by remember { mutableStateOf<Int?>(0) }
+    var smoking by remember { mutableStateOf("no") }
+    var alcohol by remember { mutableStateOf("no") }
 
     LaunchedEffect(state.prefillLoaded) {
         val p = state.prefill ?: return@LaunchedEffect
@@ -94,6 +97,8 @@ fun OnboardingScreen(
             exLocation = s.exerciseLocation ?: exLocation
             bodyGoal = s.bodyGoal ?: bodyGoal
             workoutRest = s.workoutRestDay ?: workoutRest
+            smoking = s.smoking ?: smoking
+            alcohol = s.alcohol ?: alcohol
         }
     }
     val editing = state.prefill != null
@@ -131,6 +136,8 @@ fun OnboardingScreen(
         Dropdown("Body goal", BODY_GOAL, bodyGoal) { bodyGoal = it }
         Dropdown("Weekly fasting day (optional)", DAYS, fastDay) { fastDay = it }
         Dropdown("Workout rest day", DAYS, workoutRest) { workoutRest = it }
+        Dropdown("Do you smoke?", FREQ, smoking) { smoking = it }
+        Dropdown("Do you drink alcohol?", FREQ, alcohol) { alcohol = it }
 
         Label("Conditions (optional)")
         MultiChoiceChips(CONDITIONS, conditions)
@@ -166,6 +173,8 @@ fun OnboardingScreen(
                                 exerciseLocation = exLocation,
                                 bodyGoal = bodyGoal,
                                 workoutRestDay = workoutRest,
+                                smoking = smoking,
+                                alcohol = alcohol,
                             ),
                         ),
                         onDone,

@@ -76,6 +76,9 @@ interface NutriApi {
     @POST("cycle/period")
     suspend fun logPeriod(@Body body: com.nutriai.data.remote.dto.LogPeriodRequest)
 
+    @POST("cycle/end")
+    suspend fun endPeriod(): Unit
+
     @GET("wellness")
     suspend fun wellness(): com.nutriai.data.remote.dto.Wellness
 

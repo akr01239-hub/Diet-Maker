@@ -54,6 +54,8 @@ data class SensitiveData(
     val exerciseLocation: String? = null,
     val bodyGoal: String? = null,
     val workoutRestDay: Int? = null,
+    val smoking: String? = null,
+    val alcohol: String? = null,
 )
 
 // ---- Workout / exercise plan ----
@@ -314,6 +316,27 @@ data class CyclePhaseGuidance(
 )
 
 @Serializable
+data class CycleFinding(val issue: String, val possibleCauses: String, val severity: String = "watch")
+
+@Serializable
+data class CycleHealthAdvice(
+    val diet: List<String> = emptyList(),
+    val sleep: List<String> = emptyList(),
+    val lifestyle: List<String> = emptyList(),
+    val exercise: List<String> = emptyList(),
+)
+
+@Serializable
+data class CycleHealth(
+    val status: String = "",
+    val headline: String = "",
+    val findings: List<CycleFinding> = emptyList(),
+    val advice: CycleHealthAdvice = CycleHealthAdvice(),
+    val seeDoctor: Boolean = false,
+    val disclaimer: String = "",
+)
+
+@Serializable
 data class Cycle(
     val applicable: Boolean = false,
     val needsSetup: Boolean = false,
@@ -321,11 +344,13 @@ data class Cycle(
     val cycleDay: Int? = null,
     val cycleLengthDays: Int? = null,
     val periodLengthDays: Int? = null,
+    val periodOngoing: Boolean = false,
     val phase: String? = null,
     val phaseLabel: String? = null,
     val nextPeriodInDays: Int? = null,
     val shouldPromptPeriod: Boolean = false,
     val guidance: CyclePhaseGuidance? = null,
+    val health: CycleHealth? = null,
 )
 
 @Serializable

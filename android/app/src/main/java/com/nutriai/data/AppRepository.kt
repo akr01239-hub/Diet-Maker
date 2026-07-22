@@ -107,6 +107,8 @@ class AppRepository @Inject constructor(
     suspend fun logPeriod(startDate: String? = null): Result<Unit> =
         runCatching { api.logPeriod(com.nutriai.data.remote.dto.LogPeriodRequest(startDate)) }
 
+    suspend fun endPeriod(): Result<Unit> = runCatching { api.endPeriod() }
+
     // ---- Wellness ----
     suspend fun wellness(): Result<com.nutriai.data.remote.dto.Wellness> =
         runCatching { api.wellness() }

@@ -29,6 +29,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewModelScope
 import com.nutriai.data.AppRepository
 import com.nutriai.data.remote.dto.Cycle
+import com.nutriai.data.remote.dto.CycleHealth
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -53,6 +54,15 @@ class CycleViewModel @Inject constructor(
         viewModelScope.launch {
             val c = repository.cycle().getOrNull()
             _state.value = _state.value.copy(loading = false, cycle = c)
+        }
+    }
+
+    /** Marks the ongoing period as ended today, then refreshes (enables duration analysis). */
+    fun endPeriod() {
+        _state.value = _state.value.copy(submitting = true)
+        viewModelScope.launch {
+            repository.endPeriod()
+            _state.value = _state.value.copy(submitting = false, cycle = repository.cycle().getOrNull())
         }
     }
 
@@ -117,8 +127,18 @@ fun CycleSection(modifier: Modifier = Modifier, viewModel: CycleViewModel = hilt
                     }
                 }
 
+                if (cycle.periodOngoing) {
+                    Button(onClick = { viewModel.endPeriod() }, enabled = !state.submitting) {
+                        Text("🩸 My period ended today")
+                    }
+                }
+
                 cycle.guidance?.let { g ->
                     CyclePhaseTips(g.summary, g.dietTips, g.exerciseTips, g.yogaTips, g.cravingTips)
+                }
+
+                cycle.health?.takeIf { it.status != "insufficient_data" || it.findings.isNotEmpty() }?.let { h ->
+                    CycleHealthCard(h)
                 }
 
                 var showLog by remember { mutableStateOf(false) }
@@ -175,6 +195,53 @@ private fun CyclePhaseTips(
         TipGroup("🍫 Cravings", cravings)
         TipGroup("🏃 Exercise", exercise)
         TipGroup("🧘 Yoga", yoga)
+    }
+}
+
+@Composable
+private fun CycleHealthCard(h: CycleHealth) {
+    var expanded by remember(h) { mutableStateOf(h.status == "concern") }
+    Card(
+        Modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(
+            containerColor = if (h.status == "concern") MaterialTheme.colorScheme.errorContainer
+            else MaterialTheme.colorScheme.surface,
+        ),
+    ) {
+        Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+            Row(
+                Modifier.fillMaxWidth().clickable { expanded = !expanded },
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Column(Modifier.weight(1f)) {
+                    Text("🩺 Cycle health check", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
+                    Text(h.headline, style = MaterialTheme.typography.bodySmall)
+                }
+                Text(if (expanded) "▲" else "▼")
+            }
+            if (expanded) {
+                if (h.seeDoctor) {
+                    Text(
+                        "⚠️ Worth getting checked by a gynaecologist.",
+                        style = MaterialTheme.typography.bodyMedium,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.error,
+                    )
+                }
+                h.findings.forEach { f ->
+                    Text("• ${f.issue}", style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.SemiBold)
+                    Text("This can be due to: ${f.possibleCauses}", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+                TipGroup("🥗 Diet", h.advice.diet)
+                TipGroup("😴 Sleep", h.advice.sleep)
+                TipGroup("🌿 Lifestyle", h.advice.lifestyle)
+                TipGroup("🏃 Exercise", h.advice.exercise)
+                if (h.disclaimer.isNotBlank()) {
+                    Text(h.disclaimer, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+            }
+        }
     }
 }
 
