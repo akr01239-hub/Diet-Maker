@@ -1,5 +1,9 @@
 package com.nutriai.ui.home
 
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.health.connect.client.PermissionController
+import androidx.health.connect.client.permission.HealthPermission
+import androidx.health.connect.client.records.StepsRecord
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
@@ -104,8 +108,14 @@ private fun DashboardTab(
     val state by viewModel.state.collectAsStateWithLifecycle()
     var showDelete by remember { mutableStateOf(false) }
 
+    // Health Connect step-permission request.
+    val stepPerms = remember { setOf(HealthPermission.getReadPermission(StepsRecord::class)) }
+    val stepLauncher = rememberLauncherForActivityResult(
+        PermissionController.createRequestPermissionResultContract(),
+    ) { viewModel.loadSteps() }
+
     // Refresh every time the Home tab becomes visible (e.g. after logging food).
-    LaunchedEffect(Unit) { viewModel.refresh() }
+    LaunchedEffect(Unit) { viewModel.refresh(); viewModel.loadSteps() }
 
     if (showDelete) {
         AlertDialog(
@@ -130,6 +140,10 @@ private fun DashboardTab(
             onCompleteProfile = onCompleteProfile,
             onLogout = { viewModel.logout(onLogout) },
             onDeleteAccount = { showDelete = true },
+            steps = state.steps,
+            stepsKcal = state.stepsKcal,
+            stepsPermission = state.stepsPermission,
+            onConnectSteps = { runCatching { stepLauncher.launch(stepPerms) } },
             modifier = Modifier.fillMaxSize(),
         )
         state.loading -> Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { CircularProgressIndicator() }

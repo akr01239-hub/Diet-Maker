@@ -59,6 +59,10 @@ fun PremiumDashboard(
     onCompleteProfile: () -> Unit,
     onLogout: () -> Unit,
     onDeleteAccount: () -> Unit,
+    steps: Long = 0,
+    stepsKcal: Int = 0,
+    stepsPermission: Boolean = true,
+    onConnectSteps: () -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
     val d = dashboard
@@ -80,6 +84,9 @@ fun PremiumDashboard(
 
         // 4. Hydration
         item { HydrationCard(water = d.water, onAddWater = onAddWater) }
+
+        // 4b. Steps (Health Connect)
+        item { StepsCard(steps = steps, stepsKcal = stepsKcal, hasPermission = stepsPermission, onConnect = onConnectSteps) }
 
         // 5. Scores
         item { ScoresRow(dashboard = d) }
@@ -416,6 +423,63 @@ private fun HydrationCard(water: DashMetric, onAddWater: () -> Unit) {
                 shape = RoundedCornerShape(24.dp),
                 colors = ButtonDefaults.buttonColors(containerColor = BrandGreen),
             ) { Text("+ Add 250 ml") }
+        }
+    }
+}
+
+// ---------------------------------------------------------------------------
+// 4b. Steps card (Health Connect)
+// ---------------------------------------------------------------------------
+
+@Composable
+private fun StepsCard(steps: Long, stepsKcal: Int, hasPermission: Boolean, onConnect: () -> Unit) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(28.dp),
+        elevation = CardDefaults.cardElevation(defaultElevation = 6.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+    ) {
+        Column(
+            modifier = Modifier.fillMaxWidth().padding(20.dp),
+            verticalArrangement = Arrangement.spacedBy(10.dp),
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Text(
+                    "👟 Steps today",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.SemiBold,
+                    color = MaterialTheme.colorScheme.onSurface,
+                )
+                Text(
+                    if (hasPermission) "%,d".format(steps) else "—",
+                    style = MaterialTheme.typography.headlineSmall,
+                    fontWeight = FontWeight.Bold,
+                    color = BrandGreen,
+                )
+            }
+            if (hasPermission) {
+                Text(
+                    "≈ $stepsKcal kcal burned",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            } else {
+                Text(
+                    "Connect Health Connect to auto-track your steps and calories burned.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                Button(
+                    onClick = onConnect,
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(24.dp),
+                    colors = ButtonDefaults.buttonColors(containerColor = BrandGreen),
+                ) { Text("Connect steps") }
+            }
         }
     }
 }

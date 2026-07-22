@@ -17,22 +17,43 @@ data class DashboardState(
     val loading: Boolean = true,
     val dashboard: Dashboard? = null,
     val firstName: String? = null,
+    val steps: Long = 0,
+    val stepsKcal: Int = 0,
+    val stepsAvailable: Boolean = false,
+    val stepsPermission: Boolean = false,
     val error: String? = null,
 )
 
 @HiltViewModel
 class DashboardViewModel @Inject constructor(
     private val repository: AppRepository,
+    private val healthConnect: com.nutriai.data.health.HealthConnectManager,
 ) : ViewModel() {
     private val _state = MutableStateFlow(DashboardState())
     val state: StateFlow<DashboardState> = _state.asStateFlow()
 
     init {
         refresh()
+        loadSteps()
         viewModelScope.launch {
             repository.me().getOrNull()?.let { u ->
                 _state.value = _state.value.copy(firstName = u.firstName)
             }
+        }
+    }
+
+    /** Reads today's steps from Health Connect (0 if unavailable / no permission). */
+    fun loadSteps() {
+        viewModelScope.launch {
+            val available = healthConnect.isAvailable()
+            val perm = if (available) healthConnect.hasStepPermission() else false
+            val steps = if (perm) healthConnect.readTodaySteps() else 0L
+            _state.value = _state.value.copy(
+                steps = steps,
+                stepsKcal = (steps * 0.04).toInt(), // ~0.04 kcal/step
+                stepsAvailable = available,
+                stepsPermission = perm,
+            )
         }
     }
 
