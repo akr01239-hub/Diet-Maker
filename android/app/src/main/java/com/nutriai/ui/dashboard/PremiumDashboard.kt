@@ -371,43 +371,37 @@ private fun StatTile(
 ) {
     Card(
         modifier = modifier,
-        shape = RoundedCornerShape(22.dp),
+        shape = RoundedCornerShape(18.dp),
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
-        colors = CardDefaults.cardColors(containerColor = accent.copy(alpha = 0.10f)),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
     ) {
         Column(
-            modifier = Modifier.fillMaxWidth().padding(14.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp),
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 12.dp),
+            verticalArrangement = Arrangement.spacedBy(6.dp),
         ) {
-            // Icon chip
-            Box(
-                modifier = Modifier
-                    .size(34.dp)
-                    .clip(CircleShape)
-                    .background(accent.copy(alpha = 0.22f)),
-                contentAlignment = Alignment.Center,
-            ) { Text(icon, style = MaterialTheme.typography.titleMedium) }
-
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                Box(Modifier.size(9.dp).clip(CircleShape).background(accent))
+                Text(
+                    "$icon $label",
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 1,
+                )
+            }
             Text(
                 value,
                 style = MaterialTheme.typography.titleLarge,
                 fontWeight = FontWeight.Bold,
-                color = accent,
-            )
-            Text(
-                label,
-                style = MaterialTheme.typography.labelMedium,
-                fontWeight = FontWeight.Medium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                color = MaterialTheme.colorScheme.onSurface,
             )
             LinearProgressIndicator(
                 progress = { (fraction ?: 1f).coerceIn(0f, 1f) },
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(6.dp)
+                    .height(5.dp)
                     .clip(RoundedCornerShape(3.dp)),
                 color = accent,
-                trackColor = accent.copy(alpha = 0.20f),
+                trackColor = accent.copy(alpha = 0.18f),
             )
         }
     }

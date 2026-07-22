@@ -378,9 +378,17 @@ fun CalendarScreen(
 
         if (!state.loading && (dietDay != null || workoutDay != null)) {
             item {
+                // Full weekday + date (e.g. "Wednesday, 22 Jul 2026"), plus any Fasting note.
+                val header = selected?.let {
+                    runCatching {
+                        java.time.LocalDate.parse(it).format(
+                            java.time.format.DateTimeFormatter.ofPattern("EEEE, d MMM yyyy", java.util.Locale.getDefault()),
+                        )
+                    }.getOrNull()
+                } ?: (dietDay?.label ?: workoutDay?.label ?: "Selected day")
+                val fasting = (dietDay?.label ?: workoutDay?.label)?.contains("Fasting", ignoreCase = true) == true
                 Text(
-                    (dietDay?.label ?: workoutDay?.label ?: "Selected day") +
-                        (selected?.let { " · $it" } ?: ""),
+                    if (fasting) "$header · Fasting day" else header,
                     style = MaterialTheme.typography.titleMedium,
                     color = MaterialTheme.colorScheme.primary,
                 )
@@ -873,6 +881,14 @@ private fun DayPill(
     onClick: () -> Unit,
 ) {
     val dayNumber = date?.substringAfterLast('-')?.trimStart('0')?.ifBlank { "0" } ?: "—"
+    // Always show the real weekday (Mon/Tue…) from the date, not Yesterday/Today/Tomorrow.
+    val weekday = date?.let {
+        runCatching {
+            java.time.LocalDate.parse(it)
+                .dayOfWeek
+                .getDisplayName(java.time.format.TextStyle.SHORT, java.util.Locale.getDefault())
+        }.getOrNull()
+    } ?: label
     val container = when {
         isSelected -> MaterialTheme.colorScheme.primary
         isToday -> MaterialTheme.colorScheme.primaryContainer
@@ -895,7 +911,7 @@ private fun DayPill(
             verticalArrangement = Arrangement.spacedBy(2.dp),
         ) {
             Text(
-                label ?: "—",
+                weekday ?: "—",
                 style = MaterialTheme.typography.labelMedium,
                 color = content,
                 maxLines = 1,

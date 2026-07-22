@@ -1,14 +1,19 @@
 package com.nutriai.ui.grocery
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -16,6 +21,7 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -26,6 +32,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.ViewModel
@@ -141,27 +148,77 @@ private fun CategoryCard(cat: GroceryCategory) {
         shape = RoundedCornerShape(20.dp),
         elevation = CardDefaults.cardElevation(defaultElevation = 3.dp),
     ) {
-        Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+        Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             Text(cat.category, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, color = BrandGreen)
-            // Table header
-            Row(Modifier.fillMaxWidth().padding(bottom = 2.dp)) {
-                Text("Item", Modifier.weight(1f), style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                Text("Amount", Modifier.weight(0.5f), style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                Text("Times", Modifier.weight(0.45f), style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-            }
-            cat.items.forEach { line ->
-                Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                    Text(line.name, Modifier.weight(1f), style = MaterialTheme.typography.bodyMedium)
-                    Text(
-                        if (line.unit == "pcs") "${line.qty} pcs" else "${line.qty} g",
-                        Modifier.weight(0.5f),
-                        style = MaterialTheme.typography.bodyMedium,
-                        fontWeight = FontWeight.SemiBold,
-                        color = BrandGreenDeep,
+
+            val border = MaterialTheme.colorScheme.outlineVariant
+            // Bordered grid: outer border + horizontal dividers between rows + vertical
+            // dividers between columns. Column weights sum to 1 so it fills the full width.
+            Column(
+                Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(10.dp))
+                    .border(1.dp, border, RoundedCornerShape(10.dp)),
+            ) {
+                GroceryRow(
+                    item = "Item",
+                    amount = "Amount",
+                    times = "Times",
+                    border = border,
+                    header = true,
+                )
+                cat.items.forEach { line ->
+                    HorizontalDivider(thickness = 1.dp, color = border)
+                    GroceryRow(
+                        item = line.name,
+                        amount = if (line.unit == "pcs") "${line.qty} pcs" else "${line.qty} g",
+                        times = "×${line.meals}",
+                        border = border,
+                        header = false,
                     )
-                    Text("×${line.meals}", Modifier.weight(0.45f), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
             }
         }
+    }
+}
+
+@Composable
+private fun GroceryRow(
+    item: String,
+    amount: String,
+    times: String,
+    border: Color,
+    header: Boolean,
+) {
+    val cellStyle = MaterialTheme.typography.bodyMedium
+    Row(
+        Modifier.fillMaxWidth().height(IntrinsicSize.Min),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text(
+            item,
+            Modifier.weight(0.48f).padding(horizontal = 10.dp, vertical = 8.dp),
+            style = if (header) MaterialTheme.typography.labelMedium else cellStyle,
+            fontWeight = if (header) FontWeight.SemiBold else FontWeight.Normal,
+            color = if (header) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.onSurface,
+        )
+        Box(Modifier.width(1.dp).fillMaxHeight().background(border))
+        Text(
+            amount,
+            Modifier.weight(0.30f).padding(horizontal = 10.dp, vertical = 8.dp),
+            style = if (header) MaterialTheme.typography.labelMedium else cellStyle,
+            fontWeight = if (header) FontWeight.SemiBold else FontWeight.SemiBold,
+            textAlign = TextAlign.Center,
+            color = if (header) MaterialTheme.colorScheme.onSurfaceVariant else BrandGreenDeep,
+        )
+        Box(Modifier.width(1.dp).fillMaxHeight().background(border))
+        Text(
+            times,
+            Modifier.weight(0.22f).padding(horizontal = 10.dp, vertical = 8.dp),
+            style = if (header) MaterialTheme.typography.labelMedium else cellStyle,
+            fontWeight = if (header) FontWeight.SemiBold else FontWeight.Normal,
+            textAlign = TextAlign.Center,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
     }
 }
