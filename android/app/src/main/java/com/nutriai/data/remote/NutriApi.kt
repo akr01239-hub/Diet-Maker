@@ -157,6 +157,13 @@ interface NutriApi {
     @GET("gamification")
     suspend fun gamification(): GamificationEnvelope
 
+    // ---- Health risk ----
+    @GET("risk")
+    suspend fun risk(
+        @retrofit2.http.Query("sleepHours") sleepHours: Double? = null,
+        @retrofit2.http.Query("hydrationPct") hydrationPct: Double? = null,
+    ): com.nutriai.data.remote.dto.RiskEnvelope
+
     // ---- Family ----
     @GET("family")
     suspend fun family(): FamilyEnvelope

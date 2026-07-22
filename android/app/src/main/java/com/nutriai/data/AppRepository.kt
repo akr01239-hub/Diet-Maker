@@ -220,6 +220,10 @@ class AppRepository @Inject constructor(
     suspend fun gamification(): Result<com.nutriai.data.remote.dto.Gamification> =
         runCatching { api.gamification().gamification }
 
+    // ---- Health risk ----
+    suspend fun risk(sleepHours: Double? = null, hydrationPct: Double? = null): Result<com.nutriai.data.remote.dto.RiskAssessment> =
+        runCatching { api.risk(sleepHours, hydrationPct).risk }
+
     // ---- Family ----
     suspend fun family(): Result<List<com.nutriai.data.remote.dto.FamilyMemberDto>> =
         runCatching { api.family().members }

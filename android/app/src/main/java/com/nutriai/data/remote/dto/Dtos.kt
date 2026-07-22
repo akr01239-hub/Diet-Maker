@@ -611,6 +611,27 @@ data class Grocery(
 @Serializable
 data class GroceryEnvelope(val grocery: Grocery)
 
+// ---- Health risk ----
+@Serializable
+data class RiskFinding(
+    val id: String = "",
+    val label: String = "",
+    val level: String = "low", // low | moderate | high
+    val why: String = "",
+    val recommendation: String = "",
+    val nextAction: String = "",
+)
+
+@Serializable
+data class RiskAssessment(
+    val findings: List<RiskFinding> = emptyList(),
+    val overallScore: Int = 0,
+    val disclaimer: String = "",
+)
+
+@Serializable
+data class RiskEnvelope(val risk: RiskAssessment)
+
 // ---- Reports ----
 @Serializable
 data class ReportDay(val date: String, val kcal: Double, val proteinG: Double)

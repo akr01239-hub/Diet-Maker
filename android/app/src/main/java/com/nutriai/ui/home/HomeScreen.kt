@@ -153,6 +153,7 @@ private fun DashboardTab(
             stress = state.stress,
             onSaveVitals = { hr, s -> viewModel.saveManualVitals(hr, s) },
             safetyFlags = state.safetyFlags,
+            riskFindings = state.riskFindings,
             onConnectSteps = {
                 if (state.stepsAvailable) {
                     runCatching { stepLauncher.launch(stepPerms) }

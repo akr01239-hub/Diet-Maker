@@ -1,0 +1,209 @@
+import type { Sex } from '../../calc/types';
+
+/**
+ * Deterministic, non-diagnostic health-risk engine. Turns already-collected profile + check-in
+ * numbers (waist, BMI, blood pressure, fasting glucose, resting HR, sleep, hydration) into
+ * plain-language risk flags — each with WHY, a recommendation and a concrete next action.
+ *
+ * This is education, not diagnosis: it never names a disease as present, only "higher risk", and
+ * always defers to a clinician. Pure & fully unit-tested — never delegated to an LLM.
+ */
+
+export type RiskLevel = 'low' | 'moderate' | 'high';
+
+export interface RiskFinding {
+  id: string;
+  label: string;
+  level: RiskLevel;
+  /** Why we flagged it — the specific numbers involved. */
+  why: string;
+  /** What generally helps. */
+  recommendation: string;
+  /** One concrete next step. */
+  nextAction: string;
+}
+
+export interface RiskInput {
+  sex: Sex;
+  ageYears: number;
+  bmi: number;
+  heightCm: number;
+  waistCm?: number;
+  /** Blood pressure as "120/80" (mmHg). */
+  bloodPressure?: string;
+  /** Fasting blood glucose (mg/dL). */
+  bloodSugar?: number;
+  /** Resting heart rate (bpm). */
+  restingHr?: number;
+  /** Last night's sleep (hours). */
+  sleepHours?: number;
+  /** Today's hydration as a % of target (0–100). */
+  hydrationPct?: number;
+  /** Already-declared conditions (skip a risk we'd otherwise infer). */
+  conditions?: string[];
+}
+
+export interface RiskAssessment {
+  findings: RiskFinding[];
+  /** Overall 0–100 (higher = more flags / more severe). Coarse, for a summary badge. */
+  overallScore: number;
+  disclaimer: string;
+}
+
+const DISCLAIMER =
+  'These are educational risk signals from the numbers you entered — not a diagnosis. Confirm anything concerning with a doctor and a proper blood test.';
+
+const has = (conds: string[] | undefined, c: string) => (conds ?? []).includes(c);
+
+/** Parses "120/80" → {systolic, diastolic}; null if unparseable. */
+function parseBp(bp?: string): { systolic: number; diastolic: number } | null {
+  if (!bp) return null;
+  const m = bp.match(/(\d{2,3})\s*[/\\-]\s*(\d{2,3})/);
+  if (!m) return null;
+  const systolic = Number(m[1]);
+  const diastolic = Number(m[2]);
+  if (!isFinite(systolic) || !isFinite(diastolic)) return null;
+  return { systolic, diastolic };
+}
+
+const LEVEL_SCORE: Record<RiskLevel, number> = { low: 0, moderate: 1, high: 2 };
+
+export function assessRisks(input: RiskInput): RiskAssessment {
+  const findings: RiskFinding[] = [];
+
+  // --- Central obesity (waist-to-height ratio) — the strongest simple cardiometabolic signal ---
+  if (input.waistCm && input.heightCm > 0) {
+    const whtr = input.waistCm / input.heightCm;
+    if (whtr >= 0.6) {
+      findings.push({
+        id: 'central_obesity',
+        label: 'Central obesity',
+        level: 'high',
+        why: `Your waist-to-height ratio is ${whtr.toFixed(2)} (waist ${input.waistCm} cm). Above 0.6 signals a lot of visceral fat.`,
+        recommendation: 'A modest calorie deficit, more fibre and daily movement shrink waist fat fastest.',
+        nextAction: 'Aim to keep your waist under half your height — track it monthly.',
+      });
+    } else if (whtr >= 0.5) {
+      findings.push({
+        id: 'central_obesity',
+        label: 'Waist creeping up',
+        level: 'moderate',
+        why: `Your waist-to-height ratio is ${whtr.toFixed(2)} — over the 0.5 "keep waist under half your height" line.`,
+        recommendation: 'Prioritise protein + fibre, cut refined carbs, and add a daily walk.',
+        nextAction: `Re-measure your waist in 4 weeks and aim for under ${Math.round(input.heightCm / 2)} cm.`,
+      });
+    }
+  }
+
+  // --- Weight status by BMI (Asian-Indian cut-offs) ---
+  if (input.bmi >= 25) {
+    findings.push({
+      id: 'obesity',
+      label: 'Obesity range (Asian BMI)',
+      level: 'high',
+      why: `Your BMI is ${input.bmi}. For South-Asian bodies, ≥ 25 is the obesity threshold (risk rises earlier than the global 30).`,
+      recommendation: 'A steady 0.25–0.5 kg/week loss with strength training protects muscle while cutting fat.',
+      nextAction: 'Follow your calorie target and re-check weight weekly.',
+    });
+  } else if (input.bmi >= 23) {
+    findings.push({
+      id: 'overweight',
+      label: 'Overweight range (Asian BMI)',
+      level: 'moderate',
+      why: `Your BMI is ${input.bmi}. For South-Asians, 23–25 is already "overweight".`,
+      recommendation: 'Small, sustainable changes now prevent the slide into higher risk.',
+      nextAction: 'Hold a light deficit and keep protein high.',
+    });
+  }
+
+  // --- Hypertension (measured BP) ---
+  const bp = parseBp(input.bloodPressure);
+  if (bp && !has(input.conditions, 'hypertension')) {
+    if (bp.systolic >= 140 || bp.diastolic >= 90) {
+      findings.push({
+        id: 'hypertension',
+        label: 'High blood pressure',
+        level: 'high',
+        why: `Your reading ${bp.systolic}/${bp.diastolic} mmHg is in the hypertension range (≥ 140/90).`,
+        recommendation: 'Cut salt to ~1500–2000 mg/day (DASH pattern), limit alcohol, move daily.',
+        nextAction: 'Get your BP confirmed by a doctor — a single high reading needs verifying.',
+      });
+    } else if (bp.systolic >= 130 || bp.diastolic >= 85) {
+      findings.push({
+        id: 'hypertension',
+        label: 'Blood pressure elevated',
+        level: 'moderate',
+        why: `Your reading ${bp.systolic}/${bp.diastolic} mmHg is above the ideal < 120/80.`,
+        recommendation: 'Reduce salt and processed food, add potassium-rich vegetables and daily walks.',
+        nextAction: 'Recheck BP over a week at the same time of day.',
+      });
+    }
+  }
+
+  // --- Diabetes / prediabetes (fasting glucose) ---
+  if (input.bloodSugar && !has(input.conditions, 'diabetes')) {
+    if (input.bloodSugar >= 126) {
+      findings.push({
+        id: 'diabetes',
+        label: 'High fasting glucose',
+        level: 'high',
+        why: `Your fasting glucose ${input.bloodSugar} mg/dL is in the diabetes range (≥ 126).`,
+        recommendation: 'Low-GI carbs spread across meals, more fibre, and post-meal walks blunt spikes.',
+        nextAction: 'See a doctor for an HbA1c test to confirm.',
+      });
+    } else if (input.bloodSugar >= 100) {
+      findings.push({
+        id: 'prediabetes',
+        label: 'Prediabetes range',
+        level: 'moderate',
+        why: `Your fasting glucose ${input.bloodSugar} mg/dL is in the prediabetes range (100–125).`,
+        recommendation: 'Losing 5–7% of body weight and daily activity can reverse this stage.',
+        nextAction: 'Swap refined carbs for whole grains and walk 10 min after meals.',
+      });
+    }
+  }
+
+  // --- Resting heart rate ---
+  if (input.restingHr && input.restingHr > 100) {
+    findings.push({
+      id: 'high_resting_hr',
+      label: 'Elevated resting heart rate',
+      level: 'moderate',
+      why: `Your resting heart rate is ${input.restingHr} bpm (a healthy adult range is ~60–100).`,
+      recommendation: 'Regular cardio lowers resting HR; also check hydration, caffeine, sleep and stress.',
+      nextAction: 'If it stays above 100 at rest, mention it to a doctor.',
+    });
+  }
+
+  // --- Sleep ---
+  if (input.sleepHours != null && input.sleepHours < 6.5) {
+    findings.push({
+      id: 'poor_sleep',
+      label: 'Short sleep',
+      level: input.sleepHours < 5.5 ? 'high' : 'moderate',
+      why: `You logged ${input.sleepHours}h. Under ~7h raises appetite, blood sugar and blood pressure.`,
+      recommendation: 'Aim for 7–8h; keep a consistent bedtime and cut screens/caffeine late.',
+      nextAction: 'Set a wind-down reminder 30 min before bed tonight.',
+    });
+  }
+
+  // --- Hydration ---
+  if (input.hydrationPct != null && input.hydrationPct < 50) {
+    findings.push({
+      id: 'low_hydration',
+      label: 'Under-hydrated today',
+      level: 'moderate',
+      why: `You're at ${Math.round(input.hydrationPct)}% of your water goal. Low intake worsens focus, hunger and headaches.`,
+      recommendation: 'Front-load water earlier in the day; keep a bottle in sight.',
+      nextAction: 'Have a glass of water now.',
+    });
+  }
+
+  const rawScore = findings.reduce((s, f) => s + LEVEL_SCORE[f.level], 0);
+  const overallScore = Math.min(100, rawScore * 15);
+
+  // Sort high → moderate → low.
+  findings.sort((a, b) => LEVEL_SCORE[b.level] - LEVEL_SCORE[a.level]);
+
+  return { findings, overallScore, disclaimer: DISCLAIMER };
+}

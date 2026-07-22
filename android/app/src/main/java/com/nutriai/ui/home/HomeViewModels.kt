@@ -26,6 +26,7 @@ data class DashboardState(
     val manualHeartRate: Int? = null,
     val stress: Int? = null,
     val safetyFlags: List<com.nutriai.data.remote.dto.Flag> = emptyList(),
+    val riskFindings: List<com.nutriai.data.remote.dto.RiskFinding> = emptyList(),
     val error: String? = null,
 )
 
@@ -96,6 +97,12 @@ class DashboardViewModel @Inject constructor(
                 _state.value = _state.value.copy(
                     safetyFlags = calc.flags.filter { it.code != "DISCLAIMER" },
                 )
+            }
+        }
+        // Deterministic health-risk findings (central obesity, BP, glucose, sleep…).
+        viewModelScope.launch {
+            repository.risk().getOrNull()?.let { risk ->
+                _state.value = _state.value.copy(riskFindings = risk.findings)
             }
         }
     }

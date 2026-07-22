@@ -86,6 +86,7 @@ fun PremiumDashboard(
     stress: Int? = null,
     onSaveVitals: (Int?, Int?) -> Unit = { _, _ -> },
     safetyFlags: List<com.nutriai.data.remote.dto.Flag> = emptyList(),
+    riskFindings: List<com.nutriai.data.remote.dto.RiskFinding> = emptyList(),
     modifier: Modifier = Modifier,
 ) {
     val d = dashboard
@@ -108,6 +109,11 @@ fun PremiumDashboard(
         // 2b. Health & safety notes (guardrail flags: conditions, medication interactions…)
         if (safetyFlags.isNotEmpty()) {
             item { SafetyCard(flags = safetyFlags) }
+        }
+
+        // 2c. Deterministic health-risk findings (central obesity, BP, glucose, sleep…).
+        if (riskFindings.isNotEmpty()) {
+            item { RiskCard(findings = riskFindings) }
         }
 
         // 3. Macro row
@@ -928,6 +934,54 @@ private fun JourneyRow(when_: String, weight: String, bmi: String, line: Color, 
 // ---------------------------------------------------------------------------
 // 2b. Health & safety notes (guardrail flags)
 // ---------------------------------------------------------------------------
+
+@Composable
+private fun RiskCard(findings: List<com.nutriai.data.remote.dto.RiskFinding>) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(24.dp),
+        elevation = CardDefaults.cardElevation(defaultElevation = 3.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+    ) {
+        Column(
+            modifier = Modifier.fillMaxWidth().padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(10.dp),
+        ) {
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                Text("🩺", style = MaterialTheme.typography.titleMedium)
+                Text("Your health signals", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurface)
+            }
+            findings.forEach { f ->
+                val tint = when (f.level) {
+                    "high" -> MaterialTheme.colorScheme.error
+                    "moderate" -> Color(0xFFB45309)
+                    else -> BrandGreenDeep
+                }
+                Column(
+                    Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(14.dp))
+                        .background(tint.copy(alpha = 0.10f))
+                        .padding(12.dp),
+                    verticalArrangement = Arrangement.spacedBy(3.dp),
+                ) {
+                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Box(Modifier.size(9.dp).clip(CircleShape).background(tint))
+                        Text(f.label, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold, color = tint)
+                        Text(f.level.uppercase(), style = MaterialTheme.typography.labelSmall, color = tint)
+                    }
+                    Text(f.why, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurface)
+                    Text("→ ${f.nextAction}", style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.Medium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+            }
+            Text(
+                "Educational signals from your numbers — not a diagnosis. Confirm anything concerning with a doctor.",
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+    }
+}
 
 @Composable
 private fun SafetyCard(flags: List<com.nutriai.data.remote.dto.Flag>) {
