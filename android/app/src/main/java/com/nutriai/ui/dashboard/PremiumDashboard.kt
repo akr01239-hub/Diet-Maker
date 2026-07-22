@@ -664,7 +664,9 @@ private fun VitalsCard(
                             )
                         }
                         sleepHours?.let {
-                            Text("😴 ${it}h", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, color = BrandGreenDeep)
+                            // Simple sleep score vs an 8h target.
+                            val score = (it / 8.0 * 100).coerceIn(0.0, 100.0).toInt()
+                            Text("😴 ${it}h · $score%", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, color = BrandGreenDeep)
                         }
                         stressLabel?.let {
                             Text(it, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, color = BrandGreenDeep)

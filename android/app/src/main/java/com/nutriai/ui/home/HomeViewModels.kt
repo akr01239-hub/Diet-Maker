@@ -76,6 +76,14 @@ class DashboardViewModel @Inject constructor(
                 heartRate = hr,
                 sleepHours = sleep,
             )
+            // Re-run the risk engine WITH device sleep + today's hydration so poor-sleep /
+            // low-hydration signals appear alongside the profile-based ones.
+            val hydrationPct = _state.value.dashboard?.water?.percent
+            if (sleep != null || hydrationPct != null) {
+                repository.risk(sleepHours = sleep, hydrationPct = hydrationPct).getOrNull()?.let { risk ->
+                    _state.value = _state.value.copy(riskFindings = risk.findings)
+                }
+            }
         }
     }
 
