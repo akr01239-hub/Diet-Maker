@@ -1,4 +1,4 @@
-import { geminiTextJson, visionAvailable } from '../../ai/vision';
+import { llmTextJson, llmAvailable } from '../../ai/vision';
 import { FOOD_INGREDIENTS } from '../../data/ingredients';
 
 export interface Recipe {
@@ -17,13 +17,13 @@ const numOrNull = (v: unknown): number | null => (typeof v === 'number' && isFin
 
 /** A cooking recipe for a planned dish. Uses Gemini when available, else a basic fallback. */
 export async function getRecipe(foodName: string, foodId?: string): Promise<Recipe> {
-  if (visionAvailable()) {
+  if (llmAvailable()) {
     const prompt = [
       `Give a simple, healthy home recipe for "${foodName}" (Indian home-style where relevant).`,
       'Respond ONLY as JSON: {"title":string,"timeMin":number,"servings":number,"ingredients":string[],"steps":string[]}.',
       'Keep 5–9 concise steps and realistic ingredient quantities for the servings.',
     ].join(' ');
-    const r = await geminiTextJson(prompt);
+    const r = await llmTextJson(prompt);
     if (r) {
       const steps = strArr(r.steps);
       const ingredients = strArr(r.ingredients);
@@ -59,6 +59,8 @@ function basicRecipe(foodName: string, foodId?: string): Recipe {
       'Serve warm.',
     ],
     source: 'basic',
-    note: 'A quick guide — connect the AI provider for full step-by-step recipes.',
+    note: llmAvailable()
+      ? 'Quick guide shown — the AI was busy just now (the free server may be waking up). Tap 📖 again in a moment for full steps.'
+      : 'A quick guide — set an AI provider key (Groq or Gemini) on the server for full step-by-step recipes.',
   };
 }

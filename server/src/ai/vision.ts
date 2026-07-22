@@ -72,6 +72,44 @@ function parseJsonLoose(text: string): Record<string, unknown> | null {
 
 export const visionAvailable = (): boolean => Boolean(env.GEMINI_API_KEY);
 
+/** Groq (OpenAI-compatible) text call returning parsed JSON, or null. Never throws. */
+export async function groqTextJson(prompt: string): Promise<Record<string, unknown> | null> {
+  const key = env.GROQ_API_KEY;
+  if (!key) return null;
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), 15_000);
+  try {
+    const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${key}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        model: 'llama-3.3-70b-versatile',
+        messages: [{ role: 'user', content: prompt }],
+        temperature: 0.4,
+        max_tokens: 800,
+        response_format: { type: 'json_object' },
+      }),
+      signal: controller.signal,
+    });
+    if (!res.ok) return null;
+    const json = (await res.json()) as { choices?: { message?: { content?: string } }[] };
+    const text = json.choices?.[0]?.message?.content;
+    return text ? parseJsonLoose(text) : null;
+  } catch {
+    return null;
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+/** Text JSON via whichever LLM is configured (Gemini first, else Groq). */
+export async function llmTextJson(prompt: string): Promise<Record<string, unknown> | null> {
+  return (await geminiTextJson(prompt)) ?? (await groqTextJson(prompt));
+}
+
+/** True if any text LLM (Gemini or Groq) is configured. */
+export const llmAvailable = (): boolean => Boolean(env.GEMINI_API_KEY || env.GROQ_API_KEY);
+
 /** Text-only Gemini call that returns parsed JSON, or null. Never throws. */
 export async function geminiTextJson(prompt: string): Promise<Record<string, unknown> | null> {
   const key = env.GEMINI_API_KEY;
