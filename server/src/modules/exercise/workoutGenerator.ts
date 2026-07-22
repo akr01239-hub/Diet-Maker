@@ -121,7 +121,18 @@ const DISCLAIMER =
 export interface WorkoutOptions {
   restDayOfWeek?: number; // 0=Sun..6=Sat; omitted => 7 training days
   startDate?: Date;
+  today?: Date;
   days?: number;
+}
+
+function labelFor(date: Date, today: Date): string {
+  const a = Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate());
+  const b = Date.UTC(today.getUTCFullYear(), today.getUTCMonth(), today.getUTCDate());
+  const diff = Math.round((a - b) / 86_400_000);
+  if (diff === 0) return 'Today';
+  if (diff === 1) return 'Tomorrow';
+  if (diff === -1) return 'Yesterday';
+  return WEEKDAYS[date.getUTCDay()]!;
 }
 
 /** Which 4-week mesocycle block we're in, from the date (deterministic, rotates monthly). */
@@ -157,7 +168,7 @@ export function generateWeeklyWorkout(
       const dt = new Date(options.startDate.getTime() + d * 86_400_000);
       weekday = dt.getUTCDay();
       date = dt.toISOString().slice(0, 10);
-      baseLabel = d === 0 ? 'Today' : d === 1 ? 'Tomorrow' : WEEKDAYS[weekday];
+      baseLabel = labelFor(dt, options.today ?? options.startDate);
     }
 
     const isRest = options.restDayOfWeek !== undefined && weekday === options.restDayOfWeek;

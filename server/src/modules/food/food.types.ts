@@ -62,6 +62,8 @@ export interface PlanTargets {
   carbG: number;
   fiberG: number;
   sodiumMaxMg?: number;
+  /** Daily kcal adjustment applied to compensate for last week (carry-over). */
+  carryOverKcal?: number;
 }
 
 export interface PlanPreferences {

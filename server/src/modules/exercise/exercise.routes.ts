@@ -28,9 +28,12 @@ exerciseRouter.get(
     const location: ExerciseLocation = s.exerciseLocation ?? 'home';
     const goal: BodyGoal = s.bodyGoal ?? goalToBody(profile.goal);
 
+    const now = new Date();
+    const sunday = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() - now.getUTCDay()));
     const plan = generateWeeklyWorkout(goal, location, {
       restDayOfWeek: s.workoutRestDay,
-      startDate: new Date(),
+      startDate: sunday,
+      today: now,
     });
 
     res.json({ plan });

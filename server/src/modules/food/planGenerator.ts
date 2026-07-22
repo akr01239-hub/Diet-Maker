@@ -162,10 +162,23 @@ function buildDay(
 
 export interface GenerateOptions {
   days?: number;
-  /** If given, each day gets a real date + label (Today/Tomorrow/weekday). */
+  /** If given, each day gets a real date + label (Yesterday/Today/Tomorrow/weekday). */
   startDate?: Date;
+  /** Reference "today" for labels (defaults to startDate). */
+  today?: Date;
   /** Optional weekly fasting day: 0=Sun .. 6=Sat. That day gets a light plan. */
   fastDayOfWeek?: number;
+}
+
+/** Label a date relative to today: Yesterday / Today / Tomorrow / weekday name. */
+export function dayLabel(date: Date, today: Date): string {
+  const a = Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate());
+  const b = Date.UTC(today.getUTCFullYear(), today.getUTCMonth(), today.getUTCDate());
+  const diff = Math.round((a - b) / 86_400_000);
+  if (diff === 0) return 'Today';
+  if (diff === 1) return 'Tomorrow';
+  if (diff === -1) return 'Yesterday';
+  return WEEKDAYS[date.getUTCDay()]!;
 }
 
 const WEEKDAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
@@ -205,7 +218,7 @@ export function generateWeekPlan(
     const day = buildDay(d, ordered, targets, prefs.dietType, fasting);
     if (dt) {
       day.date = dt.toISOString().slice(0, 10);
-      const base = d === 0 ? 'Today' : d === 1 ? 'Tomorrow' : WEEKDAYS[dt.getUTCDay()];
+      const base = dayLabel(dt, options.today ?? options.startDate ?? dt);
       day.label = fasting ? `${base} · Fasting day` : base;
     }
     days.push(day);
