@@ -1,6 +1,7 @@
 import { prisma } from '../../lib/prisma';
 import { HttpError } from '../../middleware/error';
 import { requireCompleteProfile } from '../profile/profile.service';
+import { ageFromDob } from '../nutrition/calc.service';
 import { computeCycle, cycleGuidance, analyzeCycleHealth } from './cycle';
 
 const DAY_MS = 86_400_000;
@@ -91,6 +92,8 @@ export async function getCycle(userId: string, now: Date = new Date()) {
     periodLengths,
     daysSinceLastStart,
     avgCycleLength: cycleLengthDays,
+    ageYears: ageFromDob(sensitive.dob),
+    contraception: sensitive.contraception,
     smoking: sensitive.smoking,
     alcohol: sensitive.alcohol,
   });

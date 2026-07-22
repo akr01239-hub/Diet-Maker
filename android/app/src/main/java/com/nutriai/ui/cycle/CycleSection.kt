@@ -275,6 +275,10 @@ private fun CycleHealthCard(h: CycleHealth) {
                     Text("• ${f.issue}", style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.SemiBold)
                     Text("This can be due to: ${f.possibleCauses}", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
+                if (h.redFlags.isNotEmpty()) {
+                    Text("🚩 See a doctor if any of these", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.error)
+                    h.redFlags.forEach { Text("• $it", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.error) }
+                }
                 TipGroup("🥗 Diet", h.advice.diet)
                 TipGroup("😴 Sleep", h.advice.sleep)
                 TipGroup("🌿 Lifestyle", h.advice.lifestyle)

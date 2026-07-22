@@ -176,6 +176,8 @@ export interface CycleHealth {
   findings: CycleFinding[];
   advice: { diet: string[]; sleep: string[]; lifestyle: string[]; exercise: string[] };
   seeDoctor: boolean;
+  /** Symptoms that always warrant a doctor regardless of cycle regularity. Never hidden. */
+  redFlags: string[];
   disclaimer: string;
 }
 
@@ -184,9 +186,21 @@ export interface CycleHealthInput {
   periodLengths: number[]; // durations (days) of completed periods
   daysSinceLastStart: number;
   avgCycleLength: number;
+  ageYears?: number;
+  /** 'none' | 'pill' | 'hormonal_iud' | 'implant' | 'injection' | 'other' */
+  contraception?: string;
   smoking?: string; // 'no' | 'occasional' | 'regular'
   alcohol?: string;
 }
+
+/** Symptoms that always mean "see a doctor" even if cycle length looks regular. */
+const RED_FLAGS: string[] = [
+  'A late period when pregnancy is possible — take a home pregnancy test first.',
+  'Very heavy bleeding (soaking a pad/tampon every hour, or large clots).',
+  'Bleeding between periods, after sex, or any bleeding after menopause.',
+  'Severe pain that stops your normal activities or is not helped by usual painkillers.',
+  'Periods that suddenly stop, or become very irregular, without a clear reason.',
+];
 
 const HEALTH_DISCLAIMER =
   'Educational only — not a diagnosis. See a gynaecologist for periods that are very short/long, painful, heavy, irregular or missed, especially with other symptoms.';
@@ -194,93 +208,113 @@ const HEALTH_DISCLAIMER =
 /** Flags common menstrual-health concerns and returns doctor-style (educational) advice. */
 export function analyzeCycleHealth(input: CycleHealthInput): CycleHealth {
   const { cycleLengths, periodLengths, daysSinceLastStart, avgCycleLength, smoking, alcohol } = input;
+  const ageYears = input.ageYears ?? 30;
+  const contraception = input.contraception ?? 'none';
+  const hormonalNoBleed = contraception === 'injection' || contraception === 'hormonal_iud' || contraception === 'implant';
+  const teen = ageYears < 18;
   const findings: CycleFinding[] = [];
+  const daysLate = daysSinceLastStart - avgCycleLength;
+  const isLate = daysLate >= 2 && !hormonalNoBleed;
 
-  const enoughCycles = cycleLengths.length >= 2;
-  const haveDuration = periodLengths.length >= 1;
-
-  if (!enoughCycles && !haveDuration) {
+  // Not enough data AND not late → ask for more logs (still surface the red flags).
+  if (cycleLengths.length < 2 && periodLengths.length < 1 && !isLate) {
     return {
       status: 'insufficient_data',
       headline: 'Log a couple of full periods (start + end) so I can review your cycle health.',
       findings: [],
       advice: baseAdvice(smoking, alcohol),
       seeDoctor: false,
+      redFlags: RED_FLAGS,
       disclaimer: HEALTH_DISCLAIMER,
     };
   }
 
-  // Period duration
-  if (haveDuration) {
+  // ---- Late/missed period → pregnancy FIRST, early and prominent ----
+  // Fires as soon as the period is a few days late, not weeks. Suppressed only for methods that
+  // intentionally stop periods (injection/IUD/implant), where absent bleeds are expected.
+  if (daysLate >= 2 && !hormonalNoBleed) {
+    findings.push({
+      issue: `Your period is about ${daysLate} day${daysLate === 1 ? '' : 's'} late`,
+      possibleCauses:
+        'If there is ANY chance you could be pregnant, take a home pregnancy test first. A late period can also be stress, illness, big weight/exercise changes, PCOS or thyroid. If it stays late or you feel unwell, see a doctor.',
+      severity: 'concern',
+    });
+  }
+
+  // ---- Period duration ----
+  if (periodLengths.length >= 1) {
     const minLen = Math.min(...periodLengths);
     const maxLen = Math.max(...periodLengths);
     if (minLen <= 2) {
       findings.push({
         issue: `Very short period (${minLen} day${minLen === 1 ? '' : 's'})`,
         possibleCauses:
-          'Low estrogen, high stress, rapid weight loss or very low body fat, over-exercising, PCOS, thyroid issues, or approaching menopause. Some spotting can also be mistaken for a period.',
-        severity: 'concern',
+          'Low estrogen, stress, rapid weight loss/low body fat, over-exercising, PCOS or thyroid. Light spotting can also be early-pregnancy implantation bleeding rather than a real period — if pregnancy is possible, test.',
+        severity: teen ? 'watch' : 'concern',
       });
     }
     if (maxLen >= 8) {
       findings.push({
         issue: `Long period (${maxLen} days)`,
         possibleCauses:
-          'Hormonal imbalance, fibroids or polyps, thyroid issues, or a bleeding disorder. Long/heavy bleeding also risks iron-deficiency anaemia.',
+          'Hormonal imbalance, fibroids or polyps, thyroid, or a bleeding disorder. Long/heavy bleeding also risks iron-deficiency anaemia — worth a ferritin/Hb check.',
         severity: 'concern',
       });
     }
   }
 
-  // Cycle length + regularity
-  if (enoughCycles) {
-    const spread = Math.max(...cycleLengths) - Math.min(...cycleLengths);
-    if (spread > 9) {
+  // ---- Cycle length + regularity (consecutive-cycle variation, not full-history range) ----
+  if (cycleLengths.length >= 2 && !hormonalNoBleed) {
+    let maxConsecDiff = 0;
+    for (let i = 0; i < cycleLengths.length - 1; i++) {
+      maxConsecDiff = Math.max(maxConsecDiff, Math.abs(cycleLengths[i]! - cycleLengths[i + 1]!));
+    }
+    if (maxConsecDiff > 9) {
       findings.push({
-        issue: `Irregular cycle length (varies by ${spread} days)`,
-        possibleCauses:
-          'PCOS, thyroid imbalance, high stress, significant weight change, or intense over-training are the usual drivers of irregular cycles.',
-        severity: 'concern',
+        issue: `Irregular cycle length (varies ~${maxConsecDiff} days between cycles)`,
+        possibleCauses: teen
+          ? 'In the first couple of years after periods start, irregular cycles are common and usually normal. If it persists or comes with other symptoms, mention it to a doctor.'
+          : 'PCOS, thyroid, high stress, big weight change, or intense over-training are the usual drivers. Worth a check if it persists.',
+        severity: teen ? 'watch' : 'concern',
       });
     }
     if (avgCycleLength < 21) {
       findings.push({
         issue: `Short cycles (avg ${avgCycleLength} days)`,
-        possibleCauses: 'A short luteal phase or hormonal imbalance; sometimes thyroid or approaching perimenopause.',
-        severity: 'watch',
+        possibleCauses: 'A short luteal phase or hormonal imbalance; sometimes thyroid or perimenopause. Consistently short cycles are worth a check-up.',
+        severity: teen ? 'watch' : 'concern',
       });
     }
     if (avgCycleLength > 35) {
       findings.push({
         issue: `Long cycles (avg ${avgCycleLength} days)`,
         possibleCauses: 'Infrequent ovulation — commonly PCOS or thyroid, sometimes high stress or low body weight.',
-        severity: 'concern',
+        severity: teen ? 'watch' : 'concern',
       });
     }
   }
 
-  // Overdue / possibly missed
-  if (daysSinceLastStart > Math.max(45, avgCycleLength + 10)) {
+  // ---- Contraception context (informational, prevents false alarms) ----
+  if (hormonalNoBleed) {
     findings.push({
-      issue: `No period logged for ${daysSinceLastStart} days`,
-      possibleCauses:
-        'A missed/late period can be pregnancy, high stress, big weight change, PCOS, thyroid, or over-exercising. If pregnancy is possible, test first.',
-      severity: 'concern',
+      issue: 'On hormonal contraception',
+      possibleCauses: 'With an injection, hormonal IUD or implant, lighter, irregular or absent periods are normal and expected — cycle-length analysis is skipped. New heavy or persistent bleeding is still worth mentioning to your doctor.',
+      severity: 'watch',
     });
   }
 
-  // Lifestyle
+  // ---- Lifestyle ----
   if (smoking === 'regular') {
     findings.push({
       issue: 'Regular smoking',
-      possibleCauses: 'Smoking is linked to worse cramps, more irregular cycles and earlier menopause. Cutting down helps your cycle and overall health.',
+      possibleCauses: 'Smoking is linked to worse cramps, more irregular cycles and earlier menopause. Cutting down helps.',
       severity: 'watch',
     });
   }
   if (alcohol === 'regular') {
     findings.push({
       issue: 'Frequent alcohol',
-      possibleCauses: 'Frequent drinking can disrupt the hormones that regulate your cycle and worsen PMS. Keeping it occasional helps.',
+      possibleCauses: 'Frequent drinking can disrupt cycle-regulating hormones and worsen PMS.',
       severity: 'watch',
     });
   }
@@ -289,7 +323,7 @@ export function analyzeCycleHealth(input: CycleHealthInput): CycleHealth {
   const status: CycleHealth['status'] = findings.length === 0 ? 'ok' : hasConcern ? 'concern' : 'watch';
   const headline =
     status === 'ok'
-      ? 'Your cycle looks regular and healthy — keep it up! 🌿'
+      ? "Nothing stands out in your cycle length so far — but this only checks timing, not symptoms. See the red flags below."
       : status === 'concern'
         ? 'A few things are worth getting checked — see the notes below.'
         : 'Mostly fine, with a couple of things to keep an eye on.';
@@ -300,6 +334,7 @@ export function analyzeCycleHealth(input: CycleHealthInput): CycleHealth {
     findings,
     advice: buildHealthAdvice(findings, smoking, alcohol),
     seeDoctor: hasConcern,
+    redFlags: RED_FLAGS,
     disclaimer: HEALTH_DISCLAIMER,
   };
 }

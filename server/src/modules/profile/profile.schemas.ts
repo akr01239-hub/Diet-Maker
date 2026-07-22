@@ -67,6 +67,8 @@ export const sensitiveSchema = z.object({
   /** Lifestyle factors used for menstrual-health and general guidance. */
   smoking: z.enum(['no', 'occasional', 'regular']).optional(),
   alcohol: z.enum(['no', 'occasional', 'regular']).optional(),
+  /** Contraceptive method — prevents false pregnancy/irregularity alarms for hormonal methods. */
+  contraception: z.enum(['none', 'pill', 'hormonal_iud', 'implant', 'injection', 'other']).optional(),
 });
 
 export const profileUpsertSchema = z.object({

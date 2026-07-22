@@ -56,6 +56,7 @@ data class SensitiveData(
     val workoutRestDay: Int? = null,
     val smoking: String? = null,
     val alcohol: String? = null,
+    val contraception: String? = null,
 )
 
 // ---- Workout / exercise plan ----
@@ -334,6 +335,7 @@ data class CycleHealth(
     val findings: List<CycleFinding> = emptyList(),
     val advice: CycleHealthAdvice = CycleHealthAdvice(),
     val seeDoctor: Boolean = false,
+    val redFlags: List<String> = emptyList(),
     val disclaimer: String = "",
 )
 
