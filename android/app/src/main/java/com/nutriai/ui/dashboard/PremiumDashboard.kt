@@ -99,6 +99,9 @@ fun PremiumDashboard(
         // 1. Hero
         item { HeroCard(greetingName = greetingName, streakDays = d.streakDays) }
 
+        // 1b. AI Coach — proactive, deterministic morning insights from today's data.
+        item { CoachCard(name = greetingName, dashboard = d, sleepHours = sleepHours, steps = steps) }
+
         // 2. Calorie ring
         item { CalorieRingCard(dashboard = d, burnedKcal = stepsKcal, onCompleteProfile = onCompleteProfile) }
 
@@ -215,6 +218,105 @@ private fun HeroCard(greetingName: String?, streakDays: Int) {
                         fontWeight = FontWeight.SemiBold,
                         color = Color.White,
                     )
+                }
+            }
+        }
+    }
+}
+
+// ---------------------------------------------------------------------------
+// 1b. AI Coach card — proactive, deterministic insights
+// ---------------------------------------------------------------------------
+
+/** One coach insight: an emoji + a short, human line. */
+private data class Insight(val emoji: String, val text: String)
+
+/**
+ * Builds a few proactive coach lines from today's data — deterministic, offline, zero-cost.
+ * Prioritised: greeting, then the most actionable signal (sleep, hydration, logging), then
+ * encouragement (streak / projection).
+ */
+private fun buildCoachInsights(
+    name: String?,
+    dashboard: Dashboard,
+    sleepHours: Double?,
+    steps: Long,
+    hour: Int,
+): List<Insight> {
+    val out = mutableListOf<Insight>()
+    val who = name?.takeIf { it.isNotBlank() }?.let { ", $it" } ?: ""
+    val greeting = when {
+        hour < 12 -> Insight("☀️", "Good morning$who — here's your day.")
+        hour < 17 -> Insight("🌤️", "Good afternoon$who — keep it going.")
+        else -> Insight("🌙", "Good evening$who — let's finish strong.")
+    }
+    out += greeting
+
+    // Sleep (highest-value signal when available).
+    sleepHours?.let {
+        when {
+            it < 6.5 -> out += Insight("😴", "You slept only ${it}h. Go easier on intensity today and hydrate more.")
+            it >= 7.5 -> out += Insight("💪", "Great ${it}h of sleep — your body's recovered for a strong day.")
+            else -> out += Insight("🛌", "${it}h sleep — aim for 7–8h tonight for better recovery.")
+        }
+    }
+
+    // Hydration — nudge if behind (before evening).
+    val waterPct = (dashboard.water.percent ?: 0.0)
+    if (hour in 10..21 && waterPct < 55) {
+        out += Insight("💧", "You're at ${waterPct.toInt()}% of your water goal — have a glass now.")
+    }
+
+    // Logging nudge — nothing logged yet by mid-day.
+    val calPct = (dashboard.calories.percent ?: 0.0)
+    if (hour in 12..22 && calPct < 15) {
+        out += Insight("🍽️", "You haven't logged much yet — tap Log to stay on track.")
+    }
+
+    // Projection / encouragement.
+    if (dashboard.projection.size > 1) {
+        val next = dashboard.projection.getOrNull(1)
+        next?.let { out += Insight("📉", "On your current pace you're projected to reach ${it.weightKg} kg by ${it.label.lowercase()}.") }
+    }
+    if (dashboard.streakDays > 0) {
+        out += Insight("🔥", "${dashboard.streakDays}-day logging streak — keep it alive!")
+    }
+    if (steps > 0) {
+        out += Insight("👟", "%,d steps so far today.".format(steps))
+    }
+
+    // Greeting + up to 3 of the most relevant lines.
+    return out.take(4)
+}
+
+@Composable
+private fun CoachCard(name: String?, dashboard: Dashboard, sleepHours: Double?, steps: Long) {
+    val hour = remember { java.time.LocalTime.now().hour }
+    val insights = remember(dashboard, sleepHours, steps, hour) {
+        buildCoachInsights(name, dashboard, sleepHours, steps, hour)
+    }
+    if (insights.isEmpty()) return
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(24.dp),
+        elevation = CardDefaults.cardElevation(defaultElevation = 3.dp),
+        colors = CardDefaults.cardColors(containerColor = Color.Transparent),
+    ) {
+        Column(
+            Modifier
+                .fillMaxWidth()
+                .background(Brush.verticalGradient(listOf(BrandGreenDeep, BrandGreen)))
+                .padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                Text("🧠", style = MaterialTheme.typography.titleMedium)
+                Text("Your AI coach", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, color = Color.White)
+            }
+            insights.forEach { i ->
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text(i.emoji, style = MaterialTheme.typography.bodyMedium)
+                    Text(i.text, style = MaterialTheme.typography.bodyMedium, color = Color.White.copy(alpha = 0.95f), modifier = Modifier.weight(1f))
                 }
             }
         }
@@ -418,15 +520,27 @@ private fun StatTile(
                 fontWeight = FontWeight.Bold,
                 color = MaterialTheme.colorScheme.onSurface,
             )
-            LinearProgressIndicator(
-                progress = { (fraction ?: 1f).coerceIn(0f, 1f) },
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(5.dp)
-                    .clip(RoundedCornerShape(3.dp)),
-                color = accent,
-                trackColor = accent.copy(alpha = 0.18f),
-            )
+            // Only protein tracks a consumed fraction; carbs/fat (fraction=null) show a plain
+            // target track, not a misleading "full" bar.
+            if (fraction != null) {
+                LinearProgressIndicator(
+                    progress = { fraction.coerceIn(0f, 1f) },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(5.dp)
+                        .clip(RoundedCornerShape(3.dp)),
+                    color = accent,
+                    trackColor = accent.copy(alpha = 0.18f),
+                )
+            } else {
+                Box(
+                    Modifier
+                        .fillMaxWidth()
+                        .height(5.dp)
+                        .clip(RoundedCornerShape(3.dp))
+                        .background(accent.copy(alpha = 0.18f)),
+                )
+            }
         }
     }
 }
