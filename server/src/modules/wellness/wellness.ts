@@ -175,3 +175,73 @@ const MEDITATION: Meditation[] = [
 export function getWellness(): { yoga: YogaFlow[]; meditation: Meditation[] } {
   return { yoga: YOGA, meditation: MEDITATION };
 }
+
+export interface WellnessRecommendation {
+  yoga: YogaFlow | null;
+  meditation: Meditation | null;
+  reason: string;
+}
+
+export interface RecommendInput {
+  phase?: string | null; // menstrual | follicular | ovulation | luteal | null
+  mood?: number | null; // 1 (low) .. 5 (great)
+  conditions?: string[];
+  activityLevel?: string;
+}
+
+const byId = <T extends { id: string }>(list: T[], id: string): T | undefined => list.find((x) => x.id === id);
+
+/**
+ * Picks the day's yoga flow + meditation from the whole picture — cycle phase, today's mood
+ * and lifestyle — so the mind-body plan matches how the user actually is. Pure & deterministic.
+ */
+export function recommendWellness(input: RecommendInput): WellnessRecommendation {
+  const { phase, mood, activityLevel } = input;
+  const deskJob = activityLevel === 'sedentary' || activityLevel === 'light';
+  const low = mood != null && mood <= 2;
+  const high = mood != null && mood >= 4;
+  const reasons: string[] = [];
+
+  // ---- Yoga ----
+  let yogaId: string;
+  if (phase === 'menstrual') {
+    yogaId = 'period-relief';
+    reasons.push('gentle relief for your period');
+  } else if (low || phase === 'luteal') {
+    yogaId = 'wind-down';
+    reasons.push(low ? 'calming, because your mood is low today' : 'calming for the pre-period phase');
+  } else if (deskJob && !high) {
+    yogaId = 'desk-reset';
+    reasons.push('undoing a day of sitting');
+  } else if (high && (phase === 'follicular' || phase === 'ovulation')) {
+    yogaId = 'core-strength';
+    reasons.push('you have energy to build on');
+  } else {
+    yogaId = 'morning-energizer';
+  }
+
+  // ---- Meditation ----
+  let medId: string;
+  if (low) {
+    medId = 'stress-reset';
+    reasons.push('a quick reset for a heavy day');
+  } else if (phase === 'luteal') {
+    medId = 'stress-reset';
+  } else if (high) {
+    medId = 'gratitude';
+    reasons.push('grounding a good mood');
+  } else {
+    medId = 'box-breathing';
+  }
+
+  const reason =
+    reasons.length > 0
+      ? `Today's session — ${reasons.slice(0, 2).join(', ')}.`
+      : "Today's session to keep you balanced.";
+
+  return {
+    yoga: byId(YOGA, yogaId) ?? YOGA[0] ?? null,
+    meditation: byId(MEDITATION, medId) ?? MEDITATION[0] ?? null,
+    reason,
+  };
+}
