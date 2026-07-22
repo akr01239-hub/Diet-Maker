@@ -431,6 +431,23 @@ fun CalendarScreen(
                                     modifier = Modifier.clickable { viewModel.swapMeal(dietDay.dayIndex, meal.slot) },
                                 )
                             }
+                            // Condition-friendliness highlights (Diabetes-friendly, Gut-friendly…).
+                            val highlights = meal.friendliness?.highlights.orEmpty()
+                            if (highlights.isNotEmpty()) {
+                                Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                                    highlights.forEach { h ->
+                                        Text(
+                                            "💚 $h",
+                                            style = MaterialTheme.typography.labelSmall,
+                                            color = MaterialTheme.colorScheme.primary,
+                                            modifier = Modifier
+                                                .clip(RoundedCornerShape(8.dp))
+                                                .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.10f))
+                                                .padding(horizontal = 8.dp, vertical = 3.dp),
+                                        )
+                                    }
+                                }
+                            }
                             // Fully-bordered grid (like the grocery table): outer border, row
                             // dividers, vertical column separators.
                             val b = MaterialTheme.colorScheme.outlineVariant

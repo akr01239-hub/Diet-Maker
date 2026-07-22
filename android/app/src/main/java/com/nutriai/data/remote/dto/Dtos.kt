@@ -253,7 +253,22 @@ data class DashboardEnvelope(val dashboard: Dashboard)
 data class MealItem(val foodId: String, val name: String, val grams: Double, val kcal: Double, val proteinG: Double)
 
 @Serializable
-data class Meal(val slot: String, val items: List<MealItem>, val kcal: Double, val proteinG: Double)
+data class Meal(
+    val slot: String,
+    val items: List<MealItem>,
+    val kcal: Double,
+    val proteinG: Double,
+    val friendliness: MealFriendliness? = null,
+)
+
+@Serializable
+data class MealFriendliness(
+    val diabetes: Int = 0,
+    val heart: Int = 0,
+    val gut: Int = 0,
+    val inflammation: Int = 0,
+    val highlights: List<String> = emptyList(),
+)
 
 @Serializable
 data class DayTotals(val kcal: Double, val proteinG: Double, val carbG: Double, val fatG: Double, val fiberG: Double, val sodiumMg: Double)

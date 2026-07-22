@@ -12,6 +12,7 @@ import {
   WeekPlan,
 } from './food.types';
 import { eligibleFoods } from './foodFilter';
+import { mealFriendliness } from './friendliness';
 
 const MAIN_SLOTS: MealSlot[] = ['breakfast', 'lunch', 'dinner'];
 const MIN_GRAMS = 15;
@@ -274,6 +275,12 @@ function buildDay(
   // which makes portions look unrealistically small. Nudge every item up (once) so the day lands
   // on its calorie target. Capped so no single serving blows past MAX_GRAMS.
   normaliseDayToTarget(meals, dailyKcal);
+
+  // Attach condition-friendliness scores per meal (diabetes/heart/gut/inflammation).
+  const foodById = new Map(eligible.map((f) => [f.id, f]));
+  for (const m of meals) {
+    if (m.items.length > 0) m.friendliness = mealFriendliness(m.items, foodById);
+  }
 
   const sum = (pick: (i: MealItem) => number) =>
     meals.reduce((s, m) => s + m.items.reduce((t, i) => t + pick(i), 0), 0);

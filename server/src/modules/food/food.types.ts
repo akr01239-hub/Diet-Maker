@@ -93,6 +93,8 @@ export interface Meal {
   items: MealItem[];
   kcal: number;
   proteinG: number;
+  /** Optional condition-friendliness scores + highlight labels (see friendliness.ts). */
+  friendliness?: import('./friendliness').MealFriendliness;
 }
 
 export interface DayPlan {
