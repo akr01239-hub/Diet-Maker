@@ -16,6 +16,8 @@ import { accountRouter } from './modules/account/account.routes';
 import { familyRouter } from './modules/family/family.routes';
 import { exerciseRouter } from './modules/exercise/exercise.routes';
 import { guidanceRouter } from './modules/guidance/guidance.routes';
+import { cycleRouter } from './modules/cycle/cycle.routes';
+import { wellnessRouter } from './modules/wellness/wellness.routes';
 
 /**
  * Builds the Express app. Kept free of `listen()` so tests can import it directly
@@ -62,6 +64,8 @@ export function createApp(): Express {
   api.use('/', familyRouter);
   api.use('/', exerciseRouter);
   api.use('/', guidanceRouter);
+  api.use('/', cycleRouter);
+  api.use('/', wellnessRouter);
   app.use('/api/v1', api);
 
   app.use(notFound);

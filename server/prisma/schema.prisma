@@ -58,6 +58,7 @@ model User {
   checkins      WeeklyCheckin[]
   familyMembers FamilyMember[]
   exerciseLogs  ExerciseLog[]
+  periodLogs    PeriodLog[]
 
   @@map("users")
 }
@@ -229,6 +230,20 @@ model ExerciseLog {
   @@index([userId, performedAt])
   @@index([userId, exerciseName])
   @@map("exercise_logs")
+}
+
+/// A logged menstrual period (start, optional end). The cycle engine self-calibrates
+/// cycle length from the gaps between starts to estimate the current phase.
+model PeriodLog {
+  id        String    @id @default(uuid())
+  userId    String
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  startDate DateTime
+  endDate   DateTime?
+  createdAt DateTime  @default(now())
+
+  @@index([userId, startDate])
+  @@map("period_logs")
 }
 
 /// Weekly progress check-in. Weight + body measurements are AES-256-GCM-encrypted in

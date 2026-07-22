@@ -1,0 +1,74 @@
+import { prisma } from '../../lib/prisma';
+import { requireCompleteProfile } from '../profile/profile.service';
+import { computeCycle, cycleGuidance } from './cycle';
+
+const DAY_MS = 86_400_000;
+
+/** Logs a period start (and optional end). Returns the created row. */
+export async function logPeriod(userId: string, startDate: Date, endDate?: Date) {
+  return prisma.periodLog.create({
+    data: { userId, startDate, endDate: endDate ?? null },
+  });
+}
+
+export async function listPeriods(userId: string) {
+  return prisma.periodLog.findMany({
+    where: { userId },
+    orderBy: { startDate: 'desc' },
+    take: 24,
+  });
+}
+
+/** Median-ish average gap between recent period starts → the user's real cycle length. */
+function estimateCycleLength(starts: Date[]): number {
+  if (starts.length < 2) return 28;
+  const gaps: number[] = [];
+  for (let i = 0; i < starts.length - 1; i++) {
+    const g = Math.round((starts[i]!.getTime() - starts[i + 1]!.getTime()) / DAY_MS);
+    if (g >= 21 && g <= 45) gaps.push(g);
+  }
+  if (gaps.length === 0) return 28;
+  const avg = gaps.reduce((a, b) => a + b, 0) / gaps.length;
+  return Math.round(avg);
+}
+
+function estimatePeriodLength(rows: { startDate: Date; endDate: Date | null }[]): number {
+  const lens: number[] = [];
+  for (const r of rows) {
+    if (r.endDate) {
+      const d = Math.round((r.endDate.getTime() - r.startDate.getTime()) / DAY_MS) + 1;
+      if (d >= 2 && d <= 10) lens.push(d);
+    }
+  }
+  if (lens.length === 0) return 5;
+  return Math.round(lens.reduce((a, b) => a + b, 0) / lens.length);
+}
+
+/** Full cycle state + phase guidance for the current user (female profiles only). */
+export async function getCycle(userId: string, now: Date = new Date()) {
+  const { sensitive } = await requireCompleteProfile(userId);
+  if (sensitive.sex !== 'female') {
+    return { applicable: false as const };
+  }
+
+  const rows = await listPeriods(userId);
+  if (rows.length === 0) {
+    return { applicable: true as const, needsSetup: true as const };
+  }
+
+  const starts = rows.map((r) => r.startDate);
+  const cycleLengthDays = estimateCycleLength(starts);
+  const periodLengthDays = estimatePeriodLength(rows);
+  const lastStart = starts[0]!;
+  const state = computeCycle(lastStart, now, cycleLengthDays, periodLengthDays);
+
+  return {
+    applicable: true as const,
+    needsSetup: false as const,
+    lastPeriodStart: lastStart.toISOString().slice(0, 10),
+    cycleLengthDays,
+    periodLengthDays,
+    ...state,
+    guidance: cycleGuidance(state.phase),
+  };
+}
