@@ -23,15 +23,23 @@ describe('BMI', () => {
     expect(bmi(100, 180)).toBe(30.9);
   });
 
-  it('categorises per WHO bands', () => {
+  it('categorises per WHO Asian-Indian bands by default', () => {
     expect(bmiCategory(17)).toBe('underweight');
     expect(bmiCategory(22)).toBe('normal');
-    expect(bmiCategory(27)).toBe('overweight');
-    expect(bmiCategory(32)).toBe('obese');
+    expect(bmiCategory(24)).toBe('overweight'); // 23–24.9 = overweight for Asians
+    expect(bmiCategory(27)).toBe('obese'); // ≥25 = obese for Asians
     // boundaries
     expect(bmiCategory(18.5)).toBe('normal');
-    expect(bmiCategory(25)).toBe('overweight');
-    expect(bmiCategory(30)).toBe('obese');
+    expect(bmiCategory(23)).toBe('overweight');
+    expect(bmiCategory(25)).toBe('obese');
+  });
+
+  it('categorises per international bands when asian=false', () => {
+    expect(bmiCategory(24, false)).toBe('normal');
+    expect(bmiCategory(27, false)).toBe('overweight');
+    expect(bmiCategory(32, false)).toBe('obese');
+    expect(bmiCategory(25, false)).toBe('overweight');
+    expect(bmiCategory(30, false)).toBe('obese');
   });
 
   it('returns a combined result', () => {
@@ -57,9 +65,11 @@ describe('WHtR', () => {
 });
 
 describe('ideal weight range', () => {
-  it('derives from healthy BMI band', () => {
-    // 175cm: 18.5..24.9 * 1.75^2 -> 56.7 .. 76.3
-    expect(idealWeightRange(175)).toEqual({ minKg: 56.7, maxKg: 76.3 });
+  it('derives from healthy BMI band (Asian upper bound by default)', () => {
+    // 175cm: 18.5..22.9 * 1.75^2 -> 56.7 .. 70.1
+    expect(idealWeightRange(175)).toEqual({ minKg: 56.7, maxKg: 70.1 });
+    // international band 18.5..24.9 -> 56.7 .. 76.3
+    expect(idealWeightRange(175, false)).toEqual({ minKg: 56.7, maxKg: 76.3 });
   });
   it('rejects invalid height', () => {
     expect(() => idealWeightRange(0)).toThrow(RangeError);
@@ -182,7 +192,7 @@ describe('anthropometrySummary', () => {
     expect(s.bmi).toBe(22.9);
     expect(s.category).toBe('normal');
     expect(s.whtr).toBe(0.49);
-    expect(s.idealWeight).toEqual({ minKg: 56.7, maxKg: 76.3 });
+    expect(s.idealWeight).toEqual({ minKg: 56.7, maxKg: 70.1 });
     expect(s.bodyFatEstimate).toBeGreaterThan(0);
   });
 });

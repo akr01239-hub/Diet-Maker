@@ -118,10 +118,20 @@ export function computeCalcResult(input: CalcProfileInput): CalcResult {
     reducedMobility: input.reducedMobility,
   });
 
+  // Scale protein to CURRENT weight (preserves lean mass in a deficit), but for obesity cap it
+  // at an adjusted body weight — ideal-max + 25% of the excess — so we don't over-dose protein
+  // from fat mass. At or below a healthy weight, current weight is used directly.
+  const idealMaxKg = anthro.idealWeight.maxKg;
+  const proteinRefWeightKg =
+    input.currentWeightKg > idealMaxKg
+      ? Math.round((idealMaxKg + 0.25 * (input.currentWeightKg - idealMaxKg)) * 10) / 10
+      : input.currentWeightKg;
+
   const macros = computeMacros({
     dailyKcal: guard.dailyKcal,
     targetWeightKg: input.targetWeightKg,
     currentWeightKg: input.currentWeightKg,
+    proteinRefWeightKg,
     proteinPerKg: guard.proteinPerKg,
     fatPerKgMin: guard.fatPerKgMin,
   });

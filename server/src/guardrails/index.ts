@@ -274,6 +274,52 @@ export function applyGuardrails(input: GuardrailInput): GuardrailResult {
     });
   }
 
+  // ---- Drug–nutrient interactions ----
+  // We don't store your exact prescriptions, so these are phrased conditionally by the
+  // medicines commonly used for each condition. They never change your numbers — they warn
+  // about foods that can blunt or dangerously amplify a drug. Always confirm with your doctor.
+  if (has(conditions, 'heart_disease')) {
+    flags.push({
+      code: 'DRUG_WARFARIN_VITK',
+      severity: 'warning',
+      message:
+        'If you take warfarin (a blood thinner): keep your vitamin-K intake STEADY. Big swings in leafy greens (spinach, methi, kale, broccoli) change how the drug works. Don’t suddenly load up or cut them out — keep portions consistent and tell your doctor before big diet changes.',
+    });
+    flags.push({
+      code: 'DRUG_STATIN_GRAPEFRUIT',
+      severity: 'info',
+      message:
+        'If you take a statin or some BP tablets (e.g. amlodipine): avoid grapefruit / grapefruit juice — it can raise the drug level in your blood.',
+    });
+  }
+
+  if (has(conditions, 'hypertension') || has(conditions, 'kidney_disease')) {
+    flags.push({
+      code: 'DRUG_POTASSIUM_SUBSTITUTE',
+      severity: 'warning',
+      message:
+        'If you take an ACE inhibitor/ARB (…pril or …sartan) or a potassium-sparing diuretic: do NOT use “low-sodium” salt substitutes — they replace sodium with potassium and can push your potassium dangerously high. Use herbs/spices to cut salt instead.',
+    });
+  }
+
+  if (has(conditions, 'diabetes')) {
+    flags.push({
+      code: 'DRUG_METFORMIN_B12',
+      severity: 'info',
+      message:
+        'If you take metformin long-term: it can lower vitamin B12 over the years. Keep B12 sources (dairy, eggs; a supplement if vegetarian/vegan) and ask your doctor to check your B12 periodically.',
+    });
+  }
+
+  if (has(conditions, 'thyroid')) {
+    flags.push({
+      code: 'DRUG_LEVOTHYROXINE_TIMING',
+      severity: 'warning',
+      message:
+        'If you take levothyroxine (thyroid tablet): take it on an empty stomach and wait ~30–60 min before eating. Keep it 4 hours apart from calcium, iron, milk, soya and high-fibre meals, and don’t take it with coffee — all of these block its absorption.',
+    });
+  }
+
   // ---- Medical-supervision banner ----
   const supervisionReasons: string[] = [];
   if (bmi >= 35) supervisionReasons.push('BMI ≥ 35');

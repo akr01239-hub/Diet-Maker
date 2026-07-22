@@ -50,4 +50,21 @@ describe('guardrails safety gates', () => {
     expect(r.weightLossBlocked).toBe(false);
     expect(r.dailyKcal).toBeLessThan(2000);
   });
+
+  it('surfaces drug–nutrient interaction advisories from conditions', () => {
+    expect(codes(applyGuardrails({ ...base, conditions: ['heart_disease'] }))).toEqual(
+      expect.arrayContaining(['DRUG_WARFARIN_VITK', 'DRUG_STATIN_GRAPEFRUIT']),
+    );
+    expect(codes(applyGuardrails({ ...base, conditions: ['hypertension'] }))).toContain(
+      'DRUG_POTASSIUM_SUBSTITUTE',
+    );
+    expect(codes(applyGuardrails({ ...base, conditions: ['diabetes'] }))).toContain(
+      'DRUG_METFORMIN_B12',
+    );
+    expect(codes(applyGuardrails({ ...base, conditions: ['thyroid'] }))).toContain(
+      'DRUG_LEVOTHYROXINE_TIMING',
+    );
+    // no conditions -> no drug advisories
+    expect(codes(applyGuardrails(base)).some((c) => c.startsWith('DRUG_'))).toBe(false);
+  });
 });

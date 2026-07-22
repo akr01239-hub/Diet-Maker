@@ -23,6 +23,7 @@ data class DashboardState(
     val stepsPermission: Boolean = false,
     val heartRate: Int? = null,
     val sleepHours: Double? = null,
+    val safetyFlags: List<com.nutriai.data.remote.dto.Flag> = emptyList(),
     val error: String? = null,
 )
 
@@ -72,6 +73,12 @@ class DashboardViewModel @Inject constructor(
                 _state.value.copy(loading = false, dashboard = r.getOrNull(), error = null)
             } else {
                 _state.value.copy(loading = false, error = r.exceptionOrNull()?.message ?: "Failed to load")
+            }
+        }
+        // Safety/medical advisories (guardrail flags) — shown as a card on the dashboard.
+        viewModelScope.launch {
+            repository.latestCalc().getOrNull()?.let { calc ->
+                _state.value = _state.value.copy(safetyFlags = calc.flags)
             }
         }
     }

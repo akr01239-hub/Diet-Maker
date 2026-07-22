@@ -68,6 +68,7 @@ fun PremiumDashboard(
     onConnectSteps: () -> Unit = {},
     heartRate: Int? = null,
     sleepHours: Double? = null,
+    safetyFlags: List<com.nutriai.data.remote.dto.Flag> = emptyList(),
     modifier: Modifier = Modifier,
 ) {
     val d = dashboard
@@ -83,6 +84,11 @@ fun PremiumDashboard(
 
         // 2. Calorie ring
         item { CalorieRingCard(dashboard = d, burnedKcal = stepsKcal, onCompleteProfile = onCompleteProfile) }
+
+        // 2b. Health & safety notes (guardrail flags: conditions, medication interactions…)
+        if (safetyFlags.isNotEmpty()) {
+            item { SafetyCard(flags = safetyFlags) }
+        }
 
         // 3. Macro row
         item { MacroRow(dashboard = d) }
@@ -656,6 +662,59 @@ private fun JourneyCard(dashboard: Dashboard) {
                         style = MaterialTheme.typography.bodyMedium,
                         textAlign = TextAlign.End,
                         color = onC,
+                    )
+                }
+            }
+        }
+    }
+}
+
+// ---------------------------------------------------------------------------
+// 2b. Health & safety notes (guardrail flags)
+// ---------------------------------------------------------------------------
+
+@Composable
+private fun SafetyCard(flags: List<com.nutriai.data.remote.dto.Flag>) {
+    // Most serious first: critical -> warning -> info.
+    val order = mapOf("critical" to 0, "warning" to 1, "info" to 2)
+    val sorted = flags.sortedBy { order[it.severity] ?: 3 }
+    val hasCritical = flags.any { it.severity == "critical" }
+
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(24.dp),
+        elevation = CardDefaults.cardElevation(defaultElevation = 3.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = if (hasCritical) {
+                MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.5f)
+            } else {
+                MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
+            },
+        ),
+    ) {
+        Column(
+            modifier = Modifier.fillMaxWidth().padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(10.dp),
+        ) {
+            Text(
+                "🩺 Health & safety notes",
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.onSurface,
+            )
+            sorted.forEach { f ->
+                val (icon, tint) = when (f.severity) {
+                    "critical" -> "⛔" to MaterialTheme.colorScheme.error
+                    "warning" -> "⚠️" to Color(0xFFB45309)
+                    else -> "ℹ️" to MaterialTheme.colorScheme.onSurfaceVariant
+                }
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text(icon, style = MaterialTheme.typography.bodyMedium)
+                    Text(
+                        f.message,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = tint,
+                        modifier = Modifier.weight(1f),
                     )
                 }
             }

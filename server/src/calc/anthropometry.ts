@@ -20,16 +20,25 @@ export function bmi(weightKg: number, heightCm: number): number {
   return round(weightKg / (m * m), 1);
 }
 
-export function bmiCategory(bmiValue: number): BmiResult['category'] {
+/**
+ * BMI category. Defaults to the WHO Asian / Indian cut-offs (overweight ≥23,
+ * obese ≥25) because this app's population is South-Asian — the standard
+ * international 25/30 thresholds understate cardiometabolic risk for Indians,
+ * who develop diabetes and heart disease at lower BMIs. Pass `asian = false`
+ * for the international 25/30 bands.
+ */
+export function bmiCategory(bmiValue: number, asian = true): BmiResult['category'] {
+  const overweightAt = asian ? 23 : 25;
+  const obeseAt = asian ? 25 : 30;
   if (bmiValue < 18.5) return 'underweight';
-  if (bmiValue < 25) return 'normal';
-  if (bmiValue < 30) return 'overweight';
+  if (bmiValue < overweightAt) return 'normal';
+  if (bmiValue < obeseAt) return 'overweight';
   return 'obese';
 }
 
-export function bmiResult(weightKg: number, heightCm: number): BmiResult {
+export function bmiResult(weightKg: number, heightCm: number, asian = true): BmiResult {
   const value = bmi(weightKg, heightCm);
-  return { bmi: value, category: bmiCategory(value) };
+  return { bmi: value, category: bmiCategory(value, asian) };
 }
 
 /** Waist-to-height ratio. Undefined when waist is not provided. */
@@ -39,13 +48,20 @@ export function whtr(waistCm: number | undefined, heightCm: number): number | un
   return round(waistCm / heightCm, 2);
 }
 
-/** Healthy weight range (kg) for the given height, from the healthy BMI band. */
-export function idealWeightRange(heightCm: number): { minKg: number; maxKg: number } {
+/**
+ * Healthy weight range (kg) for the given height, from the healthy BMI band.
+ * Defaults to the Asian-Indian upper bound (22.9) to match {@link bmiCategory}.
+ */
+export function idealWeightRange(
+  heightCm: number,
+  asian = true,
+): { minKg: number; maxKg: number } {
   if (heightCm <= 0) throw new RangeError('heightCm must be > 0');
   const m = heightCm / 100;
+  const healthyMax = asian ? 22.9 : BMI_HEALTHY_MAX;
   return {
     minKg: round(BMI_HEALTHY_MIN * m * m, 1),
-    maxKg: round(BMI_HEALTHY_MAX * m * m, 1),
+    maxKg: round(healthyMax * m * m, 1),
   };
 }
 

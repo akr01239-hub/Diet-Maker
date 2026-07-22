@@ -149,6 +149,7 @@ private fun DashboardTab(
             stepsAvailable = state.stepsAvailable,
             heartRate = state.heartRate,
             sleepHours = state.sleepHours,
+            safetyFlags = state.safetyFlags,
             onConnectSteps = {
                 if (state.stepsAvailable) {
                     runCatching { stepLauncher.launch(stepPerms) }

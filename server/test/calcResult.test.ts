@@ -37,8 +37,11 @@ describe('computeCalcResult — end-to-end deterministic pipeline', () => {
       goal: 'lose',
       conditions: ['kidney_disease'],
     });
-    // protein ~0.7 g/kg target weight
-    expect(r.proteinG).toBeCloseTo(Math.round(0.7 * 72), 0);
+    // CKD caps protein at 0.7 g/kg, scaled to the obesity-adjusted body weight (not the
+    // lower target): idealMax(22.9 BMI @170cm)=66.2, ABW=66.2+0.25*(80-66.2)=69.7 -> ~49 g.
+    const idealMax = Math.round(22.9 * 1.7 * 1.7 * 10) / 10;
+    const abw = Math.round((idealMax + 0.25 * (80 - idealMax)) * 10) / 10;
+    expect(r.proteinG).toBeCloseTo(Math.round(0.7 * abw), 0);
     expect(r.requiresSupervision).toBe(true);
     expect(r.flags.some((f) => f.code === 'CKD_PROTEIN_LOWERED')).toBe(true);
   });
