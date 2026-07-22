@@ -3,7 +3,6 @@ package com.nutriai.di
 import com.jakewharton.retrofit2.converter.kotlinx.serialization.asConverterFactory
 import com.nutriai.BuildConfig
 import com.nutriai.data.remote.AuthInterceptor
-import com.nutriai.data.remote.HealthApi
 import com.nutriai.data.remote.NutriApi
 import com.nutriai.data.remote.RefreshApi
 import com.nutriai.data.remote.TokenAuthenticator
@@ -83,10 +82,6 @@ object NetworkModule {
             .addConverterFactory(json.asConverterFactory(contentType))
             .build()
     }
-
-    @Provides
-    @Singleton
-    fun provideHealthApi(retrofit: Retrofit): HealthApi = retrofit.create(HealthApi::class.java)
 
     @Provides
     @Singleton

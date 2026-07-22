@@ -1,5 +1,6 @@
 package com.nutriai.ui.checkin
 
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -32,8 +33,12 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
@@ -373,9 +378,14 @@ private fun Modifier.clickableChip(onClick: () -> Unit): Modifier =
 @Composable
 private fun WeightTrend(checkins: List<CheckinDto>) {
     if (checkins.isEmpty()) return
-    val latest = checkins.first().measurements?.weightKg
-    val first = checkins.last().measurements?.weightKg
-    val delta = if (checkins.size >= 2 && latest != null && first != null) {
+    // Chronological (oldest → newest) regardless of server order; ISO date strings sort correctly.
+    val points = checkins
+        .mapNotNull { c -> c.measurements?.weightKg?.let { c.date to it } }
+        .sortedBy { it.first }
+    val weights = points.map { it.second }
+    val latest = weights.lastOrNull()
+    val first = weights.firstOrNull()
+    val delta = if (weights.size >= 2 && latest != null && first != null) {
         round((latest - first) * 10.0) / 10.0
     } else {
         null
@@ -404,6 +414,25 @@ private fun WeightTrend(checkins: List<CheckinDto>) {
                     color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.85f),
                 )
             }
+
+            if (weights.size >= 2) {
+                val lineColor = MaterialTheme.colorScheme.onPrimaryContainer
+                Spacer(Modifier.height(6.dp))
+                WeightChart(weights = weights, lineColor = lineColor)
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                    Text(
+                        "${weights.min()} kg",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.7f),
+                    )
+                    Text(
+                        "${weights.max()} kg",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.7f),
+                    )
+                }
+            }
+
             if (delta != null) {
                 Spacer(Modifier.height(4.dp))
                 val down = delta < 0
@@ -446,6 +475,54 @@ private fun WeightTrend(checkins: List<CheckinDto>) {
                     color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.7f),
                 )
             }
+        }
+    }
+}
+
+@Composable
+private fun WeightChart(weights: List<Double>, lineColor: Color) {
+    val minW = weights.min()
+    val maxW = weights.max()
+    val range = (maxW - minW).let { if (it == 0.0) 1.0 else it }
+    val fill = lineColor.copy(alpha = 0.15f)
+
+    Canvas(
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(120.dp)
+            .padding(vertical = 4.dp),
+    ) {
+        val n = weights.size
+        if (n < 2) return@Canvas
+        val padX = 6.dp.toPx()
+        val padY = 10.dp.toPx()
+        val plotW = size.width - padX * 2
+        val plotH = size.height - padY * 2
+        val dx = plotW / (n - 1)
+        fun px(i: Int) = padX + dx * i
+        fun py(w: Double) = padY + (plotH * (1f - ((w - minW) / range).toFloat()))
+
+        val line = Path()
+        val area = Path()
+        weights.forEachIndexed { i, w ->
+            val x = px(i)
+            val y = py(w)
+            if (i == 0) {
+                line.moveTo(x, y)
+                area.moveTo(x, size.height - padY)
+                area.lineTo(x, y)
+            } else {
+                line.lineTo(x, y)
+                area.lineTo(x, y)
+            }
+        }
+        area.lineTo(px(n - 1), size.height - padY)
+        area.close()
+
+        drawPath(area, color = fill)
+        drawPath(line, color = lineColor, style = Stroke(width = 3.dp.toPx(), cap = StrokeCap.Round))
+        weights.forEachIndexed { i, w ->
+            drawCircle(color = lineColor, radius = 4.dp.toPx(), center = Offset(px(i), py(w)))
         }
     }
 }
