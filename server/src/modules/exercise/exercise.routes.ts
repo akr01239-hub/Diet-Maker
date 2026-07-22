@@ -6,6 +6,7 @@ import { decryptJson } from '../../lib/crypto';
 import { HttpError } from '../../middleware/error';
 import type { SensitiveData } from '../profile/profile.schemas';
 import { generateWeeklyWorkout } from './workoutGenerator';
+import { localSunday, localToday, tzOffsetMin } from '../../lib/tz';
 import type { BodyGoal, ExerciseLocation } from './exercise.types';
 
 export const exerciseRouter = Router();
@@ -28,12 +29,11 @@ exerciseRouter.get(
     const location: ExerciseLocation = s.exerciseLocation ?? 'home';
     const goal: BodyGoal = s.bodyGoal ?? goalToBody(profile.goal);
 
-    const now = new Date();
-    const sunday = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() - now.getUTCDay()));
+    const offset = tzOffsetMin(req);
     const plan = generateWeeklyWorkout(goal, location, {
       restDayOfWeek: s.workoutRestDay,
-      startDate: sunday,
-      today: now,
+      startDate: localSunday(offset),
+      today: localToday(offset),
     });
 
     res.json({ plan });

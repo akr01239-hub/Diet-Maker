@@ -10,12 +10,11 @@ class AuthInterceptor @Inject constructor(
     private val tokenStore: TokenStore,
 ) : Interceptor {
     override fun intercept(chain: Interceptor.Chain): Response {
+        // Device UTC offset in minutes (e.g. +330 for IST) so the server uses the phone's day.
+        val offsetMin = java.util.TimeZone.getDefault().getOffset(System.currentTimeMillis()) / 60000
+        val builder = chain.request().newBuilder().addHeader("X-TZ-Offset", offsetMin.toString())
         val token = tokenStore.accessTokenBlocking()
-        val request = if (token != null) {
-            chain.request().newBuilder().addHeader("Authorization", "Bearer $token").build()
-        } else {
-            chain.request()
-        }
-        return chain.proceed(request)
+        if (token != null) builder.addHeader("Authorization", "Bearer $token")
+        return chain.proceed(builder.build())
     }
 }

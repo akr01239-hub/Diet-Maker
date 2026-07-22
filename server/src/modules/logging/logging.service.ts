@@ -4,12 +4,16 @@ import { round } from '../../calc/anthropometry';
 import { HttpError } from '../../middleware/error';
 import type { CheckinBody, FoodLogBody, WaterLogBody } from './logging.schemas';
 import { buildDashboard, dayKey, sumTotals, type WeightPoint } from './dashboard';
+import { localDayKey } from '../../lib/tz';
 
-/** UTC [start, end) for the day containing `date`. */
-export function dayRange(date: Date): { start: Date; end: Date } {
-  const start = new Date(`${dayKey(date)}T00:00:00.000Z`);
-  const end = new Date(start.getTime() + 86_400_000);
-  return { start, end };
+/**
+ * UTC [start, end) instants bounding the local calendar day containing `date`.
+ * offsetMin = the user's UTC offset in minutes (0 => plain UTC day, backward-compatible).
+ */
+export function dayRange(date: Date, offsetMin = 0): { start: Date; end: Date } {
+  const w = new Date(date.getTime() + offsetMin * 60_000);
+  const startMs = Date.UTC(w.getUTCFullYear(), w.getUTCMonth(), w.getUTCDate()) - offsetMin * 60_000;
+  return { start: new Date(startMs), end: new Date(startMs + 86_400_000) };
 }
 
 async function nutritionBasis(body: FoodLogBody) {
@@ -60,8 +64,8 @@ export async function logFood(userId: string, body: FoodLogBody) {
   return entry;
 }
 
-export async function listFood(userId: string, date: Date) {
-  const { start, end } = dayRange(date);
+export async function listFood(userId: string, date: Date, offsetMin = 0) {
+  const { start, end } = dayRange(date, offsetMin);
   return prisma.foodLog.findMany({
     where: { userId, loggedAt: { gte: start, lt: end } },
     orderBy: { loggedAt: 'asc' },
@@ -83,8 +87,8 @@ export async function logWater(userId: string, body: WaterLogBody) {
   });
 }
 
-export async function waterTotal(userId: string, date: Date): Promise<number> {
-  const { start, end } = dayRange(date);
+export async function waterTotal(userId: string, date: Date, offsetMin = 0): Promise<number> {
+  const { start, end } = dayRange(date, offsetMin);
   const agg = await prisma.waterLog.aggregate({
     where: { userId, loggedAt: { gte: start, lt: end } },
     _sum: { amountMl: true },
@@ -134,12 +138,12 @@ export async function listCheckins(userId: string) {
   });
 }
 
-export async function getDashboard(userId: string, now: Date = new Date()) {
-  const todayKey = dayKey(now);
+export async function getDashboard(userId: string, offsetMin = 0, now: Date = new Date()) {
+  const todayKey = localDayKey(offsetMin, now.getTime());
 
   const [todayFood, waterMl, snapshot, checkins, distinctDays] = await Promise.all([
-    listFood(userId, now),
-    waterTotal(userId, now),
+    listFood(userId, now, offsetMin),
+    waterTotal(userId, now, offsetMin),
     prisma.calcResultSnapshot.findFirst({ where: { userId }, orderBy: { createdAt: 'desc' } }),
     prisma.weeklyCheckin.findMany({ where: { userId }, orderBy: { date: 'asc' } }),
     prisma.foodLog.findMany({ where: { userId }, select: { loggedAt: true } }),

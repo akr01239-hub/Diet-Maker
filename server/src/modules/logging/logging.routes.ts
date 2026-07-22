@@ -8,6 +8,7 @@ import {
 } from './logging.schemas';
 import * as svc from './logging.service';
 import { lookupBarcode } from './barcode';
+import { tzOffsetMin } from '../../lib/tz';
 
 export const loggingRouter = Router();
 
@@ -90,7 +91,7 @@ loggingRouter.get(
   '/dashboard',
   requireAuth,
   asyncHandler(async (req: AuthedRequest, res) => {
-    const dashboard = await svc.getDashboard(req.user!.id);
+    const dashboard = await svc.getDashboard(req.user!.id, tzOffsetMin(req));
     res.json({ dashboard });
   }),
 );

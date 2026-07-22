@@ -4,6 +4,7 @@ import { requireCompleteProfile } from '../profile/profile.service';
 import { computeCalcResult } from '../nutrition/calcResult';
 import { ageFromDob } from '../nutrition/calc.service';
 import { generateWeekPlan } from './planGenerator';
+import { localSunday, localToday } from '../../lib/tz';
 import type { FoodItem, MealSlot, PlanPreferences, PlanTargets } from './food.types';
 import type { ActivityLevel, Goal } from '../../calc/types';
 import type { Condition } from '../../guardrails';
@@ -37,7 +38,7 @@ function toFoodItem(f: Food): FoodItem {
  * through diet/allergy/condition filters, persist and return. Every plan is guardrail-safe
  * because its calorie/macro targets come from the guardrailed CalcResult.
  */
-export async function generateAndSavePlan(userId: string, days = 7) {
+export async function generateAndSavePlan(userId: string, days = 7, tzOffsetMin = 0) {
   const { profile, sensitive } = await requireCompleteProfile(userId);
 
   const calc = computeCalcResult({
@@ -95,13 +96,11 @@ export async function generateAndSavePlan(userId: string, days = 7) {
   targets.dailyKcal = Math.max(1200, calc.dailyKcal + carryOverKcal);
   targets.carryOverKcal = carryOverKcal;
 
-  // Sunday-to-Saturday week: start at the most recent Sunday so Yesterday/Today are included.
-  const sunday = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() - now.getUTCDay()));
-
+  // Sunday-to-Saturday week in the user's timezone (falls back to UTC when offset is 0).
   const week = generateWeekPlan(foods.map(toFoodItem), targets, prefs, {
     days,
-    startDate: sunday,
-    today: now,
+    startDate: localSunday(tzOffsetMin),
+    today: localToday(tzOffsetMin),
     fastDayOfWeek: sensitive.fastDayOfWeek,
   });
 

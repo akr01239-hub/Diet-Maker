@@ -87,8 +87,8 @@ fun HomeScreen(
             when (tab) {
                 0 -> DashboardTab(onLogout = onLogout, onCompleteProfile = onCompleteProfile)
                 1 -> com.nutriai.ui.calendar.CalendarScreen(Modifier.fillMaxSize())
-                2 -> LogTab()
-                3 -> ChatTab()
+                2 -> com.nutriai.ui.log.LogScreen(Modifier.fillMaxSize())
+                3 -> com.nutriai.ui.coach.CoachScreen(Modifier.fillMaxSize())
                 else -> MoreScreen(Modifier.fillMaxSize())
             }
         }
