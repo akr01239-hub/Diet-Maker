@@ -1,6 +1,7 @@
 import { prisma } from '../../lib/prisma';
+import { HttpError } from '../../middleware/error';
 import { requireCompleteProfile } from '../profile/profile.service';
-import { computeCycle, cycleGuidance } from './cycle';
+import { computeCycle, cycleGuidance, analyzeCycleHealth } from './cycle';
 
 const DAY_MS = 86_400_000;
 
@@ -9,6 +10,16 @@ export async function logPeriod(userId: string, startDate: Date, endDate?: Date)
   return prisma.periodLog.create({
     data: { userId, startDate, endDate: endDate ?? null },
   });
+}
+
+/** Marks the most recent still-open period as ended (defaults to now). */
+export async function endLatestPeriod(userId: string, when: Date = new Date()) {
+  const open = await prisma.periodLog.findFirst({
+    where: { userId, endDate: null },
+    orderBy: { startDate: 'desc' },
+  });
+  if (!open) throw new HttpError(400, 'No ongoing period to end — log a start first.');
+  return prisma.periodLog.update({ where: { id: open.id }, data: { endDate: when } });
 }
 
 export async function listPeriods(userId: string) {
@@ -62,13 +73,37 @@ export async function getCycle(userId: string, now: Date = new Date()) {
   const lastStart = starts[0]!;
   const state = computeCycle(lastStart, now, cycleLengthDays, periodLengthDays);
 
+  // Raw arrays for the health analysis.
+  const gaps: number[] = [];
+  for (let i = 0; i < starts.length - 1; i++) {
+    const g = Math.round((starts[i]!.getTime() - starts[i + 1]!.getTime()) / DAY_MS);
+    if (g >= 15 && g <= 60) gaps.push(g);
+  }
+  const periodLengths = rows
+    .filter((r) => r.endDate)
+    .map((r) => Math.round((r.endDate!.getTime() - r.startDate.getTime()) / DAY_MS) + 1)
+    .filter((d) => d >= 1 && d <= 15);
+  const daysSinceLastStart = Math.max(0, Math.round((now.getTime() - lastStart.getTime()) / DAY_MS));
+  const periodOngoing = rows[0]!.endDate == null && state.cycleDay <= periodLengthDays + 2;
+
+  const health = analyzeCycleHealth({
+    cycleLengths: gaps,
+    periodLengths,
+    daysSinceLastStart,
+    avgCycleLength: cycleLengthDays,
+    smoking: sensitive.smoking,
+    alcohol: sensitive.alcohol,
+  });
+
   return {
     applicable: true as const,
     needsSetup: false as const,
     lastPeriodStart: lastStart.toISOString().slice(0, 10),
     cycleLengthDays,
     periodLengthDays,
+    periodOngoing,
     ...state,
     guidance: cycleGuidance(state.phase),
+    health,
   };
 }

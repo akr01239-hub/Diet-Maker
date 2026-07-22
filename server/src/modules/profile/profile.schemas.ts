@@ -64,6 +64,9 @@ export const sensitiveSchema = z.object({
   exerciseLocation: z.enum(['gym', 'home', 'none']).optional(),
   bodyGoal: z.enum(['fatloss', 'athletic', 'muscular']).optional(),
   workoutRestDay: z.number().int().min(0).max(6).optional(),
+  /** Lifestyle factors used for menstrual-health and general guidance. */
+  smoking: z.enum(['no', 'occasional', 'regular']).optional(),
+  alcohol: z.enum(['no', 'occasional', 'regular']).optional(),
 });
 
 export const profileUpsertSchema = z.object({

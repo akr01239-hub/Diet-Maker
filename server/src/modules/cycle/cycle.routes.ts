@@ -26,6 +26,16 @@ cycleRouter.post(
   }),
 );
 
+/** Mark the current (ongoing) period as ended today — enables duration analysis. */
+cycleRouter.post(
+  '/cycle/end',
+  requireAuth,
+  asyncHandler(async (req: AuthedRequest, res) => {
+    const row = await svc.endLatestPeriod(req.user!.id);
+    res.json({ period: { id: row.id, startDate: row.startDate, endDate: row.endDate } });
+  }),
+);
+
 /** Current cycle phase + phase-specific diet/exercise/yoga guidance. */
 cycleRouter.get(
   '/cycle',
