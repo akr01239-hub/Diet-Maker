@@ -112,4 +112,8 @@ interface NutriApi {
     // ---- Barcode ----
     @GET("barcode/{code}")
     suspend fun barcode(@Path("code") code: String): BarcodeEnvelope
+
+    // ---- Workout ----
+    @GET("exercise-plan")
+    suspend fun exercisePlan(): com.nutriai.data.remote.dto.WorkoutEnvelope
 }

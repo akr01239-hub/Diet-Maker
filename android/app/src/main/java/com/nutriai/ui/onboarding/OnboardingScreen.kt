@@ -54,6 +54,9 @@ fun OnboardingScreen(
     var diet by remember { mutableStateOf("nonveg") }
     val conditions = remember { mutableStateListOf<String>() }
     var fastDay by remember { mutableStateOf<Int?>(null) }
+    var exLocation by remember { mutableStateOf("home") }
+    var bodyGoal by remember { mutableStateOf("fatloss") }
+    var workoutRest by remember { mutableStateOf<Int?>(0) }
 
     Column(
         modifier = Modifier
@@ -94,6 +97,22 @@ fun OnboardingScreen(
             }
         }
 
+        Label("Where do you exercise?")
+        SingleChoiceChips(listOf("gym", "home", "none"), exLocation) { exLocation = it }
+        Label("Body goal (fat loss / athletic-lean / muscular)")
+        SingleChoiceChips(listOf("fatloss", "athletic", "muscular"), bodyGoal) { bodyGoal = it }
+        Label("Workout rest day (skip for a 7-day plan)")
+        Row(
+            Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            val restLabels = listOf("None", "Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat")
+            restLabels.forEachIndexed { idx, lbl ->
+                val value = if (idx == 0) null else idx - 1
+                FilterChip(selected = workoutRest == value, onClick = { workoutRest = value }, label = { Text(lbl) })
+            }
+        }
+
         if (state.error != null) {
             Text(state.error!!, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
         }
@@ -117,6 +136,9 @@ fun OnboardingScreen(
                                 targetWeightKg = t,
                                 conditions = conditions.toList(),
                                 fastDayOfWeek = fastDay,
+                                exerciseLocation = exLocation,
+                                bodyGoal = bodyGoal,
+                                workoutRestDay = workoutRest,
                             ),
                         ),
                         onDone,

@@ -1,0 +1,43 @@
+import { describe, it, expect } from 'vitest';
+import { generateWeeklyWorkout } from '../src/modules/exercise/workoutGenerator';
+
+describe('workout generator', () => {
+  it('gym + muscular with a rest day gives 6 training + 1 rest', () => {
+    const start = new Date('2026-07-19T00:00:00Z'); // Sunday
+    const plan = generateWeeklyWorkout('muscular', 'gym', { restDayOfWeek: 0, startDate: start });
+    expect(plan.days).toHaveLength(7);
+    const rest = plan.days.filter((d) => d.rest);
+    expect(rest).toHaveLength(1);
+    expect(rest[0]!.focus).toMatch(/rest/i);
+    expect(plan.days.filter((d) => !d.rest)).toHaveLength(6);
+    // Every training day has exercises.
+    plan.days.filter((d) => !d.rest).forEach((d) => expect(d.exercises.length).toBeGreaterThan(0));
+  });
+
+  it('no rest day => 7 training days', () => {
+    const plan = generateWeeklyWorkout('fatloss', 'home', {});
+    expect(plan.days).toHaveLength(7);
+    expect(plan.days.every((d) => !d.rest)).toBe(true);
+  });
+
+  it('location "none" falls back to home (bodyweight) templates', () => {
+    const plan = generateWeeklyWorkout('athletic', 'none', {});
+    expect(plan.days.length).toBe(7);
+    expect(plan.note.toLowerCase()).toContain('no equipment');
+  });
+
+  it('gym muscular uses a push/pull/legs split', () => {
+    const plan = generateWeeklyWorkout('muscular', 'gym', {});
+    const focuses = plan.days.map((d) => d.focus.toLowerCase()).join(' ');
+    expect(focuses).toContain('push');
+    expect(focuses).toContain('pull');
+    expect(focuses).toContain('legs');
+  });
+
+  it('carries dates + labels when startDate is given', () => {
+    const plan = generateWeeklyWorkout('muscular', 'gym', { startDate: new Date('2026-07-22T00:00:00Z') });
+    expect(plan.days[0]!.label).toBe('Today');
+    expect(plan.days[0]!.date).toBe('2026-07-22');
+    expect(plan.days[1]!.label).toBe('Tomorrow');
+  });
+});

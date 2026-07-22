@@ -51,7 +51,36 @@ data class SensitiveData(
     val allergies: List<String> = emptyList(),
     val desiredWeeklyLossKg: Double? = null,
     val fastDayOfWeek: Int? = null,
+    val exerciseLocation: String? = null,
+    val bodyGoal: String? = null,
+    val workoutRestDay: Int? = null,
 )
+
+// ---- Workout / exercise plan ----
+@Serializable
+data class ExerciseItem(val name: String, val sets: Int, val reps: String, val type: String)
+
+@Serializable
+data class WorkoutDay(
+    val dayIndex: Int,
+    val date: String? = null,
+    val label: String? = null,
+    val focus: String,
+    val rest: Boolean = false,
+    val exercises: List<ExerciseItem> = emptyList(),
+)
+
+@Serializable
+data class WeeklyWorkout(
+    val location: String,
+    val goal: String,
+    val days: List<WorkoutDay> = emptyList(),
+    val note: String = "",
+    val disclaimer: String = "",
+)
+
+@Serializable
+data class WorkoutEnvelope(val plan: WeeklyWorkout)
 
 @Serializable
 data class ProfileUpsertRequest(

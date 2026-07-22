@@ -23,10 +23,12 @@ import com.nutriai.ui.checkin.CheckinScreen
 import com.nutriai.ui.family.FamilyScreen
 import com.nutriai.ui.grocery.GroceryScreen
 import com.nutriai.ui.reports.ReportsScreen
+import com.nutriai.ui.workout.WorkoutScreen
 
 private data class MoreItem(val key: String, val icon: String, val label: String)
 
 private val MORE_ITEMS = listOf(
+    MoreItem("workout", "💪", "Workout plan"),
     MoreItem("checkin", "⚖️", "Weekly check-in"),
     MoreItem("barcode", "📷", "Scan barcode"),
     MoreItem("grocery", "🛒", "Grocery list"),
@@ -46,6 +48,7 @@ fun MoreScreen(modifier: Modifier = Modifier) {
                 Text("← More")
             }
             when (selected) {
+                "workout" -> WorkoutScreen(Modifier.fillMaxSize())
                 "checkin" -> CheckinScreen(Modifier.fillMaxSize())
                 "barcode" -> BarcodeScreen(Modifier.fillMaxSize())
                 "grocery" -> GroceryScreen(Modifier.fillMaxSize())

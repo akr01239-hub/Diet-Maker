@@ -60,6 +60,10 @@ export const sensitiveSchema = z.object({
   clinicianOverride: z.boolean().optional(),
   /** Optional weekly fasting day: 0=Sun .. 6=Sat. That day gets a light plan. */
   fastDayOfWeek: z.number().int().min(0).max(6).optional(),
+  /** Workout preferences (drive the exercise plan). */
+  exerciseLocation: z.enum(['gym', 'home', 'none']).optional(),
+  bodyGoal: z.enum(['fatloss', 'athletic', 'muscular']).optional(),
+  workoutRestDay: z.number().int().min(0).max(6).optional(),
 });
 
 export const profileUpsertSchema = z.object({

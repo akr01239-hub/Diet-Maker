@@ -122,6 +122,10 @@ class AppRepository @Inject constructor(
     suspend fun familyCalc(id: String): Result<com.nutriai.data.remote.dto.CalcResult?> =
         runCatching { api.familyCalc(id).result }
 
+    // ---- Workout ----
+    suspend fun exercisePlan(): Result<com.nutriai.data.remote.dto.WeeklyWorkout> =
+        runCatching { api.exercisePlan().plan }
+
     // ---- Barcode ----
     suspend fun barcode(code: String): Result<com.nutriai.data.remote.dto.BarcodeFood> =
         runCatching { api.barcode(code).food }
