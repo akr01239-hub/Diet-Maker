@@ -12,6 +12,7 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
@@ -52,6 +53,7 @@ fun OnboardingScreen(
     var goal by remember { mutableStateOf("lose") }
     var diet by remember { mutableStateOf("nonveg") }
     val conditions = remember { mutableStateListOf<String>() }
+    var fastDay by remember { mutableStateOf<Int?>(null) }
 
     Column(
         modifier = Modifier
@@ -76,8 +78,21 @@ fun OnboardingScreen(
         SingleChoiceChips(GOAL, goal) { goal = it }
         Label("Diet")
         SingleChoiceChips(DIET, diet) { diet = it }
+        Label("Goal tip: choose \"gain\" to build muscle (higher protein).")
         Label("Conditions (optional)")
         MultiChoiceChips(CONDITIONS, conditions)
+
+        Label("Weekly fasting day (optional)")
+        Row(
+            Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            val fastLabels = listOf("None", "Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat")
+            fastLabels.forEachIndexed { idx, lbl ->
+                val value = if (idx == 0) null else idx - 1
+                FilterChip(selected = fastDay == value, onClick = { fastDay = value }, label = { Text(lbl) })
+            }
+        }
 
         if (state.error != null) {
             Text(state.error!!, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
@@ -101,6 +116,7 @@ fun OnboardingScreen(
                                 currentWeightKg = w,
                                 targetWeightKg = t,
                                 conditions = conditions.toList(),
+                                fastDayOfWeek = fastDay,
                             ),
                         ),
                         onDone,

@@ -79,6 +79,7 @@ export async function generateAndSavePlan(userId: string, days = 7) {
   const week = generateWeekPlan(foods.map(toFoodItem), targets, prefs, {
     days,
     startDate: new Date(),
+    fastDayOfWeek: sensitive.fastDayOfWeek,
   });
 
   const saved = await prisma.dietPlan.create({

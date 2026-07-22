@@ -50,6 +50,7 @@ data class SensitiveData(
     val conditions: List<String> = emptyList(),
     val allergies: List<String> = emptyList(),
     val desiredWeeklyLossKg: Double? = null,
+    val fastDayOfWeek: Int? = null,
 )
 
 @Serializable
@@ -129,6 +130,14 @@ data class DashMacros(
 )
 
 @Serializable
+data class ProjectionPoint(
+    val label: String,
+    val weeks: Int,
+    val weightKg: Double,
+    val bmi: Double,
+)
+
+@Serializable
 data class Dashboard(
     val date: String,
     val calories: DashCalories,
@@ -138,6 +147,7 @@ data class Dashboard(
     val streakDays: Int,
     val bmi: Double? = null,
     val weight: WeightTrend,
+    val projection: List<ProjectionPoint> = emptyList(),
 )
 
 @Serializable

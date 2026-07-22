@@ -165,6 +165,37 @@ private fun DashboardBody(d: Dashboard, onCompleteProfile: () -> Unit, onAddWate
     d.weight.latestKg?.let { latest ->
         statCard("Weight", "$latest kg (${d.weight.deltaKg ?: 0.0} kg)", Modifier.fillMaxWidth())
     }
+
+    // Free "how you'll look" forecast — projected weight/BMI over time.
+    if (d.projection.size > 1) {
+        Card(
+            Modifier.fillMaxWidth(),
+            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer),
+        ) {
+            Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                Text(
+                    "Your journey ✨",
+                    style = MaterialTheme.typography.titleMedium,
+                    color = MaterialTheme.colorScheme.onPrimaryContainer,
+                )
+                Text(
+                    "Projected at your safe, steady pace",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onPrimaryContainer,
+                )
+                d.projection.forEach { p ->
+                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                        Text(p.label, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onPrimaryContainer)
+                        Text(
+                            "${p.weightKg} kg · BMI ${p.bmi}",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onPrimaryContainer,
+                        )
+                    }
+                }
+            }
+        }
+    }
 }
 
 @Composable

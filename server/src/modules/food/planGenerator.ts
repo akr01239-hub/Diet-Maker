@@ -107,24 +107,40 @@ function buildMeal(
   return { slot, items, kcal, proteinG };
 }
 
+const LIGHT_TAGS = new Set(['fruit', 'beverage', 'light', 'probiotic', 'high-fiber']);
+
 function buildDay(
   dayIndex: number,
   eligible: FoodItem[],
   targets: PlanTargets,
   dietType: string,
+  fasting = false,
 ): DayPlan {
-  // Intermittent fasting collapses to fewer eating windows.
-  const slots =
-    dietType === 'if'
+  // Fasting day: fewer, lighter meals at ~40% of calories.
+  const slots: MealSlot[] = fasting
+    ? (['midmorning', 'lunch', 'eveningsnack'] as MealSlot[])
+    : dietType === 'if'
       ? (['lunch', 'eveningsnack', 'dinner'] as MealSlot[])
       : MEAL_SLOTS;
+
+  const dailyKcal = fasting ? Math.round(targets.dailyKcal * 0.4) : targets.dailyKcal;
+
+  // On a fasting day, prefer light foods (fruit, buttermilk, coconut water, khichdi).
+  const pool = fasting
+    ? (() => {
+        const light = eligible.filter(
+          (f) => f.kcal < 130 || f.tags.some((t) => LIGHT_TAGS.has(t)),
+        );
+        return light.length >= 3 ? light : eligible;
+      })()
+    : eligible;
 
   // Renormalise slot weights over the active slots so kcal still sums to the target.
   const weightSum = slots.reduce((s, sl) => s + SLOT_KCAL_WEIGHTS[sl], 0);
 
   const meals = slots.map((slot) => {
-    const slotKcal = (targets.dailyKcal * SLOT_KCAL_WEIGHTS[slot]) / weightSum;
-    return buildMeal(slot, eligible, slotKcal, dietType, dayIndex);
+    const slotKcal = (dailyKcal * SLOT_KCAL_WEIGHTS[slot]) / weightSum;
+    return buildMeal(slot, pool, slotKcal, dietType, dayIndex);
   });
 
   const sum = (pick: (i: MealItem) => number) =>
@@ -148,6 +164,8 @@ export interface GenerateOptions {
   days?: number;
   /** If given, each day gets a real date + label (Today/Tomorrow/weekday). */
   startDate?: Date;
+  /** Optional weekly fasting day: 0=Sun .. 6=Sat. That day gets a light plan. */
+  fastDayOfWeek?: number;
 }
 
 const WEEKDAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
@@ -178,11 +196,17 @@ export function generateWeekPlan(
   const dayCount = options.days ?? 7;
   const days: DayPlan[] = [];
   for (let d = 0; d < dayCount; d++) {
-    const day = buildDay(d, ordered, targets, prefs.dietType);
+    let fasting = false;
+    let dt: Date | undefined;
     if (options.startDate) {
-      const dt = new Date(options.startDate.getTime() + d * 86_400_000);
+      dt = new Date(options.startDate.getTime() + d * 86_400_000);
+      fasting = options.fastDayOfWeek !== undefined && dt.getUTCDay() === options.fastDayOfWeek;
+    }
+    const day = buildDay(d, ordered, targets, prefs.dietType, fasting);
+    if (dt) {
       day.date = dt.toISOString().slice(0, 10);
-      day.label = d === 0 ? 'Today' : d === 1 ? 'Tomorrow' : WEEKDAYS[dt.getUTCDay()];
+      const base = d === 0 ? 'Today' : d === 1 ? 'Tomorrow' : WEEKDAYS[dt.getUTCDay()];
+      day.label = fasting ? `${base} · Fasting day` : base;
     }
     days.push(day);
   }

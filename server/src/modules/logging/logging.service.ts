@@ -146,7 +146,13 @@ export async function getDashboard(userId: string, now: Date = new Date()) {
   ]);
 
   const result = snapshot?.result as
-    | { dailyKcal: number; proteinG: number; waterMl: number; bmi: number }
+    | {
+        dailyKcal: number;
+        proteinG: number;
+        waterMl: number;
+        bmi: number;
+        projection?: { label: string; weeks: number; weightKg: number; bmi: number }[];
+      }
     | undefined;
 
   const weightPoints: WeightPoint[] = checkins
@@ -167,5 +173,6 @@ export async function getDashboard(userId: string, now: Date = new Date()) {
     todayKey,
     weightPoints,
     bmi: result?.bmi ?? null,
+    projection: result?.projection ?? [],
   });
 }

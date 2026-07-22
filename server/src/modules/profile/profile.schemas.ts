@@ -58,6 +58,8 @@ export const sensitiveSchema = z.object({
   allergies: z.array(z.string().max(60)).default([]),
   desiredWeeklyLossKg: z.number().positive().max(3).optional(),
   clinicianOverride: z.boolean().optional(),
+  /** Optional weekly fasting day: 0=Sun .. 6=Sat. That day gets a light plan. */
+  fastDayOfWeek: z.number().int().min(0).max(6).optional(),
 });
 
 export const profileUpsertSchema = z.object({

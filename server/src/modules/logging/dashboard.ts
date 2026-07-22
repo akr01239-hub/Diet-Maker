@@ -106,6 +106,7 @@ export interface DashboardInput {
   todayKey: string;
   weightPoints: WeightPoint[];
   bmi?: number | null;
+  projection?: { label: string; weeks: number; weightKg: number; bmi: number }[];
 }
 
 /** Assembles the dashboard payload. Pure — the service just feeds it fetched data. */
@@ -142,5 +143,6 @@ export function buildDashboard(input: DashboardInput) {
     streakDays: computeStreak(input.logDayKeys, input.todayKey),
     bmi: input.bmi ?? null,
     weight: weightTrend(input.weightPoints),
+    projection: input.projection ?? [],
   };
 }

@@ -3,8 +3,10 @@ import {
   Goal,
   Sex,
   anthropometrySummary,
+  bmi,
   computeMacros,
   energy,
+  round,
 } from '../../calc';
 import { applyGuardrails, Condition, Flag } from '../../guardrails';
 
@@ -43,7 +45,37 @@ export interface CalcResult {
   safeWeeklyDeltaKg: number;
   requiresSupervision: boolean;
   weightLossBlocked: boolean;
+  projection: ProjectionPoint[];
   flags: Flag[];
+}
+
+/** A free, deterministic "how you'll look" forecast — projected weight/BMI over time. */
+export interface ProjectionPoint {
+  label: string;
+  weeks: number;
+  weightKg: number;
+  bmi: number;
+}
+
+const MILESTONES: { label: string; weeks: number }[] = [
+  { label: 'Now', weeks: 0 },
+  { label: '1 month', weeks: 4 },
+  { label: '3 months', weeks: 13 },
+  { label: '6 months', weeks: 26 },
+  { label: '1 year', weeks: 52 },
+];
+
+/** Projects weight forward at the safe weekly rate, without overshooting the goal. */
+function projectWeight(
+  currentKg: number,
+  targetKg: number,
+  weeklyDeltaKg: number,
+  weeks: number,
+): number {
+  const raw = currentKg + weeklyDeltaKg * weeks;
+  if (weeklyDeltaKg < 0) return round(Math.max(targetKg, raw), 1); // losing
+  if (weeklyDeltaKg > 0) return round(Math.min(targetKg, raw), 1); // gaining
+  return round(currentKg, 1);
 }
 
 /**
@@ -112,6 +144,15 @@ export function computeCalcResult(input: CalcProfileInput): CalcResult {
     safeWeeklyDeltaKg: guard.safeWeeklyDeltaKg,
     requiresSupervision: guard.requiresSupervision,
     weightLossBlocked: guard.weightLossBlocked,
+    projection: MILESTONES.map((m) => {
+      const w = projectWeight(
+        input.currentWeightKg,
+        input.targetWeightKg,
+        guard.safeWeeklyDeltaKg,
+        m.weeks,
+      );
+      return { label: m.label, weeks: m.weeks, weightKg: w, bmi: bmi(w, input.heightCm) };
+    }),
     flags: guard.flags,
   };
 }
