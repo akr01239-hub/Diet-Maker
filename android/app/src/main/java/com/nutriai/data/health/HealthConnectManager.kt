@@ -4,7 +4,7 @@ import android.content.Context
 import androidx.health.connect.client.HealthConnectClient
 import androidx.health.connect.client.permission.HealthPermission
 import androidx.health.connect.client.records.StepsRecord
-import androidx.health.connect.client.request.ReadRecordsRequest
+import androidx.health.connect.client.request.AggregateRequest
 import androidx.health.connect.client.time.TimeRangeFilter
 import dagger.hilt.android.qualifiers.ApplicationContext
 import java.time.Instant
@@ -35,7 +35,11 @@ class HealthConnectManager @Inject constructor(
         return client.permissionController.getGrantedPermissions().containsAll(readPermissions)
     }
 
-    /** Total steps logged today (device local day). Returns 0 if unavailable/denied. */
+    /**
+     * Total steps today (device local day). Uses the AGGREGATE API, which de-duplicates
+     * steps across sources (phone sensor, Google Fit, etc.) by priority — summing raw
+     * records double-counts overlapping data. Returns 0 if unavailable/denied.
+     */
     suspend fun readTodaySteps(): Long {
         val client = clientOrNull() ?: return 0L
         if (!hasStepPermission()) return 0L
@@ -43,13 +47,13 @@ class HealthConnectManager @Inject constructor(
             val zone = ZoneId.systemDefault()
             val start = LocalDate.now().atStartOfDay(zone).toInstant()
             val end = Instant.now()
-            val response = client.readRecords(
-                ReadRecordsRequest(
-                    recordType = StepsRecord::class,
+            val response = client.aggregate(
+                AggregateRequest(
+                    metrics = setOf(StepsRecord.COUNT_TOTAL),
                     timeRangeFilter = TimeRangeFilter.between(start, end),
                 ),
             )
-            response.records.sumOf { it.count }
+            response[StepsRecord.COUNT_TOTAL] ?: 0L
         } catch (e: Exception) {
             0L
         }
