@@ -1,6 +1,8 @@
 package com.nutriai.ui.calendar
 
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -43,6 +45,7 @@ import com.nutriai.data.remote.dto.DayPlan
 import com.nutriai.data.remote.dto.ExerciseLogDto
 import com.nutriai.data.remote.dto.ExerciseLogRequest
 import com.nutriai.data.remote.dto.Guidance
+import com.nutriai.data.remote.dto.Recipe
 import com.nutriai.data.remote.dto.LastPerformance
 import com.nutriai.data.remote.dto.WorkoutDay
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -68,6 +71,8 @@ data class CalendarState(
     /** Adaptive coaching insight from recent logging + weight trend. */
     val adaptation: Adaptation? = null,
     val applying: Boolean = false,
+    val recipeLoading: Boolean = false,
+    val recipe: com.nutriai.data.remote.dto.Recipe? = null,
     /** Personalized diet + exercise guidance from conditions / sex / lifestyle. */
     val guidance: com.nutriai.data.remote.dto.Guidance? = null,
 )
@@ -120,6 +125,16 @@ class CalendarViewModel @Inject constructor(
             )
         }
     }
+
+    fun loadRecipe(name: String, foodId: String?) {
+        _state.value = _state.value.copy(recipeLoading = true, recipe = null)
+        viewModelScope.launch {
+            val r = repository.recipe(name, foodId).getOrNull()
+            _state.value = _state.value.copy(recipeLoading = false, recipe = r)
+        }
+    }
+
+    fun clearRecipe() { _state.value = _state.value.copy(recipe = null, recipeLoading = false) }
 
     /** Swaps a single meal in the plan for a different dish at similar calories. */
     fun swapMeal(dayIndex: Int, slot: String) {
@@ -219,6 +234,10 @@ fun CalendarScreen(
                 pending = null
             },
         )
+    }
+
+    if (state.recipeLoading || state.recipe != null) {
+        RecipeDialog(loading = state.recipeLoading, recipe = state.recipe, onDismiss = { viewModel.clearRecipe() })
     }
 
     LazyColumn(
@@ -339,10 +358,23 @@ fun CalendarScreen(
                                 )
                             }
                             meal.items.forEach { mealItem ->
-                                Text(
-                                    "• ${mealItem.name} — ${mealItem.grams.toInt()}g (${mealItem.kcal.toInt()}kcal)",
-                                    style = MaterialTheme.typography.bodyMedium,
-                                )
+                                Row(
+                                    Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                    verticalAlignment = Alignment.CenterVertically,
+                                ) {
+                                    Text(
+                                        "• ${mealItem.name} — ${mealItem.grams.toInt()}g (${mealItem.kcal.toInt()}kcal)",
+                                        style = MaterialTheme.typography.bodyMedium,
+                                        modifier = Modifier.weight(1f),
+                                    )
+                                    Text(
+                                        "📖",
+                                        modifier = Modifier
+                                            .clickable { viewModel.loadRecipe(mealItem.name, mealItem.foodId) }
+                                            .padding(start = 8.dp),
+                                    )
+                                }
                             }
                         }
                     }
@@ -475,6 +507,40 @@ fun CalendarScreen(
             )
         }
     }
+}
+
+@Composable
+private fun RecipeDialog(loading: Boolean, recipe: Recipe?, onDismiss: () -> Unit) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(recipe?.title?.ifBlank { "Recipe" } ?: "Recipe", fontWeight = FontWeight.Bold) },
+        text = {
+            when {
+                loading -> Row(Modifier.fillMaxWidth().padding(16.dp), horizontalArrangement = Arrangement.Center) { CircularProgressIndicator() }
+                recipe != null -> Column(
+                    Modifier.verticalScroll(rememberScrollState()),
+                    verticalArrangement = Arrangement.spacedBy(6.dp),
+                ) {
+                    val meta = listOfNotNull(
+                        recipe.timeMin?.let { "⏱ $it min" },
+                        recipe.servings?.let { "🍽 $it servings" },
+                    ).joinToString("   ·   ")
+                    if (meta.isNotBlank()) Text(meta, style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    if (recipe.ingredients.isNotEmpty()) {
+                        Text("Ingredients", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.primary)
+                        recipe.ingredients.forEach { Text("•  $it", style = MaterialTheme.typography.bodySmall) }
+                    }
+                    if (recipe.steps.isNotEmpty()) {
+                        Text("Steps", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.primary, modifier = Modifier.padding(top = 4.dp))
+                        recipe.steps.forEachIndexed { i, s -> Text("${i + 1}. $s", style = MaterialTheme.typography.bodyMedium) }
+                    }
+                    recipe.note?.takeIf { it.isNotBlank() }?.let { Text(it, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant) }
+                }
+                else -> Text("Couldn't load a recipe. Try again.")
+            }
+        },
+        confirmButton = { TextButton(onClick = onDismiss) { Text("Close") } },
+    )
 }
 
 @Composable

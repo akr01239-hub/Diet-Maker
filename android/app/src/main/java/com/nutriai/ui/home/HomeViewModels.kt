@@ -138,10 +138,23 @@ data class ChatState(val messages: List<ChatMessage> = emptyList(), val sending:
 class ChatViewModel @Inject constructor(
     private val repository: AppRepository,
 ) : ViewModel() {
-    private val _state = MutableStateFlow(
-        ChatState(messages = listOf(ChatMessage(false, "Hi! Ask me about a food, your targets, or a safe pace to lose weight."))),
-    )
+    private val greeting = ChatMessage(false, "Hi! Ask me about a food, your targets, or a safe pace to lose weight.")
+    private val _state = MutableStateFlow(ChatState(messages = listOf(greeting)))
     val state: StateFlow<ChatState> = _state.asStateFlow()
+
+    init { loadHistory() }
+
+    /** Loads persisted history so the coach remembers past conversations. */
+    fun loadHistory() {
+        viewModelScope.launch {
+            val past = repository.chatHistory().getOrDefault(emptyList())
+            if (past.isNotEmpty()) {
+                _state.value = _state.value.copy(
+                    messages = past.map { ChatMessage(fromUser = it.role == "user", text = it.content) },
+                )
+            }
+        }
+    }
 
     fun send(text: String) {
         if (text.isBlank()) return
