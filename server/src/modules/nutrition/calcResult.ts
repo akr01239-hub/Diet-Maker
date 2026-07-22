@@ -108,6 +108,7 @@ export function computeCalcResult(input: CalcProfileInput): CalcResult {
     ageYears: input.ageYears,
     currentWeightKg: input.currentWeightKg,
     targetWeightKg: input.targetWeightKg,
+    heightCm: input.heightCm,
     tdee,
     bmi: anthro.bmi,
     goal: input.goal,

@@ -40,13 +40,22 @@ export function computeMacros(input: MacroInput): MacroTargets {
 
   if (dailyKcal <= 0) throw new RangeError('dailyKcal must be > 0');
 
+  // Minimum carbohydrate to protect against an accidental zero/keto plan. The brain needs
+  // ~130 g/day; we reserve a conservative 60 g floor and trim FAT (the flex macro, down to its
+  // weight-based floor) to make room when protein + fat would otherwise eat the whole budget.
+  const MIN_CARB_G = 60;
   const proteinG = round(proteinPerKg * targetWeightKg, 0);
-  const fatFromWeight = fatPerKgMin * targetWeightKg;
-  const fatFromKcal = (0.2 * dailyKcal) / KCAL_PER_G_FAT;
-  const fatG = round(Math.max(fatFromWeight, fatFromKcal), 0);
+  const fatFloorG = round(fatPerKgMin * targetWeightKg, 0);
+  let fatG = round(Math.max(fatPerKgMin * targetWeightKg, (0.2 * dailyKcal) / KCAL_PER_G_FAT), 0);
 
-  const remainingKcal =
-    dailyKcal - proteinG * KCAL_PER_G_PROTEIN - fatG * KCAL_PER_G_FAT;
+  const roomForCarb = () => dailyKcal - proteinG * KCAL_PER_G_PROTEIN - fatG * KCAL_PER_G_FAT;
+  if (roomForCarb() < MIN_CARB_G * KCAL_PER_G_CARB) {
+    const deficitKcal = MIN_CARB_G * KCAL_PER_G_CARB - roomForCarb();
+    const trimG = Math.min(fatG - fatFloorG, Math.ceil(deficitKcal / KCAL_PER_G_FAT));
+    if (trimG > 0) fatG -= trimG;
+  }
+
+  const remainingKcal = dailyKcal - proteinG * KCAL_PER_G_PROTEIN - fatG * KCAL_PER_G_FAT;
   const carbG = round(Math.max(0, remainingKcal / KCAL_PER_G_CARB), 0);
 
   const fiberG = round(14 * (dailyKcal / 1000), 0);

@@ -64,22 +64,51 @@ export function conditionAvoidTags(conditions: string[]): string[] {
 const norm = (s: string) => s.toLowerCase().trim();
 
 /**
+ * Allergen → related terms so a declared allergy also excludes obvious members and synonyms
+ * (e.g. "nuts" also blocks almond/cashew/peanut). Defence-in-depth on top of the food's own
+ * allergen tags; matching is fail-closed (substring both ways).
+ */
+const ALLERGEN_SYNONYMS: Record<string, string[]> = {
+  nut: ['nut', 'almond', 'cashew', 'walnut', 'pistachio', 'hazelnut', 'pecan', 'peanut', 'groundnut'],
+  nuts: ['nut', 'almond', 'cashew', 'walnut', 'pistachio', 'hazelnut', 'pecan', 'peanut', 'groundnut'],
+  peanut: ['peanut', 'groundnut'],
+  milk: ['milk', 'dairy', 'curd', 'yogurt', 'yoghurt', 'paneer', 'cheese', 'butter', 'ghee', 'khoya', 'lassi'],
+  dairy: ['milk', 'dairy', 'curd', 'yogurt', 'yoghurt', 'paneer', 'cheese', 'butter', 'ghee', 'khoya', 'lassi'],
+  lactose: ['milk', 'dairy', 'curd', 'yogurt', 'paneer', 'cheese', 'khoya'],
+  gluten: ['gluten', 'wheat', 'atta', 'maida', 'roti', 'chapati', 'paratha', 'bread', 'semolina', 'suji', 'rava', 'barley'],
+  wheat: ['wheat', 'gluten', 'atta', 'maida', 'roti', 'chapati', 'paratha', 'bread', 'semolina', 'suji', 'rava'],
+  egg: ['egg', 'omelette', 'omelet'],
+  soy: ['soy', 'soya', 'tofu', 'edamame'],
+  soya: ['soy', 'soya', 'tofu', 'edamame'],
+  fish: ['fish', 'tuna', 'salmon', 'anchovy', 'mackerel'],
+  shellfish: ['shellfish', 'prawn', 'shrimp', 'crab', 'lobster'],
+  sesame: ['sesame', 'til', 'tahini'],
+};
+
+function expandAllergen(a: string): string[] {
+  const key = norm(a);
+  return ALLERGEN_SYNONYMS[key] ? [key, ...ALLERGEN_SYNONYMS[key]] : [key];
+}
+
+/**
  * Returns the foods a user may eat: diet-compatible, allergen-free, and not carrying any
  * condition-avoid tag. Deterministic and pure.
  */
 export function eligibleFoods(foods: FoodItem[], prefs: PlanPreferences): FoodItem[] {
-  const allergies = new Set(prefs.allergies.map(norm));
+  const allergyTerms = prefs.allergies.flatMap(expandAllergen).filter(Boolean);
   const forbidden = new Set(forbiddenTags(prefs.dietType).map(norm));
   const avoid = new Set(conditionAvoidTags(prefs.conditions).map(norm));
 
   return foods.filter((f) => {
     if (!categoryAllowed(prefs.dietType, f.category)) return false;
 
-    // Allergen exclusion — match against declared allergens AND the food name.
-    for (const a of allergies) {
-      if (a && (f.allergens.some((x) => norm(x) === a) || norm(f.name).includes(a))) {
-        return false;
-      }
+    // Allergen exclusion — fail-closed: block if any allergy term (incl. synonyms) matches the
+    // food's name OR any of its allergen tags, substring in either direction.
+    const name = norm(f.name);
+    const foodAllergens = f.allergens.map(norm);
+    for (const term of allergyTerms) {
+      if (name.includes(term)) return false;
+      if (foodAllergens.some((x) => x.includes(term) || term.includes(x))) return false;
     }
 
     const tags = f.tags.map(norm);

@@ -28,6 +28,8 @@ export interface GuardrailInput {
   ageYears: number;
   currentWeightKg: number;
   targetWeightKg: number;
+  /** Height (cm) — lets the gate catch an underweight target (BMI < 18.5). */
+  heightCm?: number;
   tdee: number;
   bmi: number;
   goal: Goal;

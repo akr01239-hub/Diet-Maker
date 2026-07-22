@@ -50,8 +50,44 @@ export function applyGuardrails(input: GuardrailInput): GuardrailResult {
   const pregnant = has(conditions, 'pregnancy');
   const breastfeeding = has(conditions, 'breastfeeding');
 
+  // Target BMI (needs height) — used to refuse an underweight goal.
+  const targetBmi =
+    input.heightCm && input.heightCm > 0
+      ? input.targetWeightKg / (input.heightCm / 100) ** 2
+      : undefined;
+
   // ---- Whether weight loss is allowed at all ----
   let weightLossBlocked = false;
+
+  // ---- Eating-disorder / underweight safety: never plan loss toward an underweight body ----
+  const currentlyUnderweight = bmi < 18.5;
+  const targetUnderweight = targetBmi !== undefined && targetBmi < 18.5;
+  if (input.goal === 'lose' && (currentlyUnderweight || targetUnderweight)) {
+    weightLossBlocked = true;
+    flags.push({
+      code: 'UNDERWEIGHT_NO_LOSS',
+      severity: 'critical',
+      message: currentlyUnderweight
+        ? 'Your BMI is already in the underweight range, so a weight-loss plan is not safe — this plan targets healthy maintenance instead. If you feel a strong need to lose weight, please talk to a doctor.'
+        : 'Your target weight is in the underweight range (BMI < 18.5). For safety this plan targets a healthy weight, not that goal. If losing to that weight matters to you, please discuss it with a doctor first.',
+    });
+  } else if (targetUnderweight) {
+    flags.push({
+      code: 'TARGET_UNDERWEIGHT',
+      severity: 'warning',
+      message: 'Your target weight is below the healthy range (BMI < 18.5) — consider aiming for a weight in the healthy band, and check with a professional.',
+    });
+  }
+
+  // Cancer: often needs to prevent weight loss (cachexia) — do not plan a deficit.
+  if (has(conditions, 'cancer') && input.goal === 'lose') {
+    weightLossBlocked = true;
+    flags.push({
+      code: 'CANCER_NO_DEFICIT',
+      severity: 'critical',
+      message: 'With a cancer diagnosis, unplanned weight loss can be harmful — this plan avoids a calorie deficit. Your intake should be guided by your oncology team / dietitian.',
+    });
+  }
   if (pregnant || breastfeeding) {
     weightLossBlocked = true;
     flags.push({
@@ -66,9 +102,9 @@ export function applyGuardrails(input: GuardrailInput): GuardrailResult {
     weightLossBlocked = true;
     flags.push({
       code: 'MINOR_GROWTH',
-      severity: 'warning',
+      severity: ageYears < 15 ? 'critical' : 'warning',
       message:
-        'For under-18s the plan targets healthy growth, not weight loss. Involve a guardian and clinician.',
+        'Under-18: these calorie/macro numbers use adult formulas and are NOT valid for a growing child or teen — please use a paediatrician and growth charts for real targets. This plan supports healthy growth, never weight loss.',
     });
   }
 
@@ -159,12 +195,12 @@ export function applyGuardrails(input: GuardrailInput): GuardrailResult {
   }
 
   if (has(conditions, 'kidney_disease')) {
-    proteinPerKg = 0.7; // overrides any high-protein preference
+    proteinPerKg = 0.7; // safe for non-dialysis CKD; overrides any high-protein preference
     flags.push({
       code: 'CKD_PROTEIN_LOWERED',
       severity: 'critical',
       message:
-        'Kidney disease: protein lowered to ~0.7 g/kg and potassium/phosphorus watched. Requires medical supervision.',
+        'Kidney disease: this plan uses ~0.7 g/kg protein, which suits non-dialysis CKD. If you are on DIALYSIS you need MORE protein (~1.0–1.2 g/kg) — do not follow this protein target; your renal dietitian/nephrologist must set it. Potassium, phosphorus and fluid are also restricted per your doctor.',
     });
   }
 
@@ -173,7 +209,17 @@ export function applyGuardrails(input: GuardrailInput): GuardrailResult {
       code: 'DIABETES_LOWGI',
       severity: 'warning',
       message:
-        'Diabetes: low-GI carbs distributed across meals, higher fibre. Coordinate carb timing with medication.',
+        'Diabetes: low-GI carbs across meals, higher fibre. If you take insulin or a sulfonylurea, a calorie deficit + fewer carbs can cause LOW blood sugar — check your levels and adjust medication doses with your doctor before cutting intake.',
+    });
+  }
+
+  // Fluid restriction: advanced kidney disease and heart failure are often fluid-limited.
+  if (has(conditions, 'kidney_disease') || has(conditions, 'heart_disease')) {
+    flags.push({
+      code: 'FLUID_RESTRICTION',
+      severity: 'warning',
+      message:
+        'The water target shown is a general guide. With kidney disease or heart failure you may be on a FLUID RESTRICTION — follow the daily fluid limit your doctor gave you, not this number.',
     });
   }
 
