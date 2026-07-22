@@ -42,6 +42,13 @@ describe('computeCycle', () => {
     expect(cycleGuidance('luteal').cravingTips.length).toBeGreaterThan(0);
     expect(cycleGuidance('follicular').cravingTips.length).toBe(0);
   });
+
+  it('gives PMS management only in the pre-period (luteal) phase', () => {
+    expect(cycleGuidance('luteal').pmsTips.length).toBeGreaterThan(0);
+    expect(cycleGuidance('luteal').pmsTips.join(' ').toLowerCase()).toContain('pms');
+    expect(cycleGuidance('menstrual').pmsTips.length).toBe(0);
+    expect(cycleGuidance('ovulation').pmsTips.length).toBe(0);
+  });
 });
 
 describe('analyzeCycleHealth', () => {

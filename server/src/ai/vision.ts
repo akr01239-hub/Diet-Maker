@@ -1,6 +1,6 @@
 import { env } from '../lib/env';
 
-const MODEL = 'gemini-2.0-flash';
+const MODEL = env.GEMINI_MODEL || 'gemini-2.0-flash';
 const TIMEOUT_MS = 20_000;
 
 /**

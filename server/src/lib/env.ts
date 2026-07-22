@@ -24,6 +24,8 @@ const EnvSchema = z.object({
   AI_PROVIDER: z.enum(['rules', 'ollama', 'gemini', 'groq']).default('rules'),
   OLLAMA_URL: z.string().optional(),
   GEMINI_API_KEY: z.string().optional(),
+  /** Override the Gemini model (e.g. 'gemini-2.0-flash-lite' for a separate/higher free quota). */
+  GEMINI_MODEL: z.string().optional(),
   GROQ_API_KEY: z.string().optional(),
 
   USDA_FDC_API_KEY: z.string().optional().default(''),

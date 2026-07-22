@@ -21,7 +21,19 @@ export interface CycleGuidance {
   yogaTips: string[];
   /** Smart swaps for the cravings that spike before and during the period. */
   cravingTips: string[];
+  /** Premenstrual-syndrome (PMS) management — shown in the pre-period (luteal) phase. */
+  pmsTips: string[];
 }
+
+/** PMS ruleset — evidence-based management for the luteal (pre-period) phase. */
+const PMS_TIPS: string[] = [
+  'PMS in the week or so before your period is normal — mood swings, bloating, cramps, tender breasts, fatigue and irritability come from the natural hormone drop.',
+  'Calcium + vitamin D (dairy/fortified foods, leafy greens, sunlight) and magnesium (nuts, seeds, dark chocolate) are the best-evidenced nutrients for easing PMS.',
+  'Vitamin B6 (banana, potato, chickpeas, fish) can help with mood and irritability.',
+  'Cut back on salt (bloating), sugar and caffeine (mood/anxiety) and alcohol this week.',
+  'Regular aerobic exercise, 7–9h sleep and stress relief (yoga, slow breathing) measurably reduce PMS.',
+  'If symptoms are severe enough to disrupt your life (intense depression, anxiety or anger), that may be PMDD — please see a doctor.',
+];
 
 /** Craving-buster swaps — shared by the phases where PMS/period cravings hit hardest. */
 const CRAVING_TIPS: string[] = [
@@ -95,6 +107,7 @@ const GUIDANCE: Record<CyclePhase, CycleGuidance> = {
       'Avoid strong inversions and intense core work; breathe slow and long.',
     ],
     cravingTips: CRAVING_TIPS,
+    pmsTips: [],
   },
   follicular: {
     summary: 'Post-period: energy climbing — the best window to push.',
@@ -109,6 +122,7 @@ const GUIDANCE: Record<CyclePhase, CycleGuidance> = {
     ],
     yogaTips: ['Energising flow: Sun Salutations, Warrior I/II, Triangle, gentle backbends.'],
     cravingTips: [],
+    pmsTips: [],
   },
   ovulation: {
     summary: 'Ovulation: peak strength — go for your best efforts.',
@@ -122,6 +136,7 @@ const GUIDANCE: Record<CyclePhase, CycleGuidance> = {
     ],
     yogaTips: ['Dynamic, heat-building flow: Sun Salutation B, standing balances, twists.'],
     cravingTips: [],
+    pmsTips: [],
   },
   luteal: {
     summary: 'Pre-period: steady the mood, ease off intensity toward the end.',
@@ -139,6 +154,7 @@ const GUIDANCE: Record<CyclePhase, CycleGuidance> = {
       'Calming & grounding: forward folds, hip openers (Pigeon, Garland), gentle twists; go restorative as the period nears.',
     ],
     cravingTips: CRAVING_TIPS,
+    pmsTips: PMS_TIPS,
   },
 };
 

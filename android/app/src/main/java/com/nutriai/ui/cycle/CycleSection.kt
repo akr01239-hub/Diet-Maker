@@ -158,7 +158,7 @@ fun CycleSection(modifier: Modifier = Modifier, viewModel: CycleViewModel = hilt
                 }
 
                 cycle.guidance?.let { g ->
-                    CyclePhaseTips(g.summary, g.dietTips, g.exerciseTips, g.yogaTips, g.cravingTips)
+                    CyclePhaseTips(g.summary, g.dietTips, g.exerciseTips, g.yogaTips, g.cravingTips, g.pmsTips)
                 }
 
                 cycle.health?.takeIf { it.status != "insufficient_data" || it.findings.isNotEmpty() }?.let { h ->
@@ -215,6 +215,7 @@ private fun CyclePhaseTips(
     exercise: List<String>,
     yoga: List<String>,
     cravings: List<String>,
+    pms: List<String>,
 ) {
     var expanded by remember { mutableStateOf(false) }
     Row(
@@ -232,6 +233,7 @@ private fun CyclePhaseTips(
     }
     if (expanded) {
         TipGroup("🥗 Diet", diet)
+        TipGroup("🌡️ PMS management", pms)
         TipGroup("🍫 Cravings", cravings)
         TipGroup("🏃 Exercise", exercise)
         TipGroup("🧘 Yoga", yoga)

@@ -1,7 +1,7 @@
 import { env } from '../lib/env';
 import { buildSystemPrompt, type AiChatContext, type AiProvider } from './provider';
 
-const MODEL = 'gemini-2.0-flash';
+const MODEL = env.GEMINI_MODEL || 'gemini-2.0-flash';
 const TIMEOUT_MS = 12_000;
 
 /**
