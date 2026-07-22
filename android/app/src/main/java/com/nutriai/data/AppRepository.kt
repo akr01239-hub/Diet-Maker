@@ -1,6 +1,8 @@
 package com.nutriai.data
 
 import com.nutriai.data.local.TokenStore
+import com.nutriai.data.local.cache.CacheDao
+import com.nutriai.data.local.cache.CacheEntry
 import com.nutriai.data.remote.NutriApi
 import com.nutriai.data.remote.dto.CalcResult
 import com.nutriai.data.remote.dto.ChatReply
@@ -14,6 +16,7 @@ import com.nutriai.data.remote.dto.RegisterRequest
 import com.nutriai.data.remote.dto.WaterLogRequest
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
+import kotlinx.serialization.json.Json
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -21,6 +24,8 @@ import javax.inject.Singleton
 class AppRepository @Inject constructor(
     private val api: NutriApi,
     private val tokenStore: TokenStore,
+    private val cacheDao: CacheDao,
+    private val json: Json,
 ) {
     val isLoggedIn: Flow<Boolean> = tokenStore.accessTokenFlow.map { !it.isNullOrBlank() }
 
@@ -49,9 +54,37 @@ class AppRepository @Inject constructor(
 
     suspend fun latestCalc(): Result<CalcResult?> = runCatching { api.latestCalc().result }
 
-    suspend fun dashboard(): Result<Dashboard> = runCatching { api.dashboard().dashboard }
+    /** Fetches the dashboard; on network failure falls back to the last cached copy. */
+    suspend fun dashboard(): Result<Dashboard> {
+        val r = runCatching { api.dashboard().dashboard }
+        return if (r.isSuccess) {
+            val d = r.getOrThrow()
+            runCatching { cacheDao.put(CacheEntry("dashboard", json.encodeToString(Dashboard.serializer(), d), System.currentTimeMillis())) }
+            Result.success(d)
+        } else {
+            val cached = runCatching {
+                cacheDao.get("dashboard")?.let { json.decodeFromString(Dashboard.serializer(), it.json) }
+            }.getOrNull()
+            if (cached != null) Result.success(cached) else r
+        }
+    }
 
-    suspend fun latestPlan(): Result<PlanDto?> = runCatching { api.latestPlan().plan }
+    /** Fetches the latest plan; on network failure falls back to the last cached copy. */
+    suspend fun latestPlan(): Result<PlanDto?> {
+        val r = runCatching { api.latestPlan().plan }
+        return if (r.isSuccess) {
+            val p = r.getOrThrow()
+            if (p != null) {
+                runCatching { cacheDao.put(CacheEntry("plan", json.encodeToString(PlanDto.serializer(), p), System.currentTimeMillis())) }
+            }
+            Result.success(p)
+        } else {
+            val cached = runCatching {
+                cacheDao.get("plan")?.let { json.decodeFromString(PlanDto.serializer(), it.json) }
+            }.getOrNull()
+            if (cached != null) Result.success(cached) else r
+        }
+    }
 
     suspend fun generatePlan(): Result<PlanDto?> = runCatching { api.generatePlan(mapOf("days" to 7)).plan }
 
