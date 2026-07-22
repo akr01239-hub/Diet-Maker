@@ -3,6 +3,8 @@ package com.nutriai.ui.home
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.health.connect.client.PermissionController
 import androidx.health.connect.client.permission.HealthPermission
+import androidx.health.connect.client.records.HeartRateRecord
+import androidx.health.connect.client.records.SleepSessionRecord
 import androidx.health.connect.client.records.StepsRecord
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -102,7 +104,13 @@ private fun DashboardTab(
     val context = LocalContext.current
 
     // Health Connect step-permission request.
-    val stepPerms = remember { setOf(HealthPermission.getReadPermission(StepsRecord::class)) }
+    val stepPerms = remember {
+        setOf(
+            HealthPermission.getReadPermission(StepsRecord::class),
+            HealthPermission.getReadPermission(HeartRateRecord::class),
+            HealthPermission.getReadPermission(SleepSessionRecord::class),
+        )
+    }
     val stepLauncher = rememberLauncherForActivityResult(
         PermissionController.createRequestPermissionResultContract(),
     ) { viewModel.loadSteps() }
@@ -137,6 +145,8 @@ private fun DashboardTab(
             stepsKcal = state.stepsKcal,
             stepsPermission = state.stepsPermission,
             stepsAvailable = state.stepsAvailable,
+            heartRate = state.heartRate,
+            sleepHours = state.sleepHours,
             onConnectSteps = {
                 if (state.stepsAvailable) {
                     runCatching { stepLauncher.launch(stepPerms) }

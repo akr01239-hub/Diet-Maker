@@ -21,6 +21,8 @@ data class DashboardState(
     val stepsKcal: Int = 0,
     val stepsAvailable: Boolean = false,
     val stepsPermission: Boolean = false,
+    val heartRate: Int? = null,
+    val sleepHours: Double? = null,
     val error: String? = null,
 )
 
@@ -48,11 +50,16 @@ class DashboardViewModel @Inject constructor(
             val available = healthConnect.isAvailable()
             val perm = if (available) healthConnect.hasStepPermission() else false
             val steps = if (perm) healthConnect.readTodaySteps() else 0L
+            // Watch vitals (heart rate + sleep) — null unless a band/watch syncs them to Health Connect.
+            val hr = if (available) healthConnect.readLatestHeartRate() else null
+            val sleep = if (available) healthConnect.readLastSleepHours() else null
             _state.value = _state.value.copy(
                 steps = steps,
                 stepsKcal = (steps * 0.04).toInt(), // ~0.04 kcal/step
                 stepsAvailable = available,
                 stepsPermission = perm,
+                heartRate = hr,
+                sleepHours = sleep,
             )
         }
     }

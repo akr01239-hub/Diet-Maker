@@ -65,6 +65,8 @@ fun PremiumDashboard(
     stepsPermission: Boolean = true,
     stepsAvailable: Boolean = false,
     onConnectSteps: () -> Unit = {},
+    heartRate: Int? = null,
+    sleepHours: Double? = null,
     modifier: Modifier = Modifier,
 ) {
     val d = dashboard
@@ -86,6 +88,11 @@ fun PremiumDashboard(
 
         // 4. Steps (Health Connect) — above hydration
         item { StepsCard(steps = steps, stepsKcal = stepsKcal, hasPermission = stepsPermission, available = stepsAvailable, onConnect = onConnectSteps) }
+
+        // 4b. Watch vitals (heart rate + sleep) — only when a band/watch syncs them.
+        if (heartRate != null || sleepHours != null) {
+            item { VitalsCard(heartRate = heartRate, sleepHours = sleepHours) }
+        }
 
         // 5. Hydration
         item { HydrationCard(water = d.water, onAddWater = onAddWater) }
@@ -449,6 +456,34 @@ private fun HydrationCard(water: DashMetric, onAddWater: () -> Unit) {
 // ---------------------------------------------------------------------------
 // 4b. Steps card (Health Connect)
 // ---------------------------------------------------------------------------
+
+@Composable
+private fun VitalsCard(heartRate: Int?, sleepHours: Double?) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(20.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+    ) {
+        Row(
+            Modifier.fillMaxWidth().padding(16.dp),
+            horizontalArrangement = Arrangement.spacedBy(14.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Text("⌚", style = MaterialTheme.typography.headlineSmall)
+            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                Text("From your watch", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Row(horizontalArrangement = Arrangement.spacedBy(18.dp)) {
+                    heartRate?.let {
+                        Text("❤️ $it bpm", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.error)
+                    }
+                    sleepHours?.let {
+                        Text("😴 ${it}h", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, color = BrandGreenDeep)
+                    }
+                }
+            }
+        }
+    }
+}
 
 @Composable
 private fun StepsCard(steps: Long, stepsKcal: Int, hasPermission: Boolean, available: Boolean, onConnect: () -> Unit) {
