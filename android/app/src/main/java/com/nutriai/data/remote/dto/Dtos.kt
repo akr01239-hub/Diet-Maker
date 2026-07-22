@@ -398,6 +398,16 @@ data class Wellness(
     val meditation: List<Meditation> = emptyList(),
 )
 
+@Serializable
+data class WellnessRecommendation(
+    val yoga: YogaFlow? = null,
+    val meditation: Meditation? = null,
+    val reason: String = "",
+)
+
+@Serializable
+data class WellnessRecommendationEnvelope(val recommendation: WellnessRecommendation)
+
 // ---- AI vision: body assessment + meal photo ----
 @Serializable
 data class PhotoRequest(val imageBase64: String, val mimeType: String = "image/jpeg")

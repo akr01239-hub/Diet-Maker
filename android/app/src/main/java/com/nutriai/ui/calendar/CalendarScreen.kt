@@ -1,6 +1,9 @@
 package com.nutriai.ui.calendar
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.Arrangement
@@ -31,6 +34,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
@@ -78,6 +82,9 @@ data class CalendarState(
     /** Yoga cool-down + breathing shown inline in the workout, like the exercises. */
     val yoga: com.nutriai.data.remote.dto.YogaFlow? = null,
     val meditation: com.nutriai.data.remote.dto.Meditation? = null,
+    /** Today's mood (1 low .. 5 great) — drives the yoga/meditation pick alongside phase + health. */
+    val mood: Int? = null,
+    val wellnessReason: String? = null,
     /** Personalized diet + exercise guidance from conditions / sex / lifestyle. */
     val guidance: com.nutriai.data.remote.dto.Guidance? = null,
 )
@@ -94,16 +101,18 @@ class CalendarViewModel @Inject constructor(
     }
 
     fun load() {
-        _state.value = CalendarState(loading = true)
+        val currentMood = _state.value.mood
+        _state.value = CalendarState(loading = true, mood = currentMood)
         viewModelScope.launch {
             val plan = repository.latestPlan()
             val workout = repository.exercisePlan()
             val lastPerf = repository.lastPerformance().getOrDefault(emptyMap())
             val adaptation = repository.adaptation().getOrNull()
             val guidance = repository.guidance().getOrNull()
-            val wellness = repository.wellness().getOrNull()
-            val yoga = wellness?.yoga?.let { list -> list.firstOrNull { it.id == "wind-down" } ?: list.firstOrNull() }
-            val meditation = wellness?.meditation?.let { list -> list.firstOrNull { it.id == "box-breathing" } ?: list.firstOrNull() }
+            // Phase + mood + health → the day's yoga & meditation.
+            val rec = repository.recommendWellness(currentMood).getOrNull()
+            val yoga = rec?.yoga
+            val meditation = rec?.meditation
 
             val dietDays = plan.getOrNull()?.days.orEmpty()
             val workoutPlan = workout.getOrNull()
@@ -132,6 +141,21 @@ class CalendarViewModel @Inject constructor(
                 guidance = guidance,
                 yoga = yoga,
                 meditation = meditation,
+                mood = currentMood,
+                wellnessReason = rec?.reason,
+            )
+        }
+    }
+
+    /** Sets today's mood and re-picks the yoga + meditation to match it. */
+    fun setMood(m: Int) {
+        _state.value = _state.value.copy(mood = m)
+        viewModelScope.launch {
+            val rec = repository.recommendWellness(m).getOrNull()
+            _state.value = _state.value.copy(
+                yoga = rec?.yoga ?: _state.value.yoga,
+                meditation = rec?.meditation ?: _state.value.meditation,
+                wellnessReason = rec?.reason ?: _state.value.wellnessReason,
             )
         }
     }
@@ -540,7 +564,16 @@ fun CalendarScreen(
         }
 
         if (workoutDay != null && !workoutDay.rest && (state.yoga != null || state.meditation != null)) {
-            item { WorkoutWellnessCard(state.yoga, state.meditation, onStartMeditation = { activeMed = it }) }
+            item {
+                WorkoutWellnessCard(
+                    yoga = state.yoga,
+                    meditation = state.meditation,
+                    mood = state.mood,
+                    reason = state.wellnessReason,
+                    onMood = { viewModel.setMood(it) },
+                    onStartMeditation = { activeMed = it },
+                )
+            }
         }
 
         item {
@@ -682,6 +715,9 @@ private fun AdaptiveInsightCard(
 private fun WorkoutWellnessCard(
     yoga: YogaFlow?,
     meditation: Meditation?,
+    mood: Int?,
+    reason: String?,
+    onMood: (Int) -> Unit,
     onStartMeditation: (Meditation) -> Unit,
 ) {
     Card(
@@ -690,6 +726,26 @@ private fun WorkoutWellnessCard(
     ) {
         Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
             Text("🧘 Yoga & meditation — part of today's routine", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
+
+            // Mood selector — tune the session to how you feel.
+            Text("How's your mood today?", style = MaterialTheme.typography.labelMedium)
+            Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                val faces = listOf(1 to "😣", 2 to "😕", 3 to "😐", 4 to "🙂", 5 to "😄")
+                faces.forEach { (value, face) ->
+                    val selected = mood == value
+                    Box(
+                        Modifier
+                            .clip(RoundedCornerShape(12.dp))
+                            .background(if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surface)
+                            .clickable { onMood(value) }
+                            .padding(horizontal = 10.dp, vertical = 6.dp),
+                    ) { Text(face, style = MaterialTheme.typography.titleMedium) }
+                }
+            }
+            reason?.takeIf { it.isNotBlank() }?.let {
+                Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSecondaryContainer.copy(alpha = 0.85f))
+            }
+
             yoga?.let { flow ->
                 Text("Cool-down · ${flow.name}", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.primary)
                 flow.poses.take(5).forEach { p ->
