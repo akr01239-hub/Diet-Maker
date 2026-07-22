@@ -67,6 +67,24 @@ function pickRotated<T>(list: T[], offset: number): T | undefined {
   return list[((offset % list.length) + list.length) % list.length];
 }
 
+const isGrain = (f: FoodItem) => f.tags.includes('grain');
+const isProteinFood = (f: FoodItem) =>
+  f.tags.includes('legume') ||
+  f.tags.includes('high-protein') ||
+  f.category === 'egg' ||
+  f.category === 'nonveg' ||
+  f.tags.includes('dairy');
+const isVegFood = (f: FoodItem) => f.tags.includes('vegetable') || f.tags.includes('salad');
+
+function meal(slot: MealSlot, items: MealItem[]): Meal {
+  return {
+    slot,
+    items,
+    kcal: round(items.reduce((s, i) => s + i.kcal, 0), 0),
+    proteinG: round(items.reduce((s, i) => s + i.proteinG, 0), 1),
+  };
+}
+
 function buildMeal(
   slot: MealSlot,
   eligible: FoodItem[],
@@ -75,36 +93,41 @@ function buildMeal(
   dayIndex: number,
 ): Meal {
   const candidates = candidatesForSlot(eligible, slot, dietType);
-  const items: MealItem[] = [];
-
-  // Main meals get two complementary items; light slots get one.
-  const twoItems = MAIN_SLOTS.includes(slot) && candidates.length > 1;
   const slotSeed = MEAL_SLOTS.indexOf(slot) * 3 + dayIndex * 2;
 
-  if (twoItems) {
-    const protein = pickRotated(candidates, slotSeed);
-    // Second pick favours fibre/variety: rotate through a fibre-sorted list.
-    const byFiber = [...candidates].sort((a, b) => b.fiberG - a.fiberG);
-    let second = pickRotated(byFiber, slotSeed + 1);
-    if (second && protein && second.id === protein.id) {
-      second = pickRotated(byFiber, slotSeed + 2);
-    }
-    if (protein) items.push(toItem(protein, gramsForKcal(protein, slotKcal * 0.5)));
-    if (second) items.push(toItem(second, gramsForKcal(second, slotKcal * 0.5)));
-  } else {
-    const only = pickRotated(candidates, slotSeed);
-    if (only) items.push(toItem(only, gramsForKcal(only, slotKcal)));
+  // Main meals = a proper plate: one staple (grain: roti OR rice, not both) + a dal/protein +
+  // a vegetable when available. Light slots stay a single item.
+  if (MAIN_SLOTS.includes(slot) && candidates.length > 1) {
+    const grains = candidates.filter(isGrain);
+    const proteins = candidates.filter((f) => isProteinFood(f) && !isGrain(f));
+    const veggies = candidates.filter((f) => isVegFood(f) && !isGrain(f) && !isProteinFood(f));
+
+    const chosen = new Set<string>();
+    const items: MealItem[] = [];
+    const add = (f: FoodItem | undefined, share: number) => {
+      if (f && !chosen.has(f.id)) {
+        chosen.add(f.id);
+        items.push(toItem(f, gramsForKcal(f, slotKcal * share)));
+      }
+    };
+    const pickNot = (list: FoodItem[], seed: number) => {
+      const pool = list.filter((f) => !chosen.has(f.id));
+      return pickRotated(pool.length ? pool : list, seed);
+    };
+
+    const grain = pickNot(grains.length ? grains : candidates, slotSeed);
+    add(grain, veggies.length && proteins.length ? 0.45 : 0.55);
+    const protein = pickNot(proteins.length ? proteins : candidates, slotSeed + 1);
+    add(protein, veggies.length ? 0.35 : 0.45);
+    if (veggies.length) add(pickNot(veggies, slotSeed + 2), 0.2);
+
+    // Safety net: if we somehow only got one item, add a complementary second.
+    if (items.length < 2) add(pickNot(candidates, slotSeed + 3), 0.5);
+    return meal(slot, items);
   }
 
-  const kcal = round(
-    items.reduce((s, i) => s + i.kcal, 0),
-    0,
-  );
-  const proteinG = round(
-    items.reduce((s, i) => s + i.proteinG, 0),
-    1,
-  );
-  return { slot, items, kcal, proteinG };
+  const only = pickRotated(candidates, slotSeed);
+  return meal(slot, only ? [toItem(only, gramsForKcal(only, slotKcal))] : []);
 }
 
 /**
