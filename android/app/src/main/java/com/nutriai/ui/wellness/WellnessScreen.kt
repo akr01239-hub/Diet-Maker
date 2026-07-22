@@ -216,6 +216,24 @@ fun MeditationSession(med: Meditation, onClose: () -> Unit) {
         }
     }
 
+    // Soft breathing chime — a gentle tone that rises on inhale, holds steady, falls on exhale.
+    // Generated on the fly (offline, no audio files). Independent of the voice cues.
+    var tonesOn by remember { mutableStateOf(true) }
+    val tonePlayer = remember { com.nutriai.util.BreathTonePlayer() }
+    DisposableEffect(Unit) { onDispose { tonePlayer.stop() } }
+    LaunchedEffect(phaseLabel, tonesOn) {
+        if (tonesOn && pattern != null && phaseLabel != "Get ready") {
+            val ms = (phaseSec * 1000).coerceIn(600, 2200)
+            when (phaseLabel) {
+                "Breathe in" -> tonePlayer.playGlide(196.0, 392.0, ms) // rising
+                "Breathe out" -> tonePlayer.playGlide(392.0, 196.0, ms) // falling
+                "Hold" -> tonePlayer.playGlide(294.0, 294.0, 600, volume = 0.22f) // soft steady
+            }
+        } else if (!tonesOn) {
+            tonePlayer.stop()
+        }
+    }
+
     if (pattern != null) {
         LaunchedEffect(med.id) {
             val steps = buildList {
@@ -252,12 +270,20 @@ fun MeditationSession(med: Meditation, onClose: () -> Unit) {
         Text(med.goal, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
 
         if (pattern != null) {
-            Text(
-                if (soundOn) "🔊 Voice cues on — close your eyes and follow" else "🔇 Voice cues off",
-                style = MaterialTheme.typography.labelLarge,
-                color = BrandGreen,
-                modifier = Modifier.clickable { soundOn = !soundOn },
-            )
+            Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+                Text(
+                    if (tonesOn) "🔔 Chime on" else "🔕 Chime off",
+                    style = MaterialTheme.typography.labelLarge,
+                    color = BrandGreen,
+                    modifier = Modifier.clickable { tonesOn = !tonesOn },
+                )
+                Text(
+                    if (soundOn) "🔊 Voice on" else "🔇 Voice off",
+                    style = MaterialTheme.typography.labelLarge,
+                    color = BrandGreen,
+                    modifier = Modifier.clickable { soundOn = !soundOn },
+                )
+            }
         }
 
         if (pattern != null) {
