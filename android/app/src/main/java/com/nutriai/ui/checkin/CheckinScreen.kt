@@ -368,7 +368,7 @@ private fun RatingChips(selected: Int?, onSelect: (Int) -> Unit) {
 
 // Small helper so we don't need to import clickable at call site repeatedly.
 private fun Modifier.clickableChip(onClick: () -> Unit): Modifier =
-    this.then(androidx.compose.foundation.clickable(onClick = onClick))
+    this.clickable(onClick = onClick)
 
 @Composable
 private fun WeightTrend(checkins: List<CheckinDto>) {
