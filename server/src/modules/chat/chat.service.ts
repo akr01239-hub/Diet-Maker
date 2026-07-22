@@ -47,12 +47,27 @@ function makeFindFood(foods: FoodItem[]) {
   };
 }
 
+/** Recent conversation (oldest first) so the coach has memory across sessions. */
+export async function chatHistory(userId: string, take = 40) {
+  const rows = await prisma.chatMessage.findMany({
+    where: { userId },
+    orderBy: { createdAt: 'desc' },
+    take,
+  });
+  return rows.reverse().map((m) => ({ id: m.id, role: m.role, content: m.content, createdAt: m.createdAt }));
+}
+
 export async function chat(userId: string, message: string, firstName?: string): Promise<ChatReply> {
-  const [snapshot, profile, foods] = await Promise.all([
+  const [snapshot, profile, foods, historyRows] = await Promise.all([
     prisma.calcResultSnapshot.findFirst({ where: { userId }, orderBy: { createdAt: 'desc' } }),
     prisma.profile.findUnique({ where: { userId } }),
     prisma.food.findMany(),
+    prisma.chatMessage.findMany({ where: { userId }, orderBy: { createdAt: 'desc' }, take: 10 }),
   ]);
+
+  const history = historyRows
+    .reverse()
+    .map((m) => ({ role: m.role === 'assistant' ? ('assistant' as const) : ('user' as const), content: m.content }));
 
   const result = snapshot?.result as
     | { dailyKcal: number; proteinG: number; waterMl: number }
@@ -75,23 +90,31 @@ export async function chat(userId: string, message: string, firstName?: string):
   // from the deterministic calc above — the LLM never supplies them. On null/empty or
   // any failure, fall back to the deterministic rules engine exactly as before.
   const provider = getAiProvider();
+  let reply: ChatReply | null = null;
   if (provider) {
-    const llm = await provider.chatReply(message, { targets, conditions, firstName });
+    const llm = await provider.chatReply(message, { targets, conditions, firstName, history });
     if (llm && llm.trim()) {
-      const reply: ChatReply = { intent: 'llm', reply: stripDisclaimer(llm.trim()), sources: [] };
-      await prisma.auditLog.create({ data: { userId, action: 'chat.query', detail: reply.intent } });
-      return reply;
+      reply = { intent: 'llm', reply: stripDisclaimer(llm.trim()), sources: [] };
     }
   }
 
-  const base = answer(message, {
-    targets,
-    conditions,
-    findFood: makeFindFood(foods.map(toFoodItem)),
-    firstName,
-  });
-  const reply: ChatReply = { ...base, reply: stripDisclaimer(base.reply) };
+  if (!reply) {
+    const base = answer(message, {
+      targets,
+      conditions,
+      findFood: makeFindFood(foods.map(toFoodItem)),
+      firstName,
+    });
+    reply = { ...base, reply: stripDisclaimer(base.reply) };
+  }
 
+  // Persist the exchange so the coach remembers it next time.
+  await prisma.chatMessage.createMany({
+    data: [
+      { userId, role: 'user', content: message.slice(0, 2000) },
+      { userId, role: 'assistant', content: reply.reply.slice(0, 2000) },
+    ],
+  });
   await prisma.auditLog.create({ data: { userId, action: 'chat.query', detail: reply.intent } });
   return reply;
 }

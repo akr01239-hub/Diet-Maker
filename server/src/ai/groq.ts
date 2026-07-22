@@ -28,6 +28,7 @@ export const groqProvider: AiProvider = {
           model: MODEL,
           messages: [
             { role: 'system', content: buildSystemPrompt(ctx) },
+            ...(ctx.history ?? []).map((m) => ({ role: m.role, content: m.content })),
             { role: 'user', content: message },
           ],
           temperature: 0.3,

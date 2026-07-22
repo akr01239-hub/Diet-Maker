@@ -10,6 +10,8 @@ export interface AiChatContext {
   /** Decrypted health conditions (e.g. 'diabetes', 'hypertension'). */
   conditions: string[];
   firstName?: string;
+  /** Recent conversation for memory across sessions (oldest first). */
+  history?: { role: 'user' | 'assistant'; content: string }[];
 }
 
 export interface AiProvider {

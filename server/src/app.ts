@@ -19,6 +19,8 @@ import { guidanceRouter } from './modules/guidance/guidance.routes';
 import { cycleRouter } from './modules/cycle/cycle.routes';
 import { wellnessRouter } from './modules/wellness/wellness.routes';
 import { visionRouter } from './modules/vision/vision.routes';
+import { recipeRouter } from './modules/recipe/recipe.routes';
+import { savedFoodRouter } from './modules/food/savedFood.routes';
 
 /**
  * Builds the Express app. Kept free of `listen()` so tests can import it directly
@@ -69,6 +71,8 @@ export function createApp(): Express {
   api.use('/', cycleRouter);
   api.use('/', wellnessRouter);
   api.use('/', visionRouter);
+  api.use('/', recipeRouter);
+  api.use('/', savedFoodRouter);
   app.use('/api/v1', api);
 
   app.use(notFound);

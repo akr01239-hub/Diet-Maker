@@ -71,3 +71,31 @@ function parseJsonLoose(text: string): Record<string, unknown> | null {
 }
 
 export const visionAvailable = (): boolean => Boolean(env.GEMINI_API_KEY);
+
+/** Text-only Gemini call that returns parsed JSON, or null. Never throws. */
+export async function geminiTextJson(prompt: string): Promise<Record<string, unknown> | null> {
+  const key = env.GEMINI_API_KEY;
+  if (!key) return null;
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/${MODEL}:generateContent?key=${key}`;
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), TIMEOUT_MS);
+  try {
+    const res = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        contents: [{ role: 'user', parts: [{ text: prompt }] }],
+        generationConfig: { temperature: 0.4, maxOutputTokens: 700, responseMimeType: 'application/json' },
+      }),
+      signal: controller.signal,
+    });
+    if (!res.ok) return null;
+    const json = (await res.json()) as { candidates?: { content?: { parts?: { text?: string }[] } }[] };
+    const text = json.candidates?.[0]?.content?.parts?.[0]?.text;
+    return text ? parseJsonLoose(text) : null;
+  } catch {
+    return null;
+  } finally {
+    clearTimeout(timer);
+  }
+}

@@ -23,7 +23,13 @@ export const geminiProvider: AiProvider = {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           system_instruction: { parts: [{ text: buildSystemPrompt(ctx) }] },
-          contents: [{ role: 'user', parts: [{ text: message }] }],
+          contents: [
+            ...(ctx.history ?? []).map((m) => ({
+              role: m.role === 'assistant' ? 'model' : 'user',
+              parts: [{ text: m.content }],
+            })),
+            { role: 'user', parts: [{ text: message }] },
+          ],
           generationConfig: { temperature: 0.3, maxOutputTokens: 400 },
         }),
         signal: controller.signal,

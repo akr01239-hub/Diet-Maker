@@ -59,6 +59,8 @@ model User {
   familyMembers FamilyMember[]
   exerciseLogs  ExerciseLog[]
   periodLogs    PeriodLog[]
+  chatMessages  ChatMessage[]
+  savedFoods    SavedFood[]
 
   @@map("users")
 }
@@ -244,6 +246,39 @@ model PeriodLog {
 
   @@index([userId, startDate])
   @@map("period_logs")
+}
+
+/// Persisted coach chat so the AI has memory across sessions. Content is not medical data;
+/// stored plain and capped/read as a recent window.
+model ChatMessage {
+  id        String   @id @default(uuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  role      String // 'user' | 'assistant'
+  content   String
+  createdAt DateTime @default(now())
+
+  @@index([userId, createdAt])
+  @@map("chat_messages")
+}
+
+/// A user's saved / custom food (per-100g). Powers favourites and create-your-own for fast logging.
+model SavedFood {
+  id        String   @id @default(uuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name      String
+  kcal      Float
+  proteinG  Float    @default(0)
+  carbG     Float    @default(0)
+  fatG      Float    @default(0)
+  fiberG    Float    @default(0)
+  sugarG    Float    @default(0)
+  sodiumMg  Float    @default(0)
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+  @@map("saved_foods")
 }
 
 /// Weekly progress check-in. Weight + body measurements are AES-256-GCM-encrypted in
