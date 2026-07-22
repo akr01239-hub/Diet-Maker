@@ -103,11 +103,13 @@ There is **no risk-scoring engine**. Guardrails _react_ to declared conditions b
 ## Prioritized roadmap (zero-cost, deterministic first)
 
 ### Now / P0
-1. **Deterministic Health-Risk Engine** (`modules/risk/`) — cardiometabolic + sleep/hydration/stress bands from data already collected, each with why/confidence/next-action. _Biggest gap; reuses existing inputs._
-2. **Accessibility pass** — content descriptions, `semantics`, 48dp targets, font-scale safety. Systemic.
-3. **Proactive coach** — morning insights (shipped as a dashboard card; extend server-side).
-4. **Per-meal condition-friendliness scores (0–100)** — from existing food fields.
-5. **Onboarding redesign** — multi-step, progress, chips, plan preview (activation-critical).
+1. ✅ **SHIPPED — Deterministic Health-Risk Engine** (`modules/risk/`) — central obesity (WHtR), Asian-BMI status, BP, glucose, resting HR, sleep, hydration; each with why/recommendation/next-action. `GET /risk` + dashboard "Your health signals" card.
+2. **Accessibility pass** — content descriptions, `semantics`, 48dp targets, font-scale safety. Systemic. _(still open)_
+3. ✅ **SHIPPED — Proactive coach** — "🧠 Your AI coach" dashboard card (greeting, sleep/water/log nudges, projection, streak). Deterministic. _(server extension still open)_
+4. ✅ **SHIPPED — Per-meal condition-friendliness scores (0–100)** — `friendliness.ts`; diet card shows "💚 Diabetes-friendly" chips.
+5. **Onboarding redesign** — multi-step, progress, chips, plan preview (activation-critical). _(still open)_
+
+_Also shipped this cycle: portion normalisation so plans hit the calorie target; sleep score; Google-Fit/Health-Connect connect button on vitals; fixed the carbs/fat macro-bar "always full" bug._
 
 ### Next / P1
 6. **Design system** — typography/spacing/shape tokens, shared components, skeletons, **make dark mode actually work**.
