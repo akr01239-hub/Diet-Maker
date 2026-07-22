@@ -292,6 +292,17 @@ data class AdaptEnvelope(val adaptation: Adaptation)
 @Serializable
 data class AdaptApplyResponse(val applied: Boolean = false, val kcalDelta: Int = 0)
 
+// ---- Personalized guidance (conditions / sex / lifestyle) ----
+@Serializable
+data class Guidance(
+    val summary: String = "",
+    val dietTips: List<String> = emptyList(),
+    val exerciseTips: List<String> = emptyList(),
+)
+
+@Serializable
+data class GuidanceEnvelope(val guidance: Guidance)
+
 // ---- Chat ----
 @Serializable
 data class ChatRequest(val message: String)

@@ -97,6 +97,9 @@ class AppRepository @Inject constructor(
     suspend fun adaptation(): Result<com.nutriai.data.remote.dto.Adaptation> =
         runCatching { api.adaptation().adaptation }
 
+    suspend fun guidance(): Result<com.nutriai.data.remote.dto.Guidance> =
+        runCatching { api.guidance().guidance }
+
     suspend fun applyAdaptation(): Result<com.nutriai.data.remote.dto.AdaptApplyResponse> =
         runCatching { api.applyAdaptation() }
 

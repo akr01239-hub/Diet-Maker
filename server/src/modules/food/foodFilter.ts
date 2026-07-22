@@ -37,10 +37,17 @@ export function conditionAvoidTags(conditions: string[]): string[] {
     avoid.add('high-sugar');
     avoid.add('high-gi');
   }
+  if (conditions.includes('pcos')) {
+    // PCOS is insulin-driven — treat high-GI/sugary/refined carbs like diabetes.
+    avoid.add('high-sugar');
+    avoid.add('high-gi');
+    avoid.add('refined');
+  }
   if (conditions.includes('fatty_liver')) {
     avoid.add('high-sugar');
     avoid.add('refined');
     avoid.add('alcohol');
+    avoid.add('fried');
   }
   if (conditions.includes('hypertension') || conditions.includes('heart_disease')) {
     avoid.add('high-sodium');

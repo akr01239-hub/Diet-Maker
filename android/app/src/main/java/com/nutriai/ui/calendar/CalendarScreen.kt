@@ -42,6 +42,7 @@ import com.nutriai.data.remote.dto.Adaptation
 import com.nutriai.data.remote.dto.DayPlan
 import com.nutriai.data.remote.dto.ExerciseLogDto
 import com.nutriai.data.remote.dto.ExerciseLogRequest
+import com.nutriai.data.remote.dto.Guidance
 import com.nutriai.data.remote.dto.LastPerformance
 import com.nutriai.data.remote.dto.WorkoutDay
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -67,6 +68,8 @@ data class CalendarState(
     /** Adaptive coaching insight from recent logging + weight trend. */
     val adaptation: Adaptation? = null,
     val applying: Boolean = false,
+    /** Personalized diet + exercise guidance from conditions / sex / lifestyle. */
+    val guidance: com.nutriai.data.remote.dto.Guidance? = null,
 )
 
 @HiltViewModel
@@ -87,6 +90,7 @@ class CalendarViewModel @Inject constructor(
             val workout = repository.exercisePlan()
             val lastPerf = repository.lastPerformance().getOrDefault(emptyMap())
             val adaptation = repository.adaptation().getOrNull()
+            val guidance = repository.guidance().getOrNull()
 
             val dietDays = plan.getOrNull()?.days.orEmpty()
             val workoutPlan = workout.getOrNull()
@@ -112,6 +116,7 @@ class CalendarViewModel @Inject constructor(
                 lastPerf = lastPerf,
                 selectedLogs = logs,
                 adaptation = adaptation,
+                guidance = guidance,
             )
         }
     }
@@ -241,6 +246,10 @@ fun CalendarScreen(
                     onApply = { viewModel.applyAdaptation() },
                 )
             }
+        }
+
+        state.guidance?.takeIf { it.dietTips.isNotEmpty() || it.exerciseTips.isNotEmpty() }?.let { g ->
+            item { GuidanceCard(g) }
         }
 
         if (state.loading) {
@@ -461,6 +470,54 @@ fun CalendarScreen(
                 textAlign = TextAlign.Center,
                 modifier = Modifier.fillMaxWidth().padding(top = 4.dp),
             )
+        }
+    }
+}
+
+@Composable
+private fun GuidanceCard(g: Guidance) {
+    var expanded by remember { mutableStateOf(false) }
+    Card(
+        Modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.secondaryContainer),
+    ) {
+        Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Row(
+                Modifier.fillMaxWidth().clickable { expanded = !expanded },
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Column(Modifier.weight(1f)) {
+                    Text("🎯 Personalized for you", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
+                    Text(
+                        g.summary.ifBlank { "Diet & exercise tips for your profile" },
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSecondaryContainer.copy(alpha = 0.8f),
+                    )
+                }
+                Text(if (expanded) "▲" else "▼", style = MaterialTheme.typography.bodyMedium)
+            }
+            if (expanded) {
+                if (g.dietTips.isNotEmpty()) {
+                    Text("🥗 Diet", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.primary)
+                    g.dietTips.forEach { Text("•  $it", style = MaterialTheme.typography.bodySmall) }
+                }
+                if (g.exerciseTips.isNotEmpty()) {
+                    Text("🏋️ Exercise", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.primary)
+                    g.exerciseTips.forEach { Text("•  $it", style = MaterialTheme.typography.bodySmall) }
+                }
+                Text(
+                    "Educational guidance, not medical advice.",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSecondaryContainer.copy(alpha = 0.7f),
+                )
+            } else {
+                Text(
+                    "Tap to see your diet & exercise tips",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSecondaryContainer.copy(alpha = 0.7f),
+                )
+            }
         }
     }
 }
