@@ -117,6 +117,18 @@ interface NutriApi {
     @GET("exercise-plan")
     suspend fun exercisePlan(): com.nutriai.data.remote.dto.WorkoutEnvelope
 
+    @POST("exercise-logs")
+    suspend fun logExercise(@Body body: com.nutriai.data.remote.dto.ExerciseLogRequest): com.nutriai.data.remote.dto.ExerciseLogEnvelope
+
+    @GET("exercise-logs")
+    suspend fun exerciseLogs(@Query("date") date: String?): com.nutriai.data.remote.dto.ExerciseLogsEnvelope
+
+    @GET("exercise-logs/last")
+    suspend fun exerciseLast(): com.nutriai.data.remote.dto.LastPerformanceEnvelope
+
+    @retrofit2.http.DELETE("exercise-logs/{id}")
+    suspend fun deleteExerciseLog(@Path("id") id: String)
+
     // ---- Account ----
     @GET("auth/me")
     suspend fun me(): com.nutriai.data.remote.dto.MeResponse

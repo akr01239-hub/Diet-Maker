@@ -130,6 +130,19 @@ class AppRepository @Inject constructor(
     suspend fun exercisePlan(): Result<com.nutriai.data.remote.dto.WeeklyWorkout> =
         runCatching { api.exercisePlan().plan }
 
+    // ---- Workout logging ----
+    suspend fun logExercise(body: com.nutriai.data.remote.dto.ExerciseLogRequest): Result<Unit> =
+        runCatching { api.logExercise(body); Unit }
+
+    suspend fun exerciseLogs(date: String?): Result<List<com.nutriai.data.remote.dto.ExerciseLogDto>> =
+        runCatching { api.exerciseLogs(date).entries }
+
+    suspend fun lastPerformance(): Result<Map<String, com.nutriai.data.remote.dto.LastPerformance>> =
+        runCatching { api.exerciseLast().last }
+
+    suspend fun deleteExerciseLog(id: String): Result<Unit> =
+        runCatching { api.deleteExerciseLog(id) }
+
     suspend fun deleteAccount(): Result<Unit> = runCatching { api.deleteAccount() }
 
     suspend fun me(): Result<com.nutriai.data.remote.dto.PublicUser> = runCatching { api.me().user }

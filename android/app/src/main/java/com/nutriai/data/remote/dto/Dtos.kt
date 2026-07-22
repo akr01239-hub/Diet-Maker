@@ -84,6 +84,49 @@ data class WeeklyWorkout(
 @Serializable
 data class WorkoutEnvelope(val plan: WeeklyWorkout)
 
+// ---- Workout logging (performed sets) ----
+@Serializable
+data class ExerciseLogRequest(
+    val exerciseName: String,
+    val focus: String? = null,
+    val sets: Int? = null,
+    val reps: Int? = null,
+    val weightKg: Double? = null,
+    val durationMin: Int? = null,
+    val notes: String? = null,
+    val performedAt: String? = null,
+)
+
+@Serializable
+data class ExerciseLogDto(
+    val id: String,
+    val performedAt: String,
+    val exerciseName: String,
+    val focus: String? = null,
+    val sets: Int? = null,
+    val reps: Int? = null,
+    val weightKg: Double? = null,
+    val durationMin: Int? = null,
+    val notes: String? = null,
+)
+
+@Serializable
+data class ExerciseLogEnvelope(val entry: ExerciseLogDto)
+
+@Serializable
+data class ExerciseLogsEnvelope(val entries: List<ExerciseLogDto> = emptyList())
+
+@Serializable
+data class LastPerformance(
+    val weightKg: Double? = null,
+    val reps: Int? = null,
+    val sets: Int? = null,
+    val performedAt: String? = null,
+)
+
+@Serializable
+data class LastPerformanceEnvelope(val last: Map<String, LastPerformance> = emptyMap())
+
 @Serializable
 data class ProfileUpsertRequest(
     val heightCm: Double,

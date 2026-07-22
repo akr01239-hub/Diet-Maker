@@ -8,8 +8,15 @@ import type { SensitiveData } from '../profile/profile.schemas';
 import { generateWeeklyWorkout } from './workoutGenerator';
 import { localSunday, localToday, tzOffsetMin } from '../../lib/tz';
 import type { BodyGoal, ExerciseLocation } from './exercise.types';
+import { exerciseLogSchema } from './exerciseLog.schemas';
+import * as logSvc from './exerciseLog.service';
 
 export const exerciseRouter = Router();
+
+function dateParam(q: unknown): Date {
+  if (typeof q === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(q)) return new Date(`${q}T12:00:00Z`);
+  return new Date();
+}
 
 /** Sensible default body goal from the diet goal when the user hasn't chosen one. */
 function goalToBody(goal: string | null | undefined): BodyGoal {
@@ -37,5 +44,43 @@ exerciseRouter.get(
     });
 
     res.json({ plan });
+  }),
+);
+
+// ---- Workout logging (what the user actually performed) ----
+exerciseRouter.post(
+  '/exercise-logs',
+  requireAuth,
+  asyncHandler(async (req: AuthedRequest, res) => {
+    const body = exerciseLogSchema.parse(req.body);
+    const entry = await logSvc.logExercise(req.user!.id, body);
+    res.status(201).json({ entry });
+  }),
+);
+
+exerciseRouter.get(
+  '/exercise-logs',
+  requireAuth,
+  asyncHandler(async (req: AuthedRequest, res) => {
+    const entries = await logSvc.listExercise(req.user!.id, dateParam(req.query.date), tzOffsetMin(req));
+    res.json({ entries });
+  }),
+);
+
+exerciseRouter.get(
+  '/exercise-logs/last',
+  requireAuth,
+  asyncHandler(async (req: AuthedRequest, res) => {
+    const last = await logSvc.lastPerformance(req.user!.id);
+    res.json({ last });
+  }),
+);
+
+exerciseRouter.delete(
+  '/exercise-logs/:id',
+  requireAuth,
+  asyncHandler(async (req: AuthedRequest, res) => {
+    await logSvc.deleteExercise(req.user!.id, req.params.id!);
+    res.status(204).end();
   }),
 );
