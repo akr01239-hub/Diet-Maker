@@ -45,7 +45,9 @@ import com.nutriai.data.remote.dto.DayPlan
 import com.nutriai.data.remote.dto.ExerciseLogDto
 import com.nutriai.data.remote.dto.ExerciseLogRequest
 import com.nutriai.data.remote.dto.Guidance
+import com.nutriai.data.remote.dto.Meditation
 import com.nutriai.data.remote.dto.Recipe
+import com.nutriai.data.remote.dto.YogaFlow
 import com.nutriai.data.remote.dto.LastPerformance
 import com.nutriai.data.remote.dto.WorkoutDay
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -73,6 +75,9 @@ data class CalendarState(
     val applying: Boolean = false,
     val recipeLoading: Boolean = false,
     val recipe: com.nutriai.data.remote.dto.Recipe? = null,
+    /** Yoga cool-down + breathing shown inline in the workout, like the exercises. */
+    val yoga: com.nutriai.data.remote.dto.YogaFlow? = null,
+    val meditation: com.nutriai.data.remote.dto.Meditation? = null,
     /** Personalized diet + exercise guidance from conditions / sex / lifestyle. */
     val guidance: com.nutriai.data.remote.dto.Guidance? = null,
 )
@@ -96,6 +101,9 @@ class CalendarViewModel @Inject constructor(
             val lastPerf = repository.lastPerformance().getOrDefault(emptyMap())
             val adaptation = repository.adaptation().getOrNull()
             val guidance = repository.guidance().getOrNull()
+            val wellness = repository.wellness().getOrNull()
+            val yoga = wellness?.yoga?.let { list -> list.firstOrNull { it.id == "wind-down" } ?: list.firstOrNull() }
+            val meditation = wellness?.meditation?.let { list -> list.firstOrNull { it.id == "box-breathing" } ?: list.firstOrNull() }
 
             val dietDays = plan.getOrNull()?.days.orEmpty()
             val workoutPlan = workout.getOrNull()
@@ -122,6 +130,8 @@ class CalendarViewModel @Inject constructor(
                 selectedLogs = logs,
                 adaptation = adaptation,
                 guidance = guidance,
+                yoga = yoga,
+                meditation = meditation,
             )
         }
     }
@@ -226,7 +236,15 @@ fun CalendarScreen(
     var pending by remember { mutableStateOf<PendingLog?>(null) }
     var showWellness by remember { mutableStateOf(false) }
 
-    // Yoga & meditation live right alongside your workout, opened in-place from the Plan tab.
+    var activeMed by remember { mutableStateOf<com.nutriai.data.remote.dto.Meditation?>(null) }
+
+    // A guided breathing session opens in-place (voice-guided), then returns to the plan.
+    activeMed?.let { med ->
+        com.nutriai.ui.wellness.MeditationSession(med) { activeMed = null }
+        return
+    }
+
+    // Full yoga/meditation library (optional "see all"), opened in-place from the Plan tab.
     if (showWellness) {
         Column(modifier.fillMaxSize()) {
             TextButton(onClick = { showWellness = false }, modifier = Modifier.padding(4.dp)) { Text("← Back to plan") }
@@ -521,6 +539,10 @@ fun CalendarScreen(
             }
         }
 
+        if (workoutDay != null && !workoutDay.rest && (state.yoga != null || state.meditation != null)) {
+            item { WorkoutWellnessCard(state.yoga, state.meditation, onStartMeditation = { activeMed = it }) }
+        }
+
         item {
             Text(
                 "Educational guidance, not medical advice — consult a professional.",
@@ -650,6 +672,41 @@ private fun AdaptiveInsightCard(
                         val sign = if (adaptation.suggestedKcalDelta >= 0) "+" else ""
                         Text("Apply ($sign${adaptation.suggestedKcalDelta} kcal) & rebuild plan")
                     }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun WorkoutWellnessCard(
+    yoga: YogaFlow?,
+    meditation: Meditation?,
+    onStartMeditation: (Meditation) -> Unit,
+) {
+    Card(
+        Modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.secondaryContainer),
+    ) {
+        Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+            Text("🧘 Yoga & meditation — part of today's routine", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
+            yoga?.let { flow ->
+                Text("Cool-down · ${flow.name}", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.primary)
+                flow.poses.take(5).forEach { p ->
+                    Text("• ${p.name} — ${p.hold}", style = MaterialTheme.typography.bodySmall)
+                }
+            }
+            meditation?.let { med ->
+                Row(
+                    Modifier.fillMaxWidth().padding(top = 4.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Column(Modifier.weight(1f)) {
+                        Text("🌬️ ${med.name}", style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Medium)
+                        Text("${med.durationMin} min guided breathing (voice)", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    }
+                    OutlinedButton(onClick = { onStartMeditation(med) }) { Text("▶ Start") }
                 }
             }
         }

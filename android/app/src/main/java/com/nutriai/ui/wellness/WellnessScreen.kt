@@ -182,7 +182,7 @@ private fun MeditationCard(med: Meditation, onOpen: () -> Unit) {
 }
 
 @Composable
-private fun MeditationSession(med: Meditation, onClose: () -> Unit) {
+fun MeditationSession(med: Meditation, onClose: () -> Unit) {
     val pattern = med.pattern
     var phaseLabel by remember { mutableStateOf("Get ready") }
     var count by remember { mutableIntStateOf(0) }
