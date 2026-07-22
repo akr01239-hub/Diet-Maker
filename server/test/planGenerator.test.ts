@@ -28,6 +28,12 @@ describe('eligibleFoods — diet type', () => {
     expect(out.some((f) => f.category === 'egg' || f.category === 'nonveg')).toBe(false);
   });
 
+  it('"vegetarian" alias also excludes egg and non-veg (never allow-all)', () => {
+    const out = eligibleFoods(SEED_FOODS, prefs({ dietType: 'vegetarian' }));
+    expect(out.length).toBeGreaterThan(0);
+    expect(out.some((f) => f.category === 'egg' || f.category === 'nonveg')).toBe(false);
+  });
+
   it('eggetarian allows egg but not meat/fish', () => {
     const out = eligibleFoods(SEED_FOODS, prefs({ dietType: 'eggetarian' }));
     expect(out.some((f) => f.category === 'egg')).toBe(true);
@@ -95,6 +101,27 @@ describe('generateWeekPlan', () => {
     const day0 = plan.days[0]!.meals.flatMap((m) => m.items.map((i) => i.foodId)).join();
     const day1 = plan.days[1]!.meals.flatMap((m) => m.items.map((i) => i.foodId)).join();
     expect(day0).not.toBe(day1);
+  });
+
+  it('never serves the same food twice in one day', () => {
+    for (const dietType of ['nonveg', 'veg'] as const) {
+      const plan = generateWeekPlan(SEED_FOODS, targets, prefs({ dietType }));
+      for (const day of plan.days) {
+        const ids = day.meals.flatMap((m) => m.items.map((i) => i.foodId));
+        expect(ids.length).toBe(new Set(ids).size); // all unique within the day
+      }
+    }
+  });
+
+  it('main meals are a proper plate: a staple grain plus at least one more dish', () => {
+    const plan = generateWeekPlan(SEED_FOODS, targets, prefs());
+    const byId = new Map(SEED_FOODS.map((f) => [f.id, f]));
+    for (const day of plan.days) {
+      for (const m of day.meals.filter((x) => ['breakfast', 'lunch', 'dinner'].includes(x.slot))) {
+        expect(m.items.length).toBeGreaterThanOrEqual(2);
+        expect(m.items.some((i) => byId.get(i.foodId)?.tags.includes('grain'))).toBe(true);
+      }
+    }
   });
 
   it('intermittent fasting collapses to 3 eating windows', () => {

@@ -85,49 +85,81 @@ function meal(slot: MealSlot, items: MealItem[]): Meal {
   };
 }
 
+/** Foods that suit a light slot (snack/mid-morning/bedtime) — not a heavy curry or meat. */
+const LIGHT_SLOT_TAGS = new Set([
+  'fruit',
+  'beverage',
+  'light',
+  'probiotic',
+  'high-fiber',
+  'nuts',
+  'snack',
+  'salad',
+]);
+
 function buildMeal(
   slot: MealSlot,
   eligible: FoodItem[],
   slotKcal: number,
   dietType: string,
   dayIndex: number,
+  usedToday: Set<string>,
 ): Meal {
   const candidates = candidatesForSlot(eligible, slot, dietType);
   const slotSeed = MEAL_SLOTS.indexOf(slot) * 3 + dayIndex * 2;
 
-  // Main meals = a proper plate: one staple (grain: roti OR rice, not both) + a dal/protein +
-  // a vegetable when available. Light slots stay a single item.
+  const chosen = new Set<string>();
+  const items: MealItem[] = [];
+  const add = (f: FoodItem | undefined, share: number) => {
+    if (f && !chosen.has(f.id)) {
+      chosen.add(f.id);
+      items.push(toItem(f, gramsForKcal(f, slotKcal * share)));
+    }
+  };
+  // Prefer a food NOT already eaten anywhere today (kills the "chicken at every meal" bug),
+  // then any not-yet-in-this-meal food, then anything. Never fails — just repeats as a last resort.
+  const pick = (list: FoodItem[], seed: number) => {
+    const fresh = list.filter((f) => !chosen.has(f.id) && !usedToday.has(f.id));
+    const notInMeal = list.filter((f) => !chosen.has(f.id));
+    return pickRotated(fresh.length ? fresh : notInMeal.length ? notInMeal : list, seed);
+  };
+
+  // Main meals = a proper Indian plate: a staple (roti OR rice) + a dal/protein/sabzi +
+  // a vegetable when available. Light slots stay a single, genuinely light item.
   if (MAIN_SLOTS.includes(slot) && candidates.length > 1) {
-    const grains = candidates.filter(isGrain);
-    const proteins = candidates.filter((f) => isProteinFood(f) && !isGrain(f));
-    const veggies = candidates.filter((f) => isVegFood(f) && !isGrain(f) && !isProteinFood(f));
-
-    const chosen = new Set<string>();
-    const items: MealItem[] = [];
-    const add = (f: FoodItem | undefined, share: number) => {
-      if (f && !chosen.has(f.id)) {
-        chosen.add(f.id);
-        items.push(toItem(f, gramsForKcal(f, slotKcal * share)));
-      }
+    // Staples/proteins/veg are drawn from the whole eligible pool if the slot itself has none,
+    // so a plate always gets a roti/rice base even when staples aren't slot-tagged.
+    const pickGroup = (pred: (f: FoodItem) => boolean) => {
+      const inSlot = candidates.filter(pred);
+      return inSlot.length ? inSlot : eligible.filter(pred);
     };
-    const pickNot = (list: FoodItem[], seed: number) => {
-      const pool = list.filter((f) => !chosen.has(f.id));
-      return pickRotated(pool.length ? pool : list, seed);
-    };
+    const grains = pickGroup(isGrain);
+    const proteins = pickGroup((f) => isProteinFood(f) && !isGrain(f));
+    const veggies = pickGroup((f) => isVegFood(f) && !isGrain(f) && !isProteinFood(f));
 
-    const grain = pickNot(grains.length ? grains : candidates, slotSeed);
+    const grain = pick(grains.length ? grains : candidates, slotSeed);
     add(grain, veggies.length && proteins.length ? 0.45 : 0.55);
-    const protein = pickNot(proteins.length ? proteins : candidates, slotSeed + 1);
+    const protein = pick(proteins.length ? proteins : candidates, slotSeed + 1);
     add(protein, veggies.length ? 0.35 : 0.45);
-    if (veggies.length) add(pickNot(veggies, slotSeed + 2), 0.2);
+    if (veggies.length) add(pick(veggies, slotSeed + 2), 0.2);
 
     // Safety net: if we somehow only got one item, add a complementary second.
-    if (items.length < 2) add(pickNot(candidates, slotSeed + 3), 0.5);
+    if (items.length < 2) add(pick(candidates, slotSeed + 3), 0.5);
+    items.forEach((i) => usedToday.add(i.foodId));
     return meal(slot, items);
   }
 
-  const only = pickRotated(candidates, slotSeed);
-  return meal(slot, only ? [toItem(only, gramsForKcal(only, slotKcal))] : []);
+  // Light slots: prefer genuinely light foods (fruit, buttermilk, nuts) over the top
+  // protein-dense pick, and still avoid anything already eaten today.
+  const lightFirst = [...candidates].sort((a, b) => {
+    const la = a.tags.some((t) => LIGHT_SLOT_TAGS.has(t)) ? 0 : 1;
+    const lb = b.tags.some((t) => LIGHT_SLOT_TAGS.has(t)) ? 0 : 1;
+    if (la !== lb) return la - lb;
+    return a.kcal - b.kcal;
+  });
+  add(pick(lightFirst, slotSeed), 1);
+  items.forEach((i) => usedToday.add(i.foodId));
+  return meal(slot, items);
 }
 
 /**
@@ -198,9 +230,11 @@ function buildDay(
   // Renormalise slot weights over the active slots so kcal still sums to the target.
   const weightSum = slots.reduce((s, sl) => s + SLOT_KCAL_WEIGHTS[sl], 0);
 
+  // Shared across the day's meals so the same food is never served twice in one day.
+  const usedToday = new Set<string>();
   const meals = slots.map((slot) => {
     const slotKcal = (dailyKcal * SLOT_KCAL_WEIGHTS[slot]) / weightSum;
-    return buildMeal(slot, pool, slotKcal, dietType, dayIndex);
+    return buildMeal(slot, pool, slotKcal, dietType, dayIndex, usedToday);
   });
 
   const sum = (pick: (i: MealItem) => number) =>

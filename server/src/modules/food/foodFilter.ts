@@ -6,11 +6,13 @@ function categoryAllowed(dietType: string, cat: FoodItem['category']): boolean {
     case 'vegan':
       return cat === 'vegan';
     case 'veg':
+    case 'vegetarian': // alias — never let this fall through to "allow everything"
     case 'jain':
     case 'satvik':
     case 'mediterranean': // treat as veg-leaning by default here
       return cat === 'vegan' || cat === 'vegetarian';
     case 'eggetarian':
+    case 'egg':
       return cat === 'vegan' || cat === 'vegetarian' || cat === 'egg';
     case 'nonveg':
     case 'keto':
