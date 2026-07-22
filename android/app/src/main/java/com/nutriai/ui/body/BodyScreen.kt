@@ -121,7 +121,7 @@ class BodyViewModel @Inject constructor(
             _state.value = _state.value.copy(
                 analyzing = false,
                 assessment = r.getOrNull(),
-                error = if (r.isFailure) "Analysis failed — try again." else null,
+                error = if (r.isFailure) "Couldn't analyse the photo. Make sure your profile is complete (Home → Complete profile) and the server is awake, then try again." else null,
             )
         }
     }

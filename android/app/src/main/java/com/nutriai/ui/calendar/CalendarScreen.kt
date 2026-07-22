@@ -224,6 +224,16 @@ fun CalendarScreen(
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
     var pending by remember { mutableStateOf<PendingLog?>(null) }
+    var showWellness by remember { mutableStateOf(false) }
+
+    // Yoga & meditation live right alongside your workout, opened in-place from the Plan tab.
+    if (showWellness) {
+        Column(modifier.fillMaxSize()) {
+            TextButton(onClick = { showWellness = false }, modifier = Modifier.padding(4.dp)) { Text("← Back to plan") }
+            com.nutriai.ui.wellness.WellnessScreen(Modifier.fillMaxSize())
+        }
+        return
+    }
 
     pending?.let { p ->
         LogDialog(
@@ -283,10 +293,13 @@ fun CalendarScreen(
                 Card(Modifier.fillMaxWidth()) {
                     Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                         Text("Nothing scheduled yet", style = MaterialTheme.typography.titleMedium)
+                        val hasError = state.dietError != null || state.workoutError != null
                         Text(
-                            state.dietError
-                                ?: state.workoutError
-                                ?: "Complete your profile and generate a plan to see your week here.",
+                            if (hasError) {
+                                "First finish your health profile (Home tab → Complete profile). Then tap Generate to build your week."
+                            } else {
+                                "Tap Generate to build your personalised 7-day plan."
+                            },
                             style = MaterialTheme.typography.bodyMedium,
                         )
                     }
@@ -389,7 +402,17 @@ fun CalendarScreen(
             }
 
             // Workout section.
-            item { Text("🏋️ Workout", style = MaterialTheme.typography.titleSmall) }
+            item {
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+                    Text("🏋️ Workout", style = MaterialTheme.typography.titleSmall)
+                    Text(
+                        "🧘 Yoga & Meditation",
+                        style = MaterialTheme.typography.labelMedium,
+                        color = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.clickable { showWellness = true },
+                    )
+                }
+            }
             state.workoutBlockLabel?.let { block ->
                 item {
                     Card(
