@@ -1,5 +1,10 @@
 package com.nutriai.ui.settings
 
+import android.Manifest
+import android.content.pm.PackageManager
+import android.os.Build
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -16,8 +21,10 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -30,11 +37,14 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.core.content.ContextCompat
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.nutriai.BuildConfig
+import com.nutriai.notifications.ReminderGroup
 import com.nutriai.ui.theme.BrandGreen
 import com.nutriai.ui.theme.BrandGreenDeep
 
@@ -46,7 +56,21 @@ fun SettingsScreen(
     viewModel: SettingsViewModel = hiltViewModel(),
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
+    val reminders by viewModel.reminders.collectAsStateWithLifecycle()
     var showDelete by remember { mutableStateOf(false) }
+
+    val context = LocalContext.current
+    val notifLauncher = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) {}
+    val onToggleReminder: (ReminderGroup, Boolean) -> Unit = { group, enabled ->
+        if (enabled &&
+            Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
+            ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) !=
+            PackageManager.PERMISSION_GRANTED
+        ) {
+            notifLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+        }
+        viewModel.setReminder(group, enabled)
+    }
 
     if (showDelete) {
         AlertDialog(
@@ -73,6 +97,8 @@ fun SettingsScreen(
         item {
             SettingTile(icon = "🧍", title = "Edit health profile", subtitle = "Height, weight, goal, diet & conditions", onClick = onEditProfile)
         }
+
+        item { RemindersCard(reminders = reminders, onToggle = onToggleReminder) }
 
         item {
             Card(
@@ -125,12 +151,50 @@ private fun SettingsHero(name: String?, email: String?) {
                 Box(
                     Modifier.size(56.dp).clip(CircleShape).background(Color.White.copy(alpha = 0.25f)),
                     contentAlignment = Alignment.Center,
-                ) { Text((name?.firstOrNull() ?: '👤').toString(), style = MaterialTheme.typography.headlineSmall, color = Color.White) }
+                ) { Text(name?.firstOrNull()?.uppercase() ?: "👤", style = MaterialTheme.typography.headlineSmall, color = Color.White) }
                 Column {
                     Text(name?.ifBlank { "Your account" } ?: "Your account", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold, color = Color.White)
                     if (!email.isNullOrBlank()) {
                         Text(email, style = MaterialTheme.typography.bodyMedium, color = Color.White.copy(alpha = 0.85f))
                     }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun RemindersCard(
+    reminders: Map<ReminderGroup, Boolean>,
+    onToggle: (ReminderGroup, Boolean) -> Unit,
+) {
+    Card(
+        Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(20.dp),
+        elevation = CardDefaults.cardElevation(defaultElevation = 3.dp),
+    ) {
+        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+            Text("🔔 Reminders", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, color = BrandGreen)
+            Text(
+                "Gentle on-device nudges. No account or internet needed.",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            ReminderGroup.entries.forEachIndexed { i, group ->
+                if (i > 0) HorizontalDivider(Modifier.padding(vertical = 4.dp))
+                Row(
+                    Modifier.fillMaxWidth().padding(vertical = 4.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Column(Modifier.weight(1f)) {
+                        Text(group.label, style = MaterialTheme.typography.bodyLarge)
+                        Text(group.subtitle, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    }
+                    Switch(
+                        checked = reminders[group] ?: false,
+                        onCheckedChange = { onToggle(group, it) },
+                    )
                 }
             }
         }

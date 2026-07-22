@@ -4,10 +4,15 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.nutriai.data.AppRepository
 import com.nutriai.data.remote.dto.PublicUser
+import com.nutriai.notifications.ReminderGroup
+import com.nutriai.notifications.ReminderPrefs
+import com.nutriai.notifications.ReminderScheduler
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
@@ -20,10 +25,22 @@ data class SettingsState(
 @HiltViewModel
 class SettingsViewModel @Inject constructor(
     private val repository: AppRepository,
+    private val reminderPrefs: ReminderPrefs,
+    private val reminderScheduler: ReminderScheduler,
 ) : ViewModel() {
 
     private val _state = MutableStateFlow(SettingsState())
     val state: StateFlow<SettingsState> = _state.asStateFlow()
+
+    val reminders: StateFlow<Map<ReminderGroup, Boolean>> =
+        reminderPrefs.settings.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyMap())
+
+    fun setReminder(group: ReminderGroup, enabled: Boolean) {
+        viewModelScope.launch {
+            reminderPrefs.setEnabled(group, enabled)
+            if (enabled) reminderScheduler.scheduleGroup(group) else reminderScheduler.cancelGroup(group)
+        }
+    }
 
     init {
         viewModelScope.launch {
