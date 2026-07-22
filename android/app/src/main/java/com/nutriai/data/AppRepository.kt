@@ -128,6 +128,8 @@ class AppRepository @Inject constructor(
 
     suspend fun deleteAccount(): Result<Unit> = runCatching { api.deleteAccount() }
 
+    suspend fun me(): Result<com.nutriai.data.remote.dto.PublicUser> = runCatching { api.me().user }
+
     // ---- Barcode ----
     suspend fun barcode(code: String): Result<com.nutriai.data.remote.dto.BarcodeFood> =
         runCatching { api.barcode(code).food }

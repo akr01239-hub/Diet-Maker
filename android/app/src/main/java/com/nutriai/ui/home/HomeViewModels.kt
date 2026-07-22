@@ -16,6 +16,7 @@ import javax.inject.Inject
 data class DashboardState(
     val loading: Boolean = true,
     val dashboard: Dashboard? = null,
+    val firstName: String? = null,
     val error: String? = null,
 )
 
@@ -28,6 +29,11 @@ class DashboardViewModel @Inject constructor(
 
     init {
         refresh()
+        viewModelScope.launch {
+            repository.me().getOrNull()?.let { u ->
+                _state.value = _state.value.copy(firstName = u.firstName)
+            }
+        }
     }
 
     fun refresh() {
@@ -35,9 +41,9 @@ class DashboardViewModel @Inject constructor(
         viewModelScope.launch {
             val r = repository.dashboard()
             _state.value = if (r.isSuccess) {
-                DashboardState(loading = false, dashboard = r.getOrNull())
+                _state.value.copy(loading = false, dashboard = r.getOrNull(), error = null)
             } else {
-                DashboardState(loading = false, error = r.exceptionOrNull()?.message ?: "Failed to load")
+                _state.value.copy(loading = false, error = r.exceptionOrNull()?.message ?: "Failed to load")
             }
         }
     }

@@ -3,6 +3,7 @@ package com.nutriai.ui.home
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
@@ -85,7 +86,7 @@ fun HomeScreen(
         Column(Modifier.fillMaxSize().padding(padding)) {
             when (tab) {
                 0 -> DashboardTab(onLogout = onLogout, onCompleteProfile = onCompleteProfile)
-                1 -> PlanTab()
+                1 -> com.nutriai.ui.calendar.CalendarScreen(Modifier.fillMaxSize())
                 2 -> LogTab()
                 3 -> ChatTab()
                 else -> MoreScreen(Modifier.fillMaxSize())
@@ -121,29 +122,25 @@ private fun DashboardTab(
         )
     }
 
-    Column(
-        Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(16.dp),
-        verticalArrangement = Arrangement.spacedBy(12.dp),
-    ) {
-        Text("Dashboard", style = MaterialTheme.typography.headlineSmall, color = MaterialTheme.colorScheme.primary)
-
-        when {
-            state.loading -> CircularProgressIndicator()
-            state.error != null -> Text(state.error!!, color = MaterialTheme.colorScheme.error)
-            state.dashboard != null -> DashboardBody(state.dashboard!!, onCompleteProfile, { viewModel.logWater(250) })
-        }
-
-        OutlinedButton(onClick = { viewModel.logout(onLogout) }, modifier = Modifier.fillMaxWidth()) {
-            Text("Log out")
-        }
-        TextButton(onClick = { showDelete = true }, modifier = Modifier.fillMaxWidth()) {
-            Text("Delete account", color = MaterialTheme.colorScheme.error)
-        }
-        Text(
-            "Educational guidance, not medical advice — consult a professional.",
-            style = MaterialTheme.typography.labelSmall, textAlign = TextAlign.Center,
-            modifier = Modifier.fillMaxWidth(),
+    when {
+        state.dashboard != null -> com.nutriai.ui.dashboard.PremiumDashboard(
+            dashboard = state.dashboard!!,
+            greetingName = state.firstName,
+            onAddWater = { viewModel.logWater(250) },
+            onCompleteProfile = onCompleteProfile,
+            onLogout = { viewModel.logout(onLogout) },
+            onDeleteAccount = { showDelete = true },
+            modifier = Modifier.fillMaxSize(),
         )
+        state.loading -> Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { CircularProgressIndicator() }
+        else -> Column(
+            Modifier.fillMaxSize().padding(24.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+            Text(state.error ?: "Couldn't load your dashboard.", color = MaterialTheme.colorScheme.error)
+            Button(onClick = onCompleteProfile, modifier = Modifier.fillMaxWidth()) { Text("Complete profile") }
+            OutlinedButton(onClick = { viewModel.logout(onLogout) }, modifier = Modifier.fillMaxWidth()) { Text("Log out") }
+        }
     }
 }
 
