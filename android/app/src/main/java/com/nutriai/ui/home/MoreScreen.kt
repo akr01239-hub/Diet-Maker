@@ -66,6 +66,9 @@ fun MoreScreen(
 ) {
     var selected by remember { mutableStateOf<String?>(null) }
 
+    // System back returns to the More menu from a sub-screen, not out to the dashboard.
+    androidx.activity.compose.BackHandler(enabled = selected != null) { selected = null }
+
     when (selected) {
         null -> MoreMenu(modifier) { selected = it }
         else -> Column(modifier.fillMaxSize()) {

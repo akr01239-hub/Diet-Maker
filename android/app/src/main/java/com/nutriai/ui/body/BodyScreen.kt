@@ -71,9 +71,8 @@ import javax.inject.Inject
 
 data class BodyUiState(
     val analyzing: Boolean = false,
-    val currentPhoto: File? = null,
+    val currentPhoto: Uri? = null,
     val assessment: BodyAssessment? = null,
-    val progress: List<File> = emptyList(),
     val error: String? = null,
 )
 
@@ -85,34 +84,23 @@ class BodyViewModel @Inject constructor(
     private val _state = MutableStateFlow(BodyUiState())
     val state: StateFlow<BodyUiState> = _state.asStateFlow()
 
-    init { refreshProgress() }
-
-    fun refreshProgress() {
-        _state.value = _state.value.copy(progress = ImageUtil.listProgress(context))
+    init {
+        // Clean up any photos saved by older versions — nothing is stored anymore.
+        viewModelScope.launch { withContext(Dispatchers.IO) { ImageUtil.clearProgress(context) } }
     }
 
-    /** Saves the photo privately on-device and selects it for optional analysis. */
-    fun onPhoto(uri: Uri, timestamp: Long) {
-        viewModelScope.launch {
-            val saved = withContext(Dispatchers.IO) { ImageUtil.saveProgress(context, uri, timestamp) }
-            _state.value = _state.value.copy(
-                currentPhoto = saved,
-                assessment = null,
-                error = if (saved == null) "Couldn't read that photo." else null,
-                progress = ImageUtil.listProgress(context),
-            )
-        }
-    }
-
-    fun select(file: File) {
-        _state.value = _state.value.copy(currentPhoto = file, assessment = null, error = null)
+    /** Selects a photo for analysis. The image is NOT saved anywhere on the device. */
+    fun onPhoto(uri: Uri) {
+        _state.value = _state.value.copy(currentPhoto = uri, assessment = null, error = null)
     }
 
     fun analyze() {
-        val file = _state.value.currentPhoto ?: return
+        val uri = _state.value.currentPhoto ?: return
         _state.value = _state.value.copy(analyzing = true, error = null)
         viewModelScope.launch {
-            val base64 = withContext(Dispatchers.IO) { ImageUtil.jpegBytes(file)?.let(ImageUtil::toBase64) }
+            val base64 = withContext(Dispatchers.IO) {
+                ImageUtil.downscaledJpegBytes(context, uri)?.let(ImageUtil::toBase64)
+            }
             if (base64 == null) {
                 _state.value = _state.value.copy(analyzing = false, error = "Couldn't process that photo.")
                 return@launch
@@ -121,7 +109,7 @@ class BodyViewModel @Inject constructor(
             _state.value = _state.value.copy(
                 analyzing = false,
                 assessment = r.getOrNull(),
-                error = if (r.isFailure) "Couldn't analyse the photo. Make sure your profile is complete (Home → Complete profile) and the server is awake, then try again." else null,
+                error = if (r.isFailure) "Couldn't analyse the photo. Make sure your profile is complete and the server is awake, then try again." else null,
             )
         }
     }
@@ -134,17 +122,15 @@ fun BodyScreen(modifier: Modifier = Modifier, viewModel: BodyViewModel = hiltVie
     var cameraUri by remember { mutableStateOf<Uri?>(null) }
 
     val galleryLauncher = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri ->
-        if (uri != null) viewModel.onPhoto(uri, System.currentTimeMillis())
+        if (uri != null) viewModel.onPhoto(uri)
     }
     val cameraLauncher = rememberLauncherForActivityResult(ActivityResultContracts.TakePicture()) { ok ->
         val uri = cameraUri
-        if (ok && uri != null) viewModel.onPhoto(uri, System.currentTimeMillis())
+        if (ok && uri != null) viewModel.onPhoto(uri)
     }
     val cameraPermLauncher = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
         if (granted) launchCamera(context, System.currentTimeMillis()) { uri -> cameraUri = uri; cameraLauncher.launch(uri) }
     }
-
-    LaunchedEffect(Unit) { viewModel.refreshProgress() }
 
     LazyColumn(
         modifier = modifier.fillMaxWidth().padding(horizontal = 16.dp),
@@ -186,7 +172,7 @@ fun BodyScreen(modifier: Modifier = Modifier, viewModel: BodyViewModel = hiltVie
                             else Text("✨ Analyze with AI")
                         }
                         Text(
-                            "Saved privately on your phone. It only leaves the device if you tap Analyze.",
+                            "Not saved anywhere. The photo is used only for this analysis and then discarded — it only leaves your phone when you tap Analyze.",
                             style = MaterialTheme.typography.labelSmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
@@ -197,17 +183,6 @@ fun BodyScreen(modifier: Modifier = Modifier, viewModel: BodyViewModel = hiltVie
 
         state.error?.let { item { Text(it, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodyMedium) } }
         state.assessment?.let { item { AssessmentCard(it) } }
-
-        if (state.progress.isNotEmpty()) {
-            item {
-                Text("Your progress", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, modifier = Modifier.padding(top = 4.dp))
-            }
-            item {
-                LazyRow(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                    items(state.progress) { f -> ProgressThumb(f) { viewModel.select(f) } }
-                }
-            }
-        }
     }
 }
 
@@ -222,7 +197,7 @@ private fun Hero() {
         Box(Modifier.fillMaxWidth().background(Brush.verticalGradient(listOf(BrandGreenLight, BrandGreen, BrandGreenDeep))).padding(22.dp)) {
             Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
                 Text("Body Check 📸", style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold, color = Color.White)
-                Text("Track progress photos privately, and get a rough AI body-fat read.", style = MaterialTheme.typography.bodyMedium, color = Color.White.copy(alpha = 0.9f))
+                Text("A rough AI body-fat read from a photo. Nothing is saved.", style = MaterialTheme.typography.bodyMedium, color = Color.White.copy(alpha = 0.9f))
             }
         }
     }
@@ -254,23 +229,6 @@ private fun AssessmentCard(a: BodyAssessment) {
             }
             Text(a.disclaimer, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.75f))
         }
-    }
-}
-
-@Composable
-private fun ProgressThumb(file: File, onClick: () -> Unit) {
-    val date = remember(file) {
-        val ts = ImageUtil.timestampOf(file)
-        if (ts > 0) Instant.ofEpochMilli(ts).atZone(ZoneId.systemDefault()).format(DateTimeFormatter.ofPattern("d MMM")) else ""
-    }
-    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-        AsyncImage(
-            model = file,
-            contentDescription = date,
-            contentScale = ContentScale.Crop,
-            modifier = Modifier.size(96.dp).clip(RoundedCornerShape(12.dp)).clickable(onClick = onClick),
-        )
-        Text(date, style = MaterialTheme.typography.labelSmall)
     }
 }
 

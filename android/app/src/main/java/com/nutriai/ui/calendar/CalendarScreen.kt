@@ -262,6 +262,11 @@ fun CalendarScreen(
 
     var activeMed by remember { mutableStateOf<com.nutriai.data.remote.dto.Meditation?>(null) }
 
+    // System back closes an open session/library overlay instead of leaving the Plan tab.
+    androidx.activity.compose.BackHandler(enabled = activeMed != null || showWellness) {
+        if (activeMed != null) activeMed = null else showWellness = false
+    }
+
     // A guided breathing session opens in-place (voice-guided), then returns to the plan.
     activeMed?.let { med ->
         com.nutriai.ui.wellness.MeditationSession(med) { activeMed = null }

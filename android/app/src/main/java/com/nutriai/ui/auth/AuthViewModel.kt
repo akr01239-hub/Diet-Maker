@@ -20,8 +20,19 @@ class AuthViewModel @Inject constructor(
     private val _state = MutableStateFlow(AuthUiState())
     val state: StateFlow<AuthUiState> = _state.asStateFlow()
 
-    fun login(email: String, password: String, onSuccess: () -> Unit) {
-        execute(onSuccess) { repository.login(email.trim(), password) }
+    /** Logs in, then routes: onNeedsProfile if the profile is missing/incomplete, else onHome. */
+    fun login(email: String, password: String, onHome: () -> Unit, onNeedsProfile: () -> Unit) {
+        _state.value = AuthUiState(loading = true)
+        viewModelScope.launch {
+            val result = repository.login(email.trim(), password)
+            if (result.isSuccess) {
+                val profile = repository.getProfile().getOrNull()
+                _state.value = AuthUiState()
+                if (profile?.sensitive == null) onNeedsProfile() else onHome()
+            } else {
+                _state.value = AuthUiState(error = result.exceptionOrNull()?.message ?: "Something went wrong")
+            }
+        }
     }
 
     fun register(email: String, password: String, first: String, last: String, onSuccess: () -> Unit) {

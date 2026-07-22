@@ -25,15 +25,6 @@ object ImageUtil {
         }
     }
 
-    fun jpegBytes(file: File, maxDim: Int = 768, quality: Int = 72): ByteArray? {
-        return try {
-            val bmp = BitmapFactory.decodeFile(file.absolutePath) ?: return null
-            compress(scaleDown(bmp, maxDim), quality)
-        } catch (_: Exception) {
-            null
-        }
-    }
-
     fun toBase64(bytes: ByteArray): String = Base64.encodeToString(bytes, Base64.NO_WRAP)
 
     private fun scaleDown(bmp: Bitmap, maxDim: Int): Bitmap {
@@ -49,26 +40,13 @@ object ImageUtil {
         return baos.toByteArray()
     }
 
-    // ---- Private progress-photo gallery (never leaves the device) ----
-
-    private fun progressDir(context: Context): File =
-        File(context.filesDir, "progress").apply { if (!exists()) mkdirs() }
-
-    /** Saves a downscaled copy of the image to private storage; returns the saved file. */
-    fun saveProgress(context: Context, uri: Uri, timestamp: Long): File? {
-        val bytes = downscaledJpegBytes(context, uri, maxDim = 1080, quality = 80) ?: return null
-        val file = File(progressDir(context), "progress_$timestamp.jpg")
-        file.writeBytes(bytes)
-        return file
+    /** Deletes any photos saved by older versions — we no longer store body photos. */
+    fun clearProgress(context: Context) {
+        runCatching {
+            File(context.filesDir, "progress").deleteRecursively()
+            context.cacheDir.listFiles { f -> f.name.startsWith("capture_") }?.forEach { it.delete() }
+        }
     }
-
-    fun listProgress(context: Context): List<File> =
-        progressDir(context).listFiles { f -> f.name.endsWith(".jpg") }
-            ?.sortedByDescending { it.name }
-            ?: emptyList()
-
-    fun timestampOf(file: File): Long =
-        file.name.removePrefix("progress_").removeSuffix(".jpg").toLongOrNull() ?: 0L
 
     /** A cache file + FileProvider uri for the camera to write a full-res capture into. */
     fun newCameraOutput(context: Context, timestamp: Long): Pair<Uri, File> {

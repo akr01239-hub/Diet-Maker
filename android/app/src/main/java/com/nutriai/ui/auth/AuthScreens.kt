@@ -47,6 +47,7 @@ import com.nutriai.ui.theme.BrandGreenLight
 fun LoginScreen(
     onLoggedIn: () -> Unit,
     onGoToRegister: () -> Unit,
+    onNeedsProfile: () -> Unit = onLoggedIn,
     viewModel: AuthViewModel = hiltViewModel(),
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
@@ -75,7 +76,7 @@ fun LoginScreen(
             text = "Log in",
             loading = state.loading,
             enabled = !state.loading && email.isNotBlank() && password.isNotBlank(),
-            onClick = { viewModel.login(email, password, onLoggedIn) },
+            onClick = { viewModel.login(email, password, onHome = onLoggedIn, onNeedsProfile = onNeedsProfile) },
         )
         TextButton(onClick = onGoToRegister) { Text("New here? Create an account") }
     }

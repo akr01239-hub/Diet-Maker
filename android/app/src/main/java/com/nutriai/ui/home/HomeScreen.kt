@@ -48,6 +48,8 @@ fun HomeScreen(
     var tab by remember { mutableIntStateOf(initialTab) }
     // A notification tap (or new intent) can change the requested tab while Home is showing.
     LaunchedEffect(initialTab) { if (initialTab in 0..4) tab = initialTab }
+    // System back from any tab returns to Home first (instead of leaving the app abruptly).
+    androidx.activity.compose.BackHandler(enabled = tab != 0) { tab = 0 }
     val tabs = listOf("🏠" to "Home", "🍽️" to "Plan", "➕" to "Log", "💬" to "Coach", "☰" to "More")
 
     Scaffold(

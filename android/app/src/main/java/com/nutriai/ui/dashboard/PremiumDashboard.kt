@@ -105,7 +105,7 @@ fun PremiumDashboard(
             item { JourneyCard(dashboard = d) }
         }
 
-        // 7. Footer: logout / delete / disclaimer
+        // 7. Footer: logout / disclaimer (Delete account lives in Settings)
         item {
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 OutlinedButton(
@@ -113,12 +113,6 @@ fun PremiumDashboard(
                     modifier = Modifier.fillMaxWidth(),
                     shape = RoundedCornerShape(24.dp),
                 ) { Text("Log out") }
-                TextButton(
-                    onClick = onDeleteAccount,
-                    modifier = Modifier.fillMaxWidth(),
-                ) {
-                    Text("Delete account", color = MaterialTheme.colorScheme.error)
-                }
                 Text(
                     "Educational guidance, not medical advice — consult a professional.",
                     style = MaterialTheme.typography.labelSmall,
