@@ -38,6 +38,7 @@ import com.nutriai.ui.checkin.CheckinScreen
 import com.nutriai.ui.family.FamilyScreen
 import com.nutriai.ui.grocery.GroceryScreen
 import com.nutriai.ui.reports.ReportsScreen
+import com.nutriai.ui.body.BodyScreen
 import com.nutriai.ui.settings.SettingsScreen
 import com.nutriai.ui.wellness.WellnessScreen
 import com.nutriai.ui.theme.BrandGreen
@@ -47,6 +48,7 @@ private data class MoreItem(val key: String, val icon: String, val label: String
 
 private val MORE_ITEMS = listOf(
     MoreItem("checkin", "⚖️", "Weekly check-in", "Log weight & measurements"),
+    MoreItem("body", "📸", "Body Check", "Progress photos + AI body-fat"),
     MoreItem("barcode", "📷", "Scan barcode", "Camera food lookup"),
     MoreItem("grocery", "🛒", "Grocery list", "This week's shopping"),
     MoreItem("reports", "📄", "Weekly report", "Progress + share PDF"),
@@ -72,6 +74,7 @@ fun MoreScreen(
             }
             when (selected) {
                 "checkin" -> CheckinScreen(Modifier.fillMaxSize())
+                "body" -> BodyScreen(Modifier.fillMaxSize())
                 "barcode" -> BarcodeScreen(Modifier.fillMaxSize())
                 "grocery" -> GroceryScreen(Modifier.fillMaxSize())
                 "reports" -> ReportsScreen(Modifier.fillMaxSize())

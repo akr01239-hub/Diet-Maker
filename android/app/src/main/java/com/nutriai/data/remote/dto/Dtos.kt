@@ -372,6 +372,97 @@ data class Wellness(
     val meditation: List<Meditation> = emptyList(),
 )
 
+// ---- AI vision: body assessment + meal photo ----
+@Serializable
+data class PhotoRequest(val imageBase64: String, val mimeType: String = "image/jpeg")
+
+@Serializable
+data class BodyAssessment(
+    val available: Boolean = false,
+    val refused: Boolean = false,
+    val reason: String? = null,
+    val bodyFatLow: Double? = null,
+    val bodyFatHigh: Double? = null,
+    val category: String? = null,
+    val notes: String? = null,
+    val confidence: String? = null,
+    val formulaEstimatePct: Double? = null,
+    val disclaimer: String = "",
+)
+
+@Serializable
+data class BodyAssessEnvelope(val assessment: BodyAssessment)
+
+@Serializable
+data class VisionFoodItem(val name: String, val grams: Double, val per100g: FoodLogPer100g)
+
+@Serializable
+data class MealPhotoResult(
+    val available: Boolean = false,
+    val items: List<VisionFoodItem> = emptyList(),
+    val note: String = "",
+)
+
+// ---- Recipes ----
+@Serializable
+data class Recipe(
+    val title: String = "",
+    val timeMin: Int? = null,
+    val servings: Int? = null,
+    val ingredients: List<String> = emptyList(),
+    val steps: List<String> = emptyList(),
+    val source: String = "",
+    val note: String? = null,
+)
+
+@Serializable
+data class RecipeEnvelope(val recipe: Recipe)
+
+// ---- Chat history ----
+@Serializable
+data class ChatMessageDto(val id: String, val role: String, val content: String, val createdAt: String)
+
+@Serializable
+data class ChatHistoryEnvelope(val messages: List<ChatMessageDto> = emptyList())
+
+// ---- Saved / recent foods ----
+@Serializable
+data class SavedFoodRequest(
+    val name: String,
+    val kcal: Double,
+    val proteinG: Double = 0.0,
+    val carbG: Double = 0.0,
+    val fatG: Double = 0.0,
+    val fiberG: Double = 0.0,
+    val sugarG: Double = 0.0,
+    val sodiumMg: Double = 0.0,
+)
+
+@Serializable
+data class SavedFood(
+    val id: String,
+    val name: String,
+    val kcal: Double,
+    val proteinG: Double = 0.0,
+    val carbG: Double = 0.0,
+    val fatG: Double = 0.0,
+    val fiberG: Double = 0.0,
+    val sugarG: Double = 0.0,
+    val sodiumMg: Double = 0.0,
+)
+
+@Serializable
+data class SavedFoodsEnvelope(val foods: List<SavedFood> = emptyList())
+
+@Serializable
+data class SavedFoodEnvelope(val food: SavedFood)
+
+@Serializable
+data class RecentFood(val name: String, val per100g: FoodLogPer100g)
+
+@Serializable
+data class RecentFoodsEnvelope(val foods: List<RecentFood> = emptyList())
+
 // ---- Chat ----
 @Serializable
 data class ChatRequest(val message: String)

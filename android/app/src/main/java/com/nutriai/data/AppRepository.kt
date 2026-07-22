@@ -111,6 +111,33 @@ class AppRepository @Inject constructor(
     suspend fun wellness(): Result<com.nutriai.data.remote.dto.Wellness> =
         runCatching { api.wellness() }
 
+    // ---- AI vision ----
+    suspend fun assessBodyPhoto(imageBase64: String): Result<com.nutriai.data.remote.dto.BodyAssessment> =
+        runCatching { api.assessBodyPhoto(com.nutriai.data.remote.dto.PhotoRequest(imageBase64)).assessment }
+
+    suspend fun mealPhoto(imageBase64: String): Result<com.nutriai.data.remote.dto.MealPhotoResult> =
+        runCatching { api.mealPhoto(com.nutriai.data.remote.dto.PhotoRequest(imageBase64)) }
+
+    // ---- Recipes ----
+    suspend fun recipe(food: String, foodId: String?): Result<com.nutriai.data.remote.dto.Recipe> =
+        runCatching { api.recipe(food, foodId).recipe }
+
+    // ---- Chat history ----
+    suspend fun chatHistory(): Result<List<com.nutriai.data.remote.dto.ChatMessageDto>> =
+        runCatching { api.chatHistory().messages }
+
+    // ---- Saved / recent foods ----
+    suspend fun saveFood(body: com.nutriai.data.remote.dto.SavedFoodRequest): Result<Unit> =
+        runCatching { api.saveFood(body); Unit }
+
+    suspend fun savedFoods(): Result<List<com.nutriai.data.remote.dto.SavedFood>> =
+        runCatching { api.savedFoods().foods }
+
+    suspend fun deleteSavedFood(id: String): Result<Unit> = runCatching { api.deleteSavedFood(id) }
+
+    suspend fun recentFoods(): Result<List<com.nutriai.data.remote.dto.RecentFood>> =
+        runCatching { api.recentFoods().foods }
+
     suspend fun applyAdaptation(): Result<com.nutriai.data.remote.dto.AdaptApplyResponse> =
         runCatching { api.applyAdaptation() }
 

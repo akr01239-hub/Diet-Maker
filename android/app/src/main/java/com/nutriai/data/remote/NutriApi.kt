@@ -79,6 +79,34 @@ interface NutriApi {
     @GET("wellness")
     suspend fun wellness(): com.nutriai.data.remote.dto.Wellness
 
+    // ---- AI vision ----
+    @POST("body/assess-photo")
+    suspend fun assessBodyPhoto(@Body body: com.nutriai.data.remote.dto.PhotoRequest): com.nutriai.data.remote.dto.BodyAssessEnvelope
+
+    @POST("foods/photo")
+    suspend fun mealPhoto(@Body body: com.nutriai.data.remote.dto.PhotoRequest): com.nutriai.data.remote.dto.MealPhotoResult
+
+    // ---- Recipes ----
+    @GET("recipe")
+    suspend fun recipe(@Query("food") food: String, @Query("foodId") foodId: String?): com.nutriai.data.remote.dto.RecipeEnvelope
+
+    // ---- Chat history ----
+    @GET("chat/history")
+    suspend fun chatHistory(): com.nutriai.data.remote.dto.ChatHistoryEnvelope
+
+    // ---- Saved / recent foods ----
+    @POST("foods/saved")
+    suspend fun saveFood(@Body body: com.nutriai.data.remote.dto.SavedFoodRequest): com.nutriai.data.remote.dto.SavedFoodEnvelope
+
+    @GET("foods/saved")
+    suspend fun savedFoods(): com.nutriai.data.remote.dto.SavedFoodsEnvelope
+
+    @retrofit2.http.DELETE("foods/saved/{id}")
+    suspend fun deleteSavedFood(@Path("id") id: String)
+
+    @GET("foods/recent")
+    suspend fun recentFoods(): com.nutriai.data.remote.dto.RecentFoodsEnvelope
+
     @POST("adapt/apply")
     suspend fun applyAdaptation(): com.nutriai.data.remote.dto.AdaptApplyResponse
 

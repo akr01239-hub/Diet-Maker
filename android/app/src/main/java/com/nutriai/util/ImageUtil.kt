@@ -1,0 +1,79 @@
+package com.nutriai.util
+
+import android.content.Context
+import android.graphics.Bitmap
+import android.graphics.BitmapFactory
+import android.net.Uri
+import android.util.Base64
+import androidx.core.content.FileProvider
+import java.io.ByteArrayOutputStream
+import java.io.File
+
+/** Image helpers: downscale + JPEG-compress for upload, and a private on-device progress gallery. */
+object ImageUtil {
+
+    /** Reads a picked/captured image, downscales it and returns compressed JPEG bytes. */
+    fun downscaledJpegBytes(context: Context, uri: Uri, maxDim: Int = 768, quality: Int = 72): ByteArray? {
+        return try {
+            val bmp = context.contentResolver.openInputStream(uri).use { input ->
+                if (input == null) return null
+                BitmapFactory.decodeStream(input)
+            } ?: return null
+            compress(scaleDown(bmp, maxDim), quality)
+        } catch (_: Exception) {
+            null
+        }
+    }
+
+    fun jpegBytes(file: File, maxDim: Int = 768, quality: Int = 72): ByteArray? {
+        return try {
+            val bmp = BitmapFactory.decodeFile(file.absolutePath) ?: return null
+            compress(scaleDown(bmp, maxDim), quality)
+        } catch (_: Exception) {
+            null
+        }
+    }
+
+    fun toBase64(bytes: ByteArray): String = Base64.encodeToString(bytes, Base64.NO_WRAP)
+
+    private fun scaleDown(bmp: Bitmap, maxDim: Int): Bitmap {
+        val longest = maxOf(bmp.width, bmp.height)
+        if (longest <= maxDim) return bmp
+        val scale = maxDim.toFloat() / longest
+        return Bitmap.createScaledBitmap(bmp, (bmp.width * scale).toInt(), (bmp.height * scale).toInt(), true)
+    }
+
+    private fun compress(bmp: Bitmap, quality: Int): ByteArray {
+        val baos = ByteArrayOutputStream()
+        bmp.compress(Bitmap.CompressFormat.JPEG, quality, baos)
+        return baos.toByteArray()
+    }
+
+    // ---- Private progress-photo gallery (never leaves the device) ----
+
+    private fun progressDir(context: Context): File =
+        File(context.filesDir, "progress").apply { if (!exists()) mkdirs() }
+
+    /** Saves a downscaled copy of the image to private storage; returns the saved file. */
+    fun saveProgress(context: Context, uri: Uri, timestamp: Long): File? {
+        val bytes = downscaledJpegBytes(context, uri, maxDim = 1080, quality = 80) ?: return null
+        val file = File(progressDir(context), "progress_$timestamp.jpg")
+        file.writeBytes(bytes)
+        return file
+    }
+
+    fun listProgress(context: Context): List<File> =
+        progressDir(context).listFiles { f -> f.name.endsWith(".jpg") }
+            ?.sortedByDescending { it.name }
+            ?: emptyList()
+
+    fun timestampOf(file: File): Long =
+        file.name.removePrefix("progress_").removeSuffix(".jpg").toLongOrNull() ?: 0L
+
+    /** A cache file + FileProvider uri for the camera to write a full-res capture into. */
+    fun newCameraOutput(context: Context, timestamp: Long): Pair<Uri, File> {
+        val file = File(context.cacheDir, "capture_$timestamp.jpg")
+        val uri = FileProvider.getUriForFile(context, "${context.packageName}.fileprovider", file)
+        return uri to file
+    }
+}
