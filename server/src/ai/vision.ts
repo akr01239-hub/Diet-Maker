@@ -72,6 +72,25 @@ function parseJsonLoose(text: string): Record<string, unknown> | null {
 
 export const visionAvailable = (): boolean => Boolean(env.GEMINI_API_KEY);
 
+/** Raw Gemini test call that surfaces the HTTP status + error body (no key leaked). */
+export async function geminiDiagnostic(): Promise<{ ok: boolean; status?: number; error?: string; model: string }> {
+  const key = env.GEMINI_API_KEY;
+  if (!key) return { ok: false, error: 'no key', model: MODEL };
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/${MODEL}:generateContent?key=${key}`;
+  try {
+    const res = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ contents: [{ role: 'user', parts: [{ text: 'Say hi' }] }] }),
+    });
+    if (res.ok) return { ok: true, status: 200, model: MODEL };
+    const body = await res.text();
+    return { ok: false, status: res.status, error: body.slice(0, 400), model: MODEL };
+  } catch (e) {
+    return { ok: false, error: String((e as Error)?.message ?? e).slice(0, 300), model: MODEL };
+  }
+}
+
 /** Groq (OpenAI-compatible) text call returning parsed JSON, or null. Never throws. */
 export async function groqTextJson(prompt: string): Promise<Record<string, unknown> | null> {
   const key = env.GROQ_API_KEY;

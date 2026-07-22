@@ -1,7 +1,7 @@
 import { Router, type Request, type Response } from 'express';
 import { prisma } from '../../lib/prisma';
 import { env } from '../../lib/env';
-import { geminiTextJson, groqTextJson } from '../../ai/vision';
+import { groqTextJson, geminiDiagnostic } from '../../ai/vision';
 
 export const API_VERSION = '0.1.0';
 
@@ -31,12 +31,22 @@ healthRouter.get('/health', (_req: Request, res: Response) => {
 healthRouter.get('/ai-status', async (_req: Request, res: Response) => {
   const result = {
     aiProvider: env.AI_PROVIDER,
-    gemini: { configured: Boolean(env.GEMINI_API_KEY), working: null as boolean | null },
+    gemini: {
+      configured: Boolean(env.GEMINI_API_KEY),
+      working: null as boolean | null,
+      status: null as number | null | undefined,
+      error: null as string | null | undefined,
+      model: null as string | null,
+    },
     groq: { configured: Boolean(env.GROQ_API_KEY), working: null as boolean | null },
     note: '"working: true" means a live test call succeeded. Vision (photo) features require Gemini.',
   };
   if (env.GEMINI_API_KEY) {
-    result.gemini.working = (await geminiTextJson('Return this exact JSON: {"ok": true}')) !== null;
+    const diag = await geminiDiagnostic();
+    result.gemini.working = diag.ok;
+    result.gemini.status = diag.status;
+    result.gemini.error = diag.error;
+    result.gemini.model = diag.model;
   }
   if (env.GROQ_API_KEY) {
     result.groq.working = (await groqTextJson('Return this exact JSON: {"ok": true}')) !== null;
