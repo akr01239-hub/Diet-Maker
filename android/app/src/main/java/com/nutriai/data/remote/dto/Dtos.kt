@@ -273,6 +273,25 @@ data class PlanDto(val id: String? = null, val days: List<DayPlan> = emptyList()
 @Serializable
 data class PlanEnvelope(val plan: PlanDto?)
 
+@Serializable
+data class SwapMealRequest(val dayIndex: Int, val slot: String)
+
+// ---- Adaptive coaching ----
+@Serializable
+data class Adaptation(
+    val status: String,
+    val message: String,
+    val suggestedKcalDelta: Int = 0,
+    val avgLoggedKcal: Double? = null,
+    val weeklyWeightChangeKg: Double? = null,
+)
+
+@Serializable
+data class AdaptEnvelope(val adaptation: Adaptation)
+
+@Serializable
+data class AdaptApplyResponse(val applied: Boolean = false, val kcalDelta: Int = 0)
+
 // ---- Chat ----
 @Serializable
 data class ChatRequest(val message: String)

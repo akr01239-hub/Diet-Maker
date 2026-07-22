@@ -3,9 +3,12 @@ import { HttpError } from '../../middleware/error';
 import { requireCompleteProfile } from '../profile/profile.service';
 import { computeCalcResult } from '../nutrition/calcResult';
 import { ageFromDob } from '../nutrition/calc.service';
-import { generateWeekPlan } from './planGenerator';
+import { generateWeekPlan, buildSwapMeal } from './planGenerator';
+import { eligibleFoods } from './foodFilter';
 import { localSunday, localToday } from '../../lib/tz';
-import type { FoodItem, MealSlot, PlanPreferences, PlanTargets } from './food.types';
+import { round } from '../../calc/anthropometry';
+import type { DayPlan, FoodItem, MealSlot, PlanPreferences, PlanTargets } from './food.types';
+import { SLOT_KCAL_WEIGHTS } from './food.types';
 import type { ActivityLevel, Goal } from '../../calc/types';
 import type { Condition } from '../../guardrails';
 import type { Food } from '@prisma/client';
@@ -38,7 +41,12 @@ function toFoodItem(f: Food): FoodItem {
  * through diet/allergy/condition filters, persist and return. Every plan is guardrail-safe
  * because its calorie/macro targets come from the guardrailed CalcResult.
  */
-export async function generateAndSavePlan(userId: string, days = 7, tzOffsetMin = 0) {
+export async function generateAndSavePlan(
+  userId: string,
+  days = 7,
+  tzOffsetMin = 0,
+  kcalDeltaOverride = 0,
+) {
   const { profile, sensitive } = await requireCompleteProfile(userId);
 
   const calc = computeCalcResult({
@@ -96,6 +104,12 @@ export async function generateAndSavePlan(userId: string, days = 7, tzOffsetMin 
   targets.dailyKcal = Math.max(1200, calc.dailyKcal + carryOverKcal);
   targets.carryOverKcal = carryOverKcal;
 
+  // Adaptive override: when the user applies the coach's recommendation, bake the
+  // suggested calorie delta into this plan (still floored for safety).
+  if (kcalDeltaOverride) {
+    targets.dailyKcal = Math.max(1200, targets.dailyKcal + kcalDeltaOverride);
+  }
+
   // Sunday-to-Saturday week in the user's timezone (falls back to UTC when offset is 0).
   const week = generateWeekPlan(foods.map(toFoodItem), targets, prefs, {
     days,
@@ -116,6 +130,66 @@ export async function generateAndSavePlan(userId: string, days = 7, tzOffsetMin 
   });
 
   return { id: saved.id, createdAt: saved.createdAt, ...week, flags: calc.flags };
+}
+
+/**
+ * Swaps a single meal in the latest plan for a different dish at (roughly) the same calories,
+ * so the user can replace something they don't like without regenerating the whole week.
+ */
+export async function swapMeal(userId: string, dayIndex: number, slot: MealSlot) {
+  const planRow = await prisma.dietPlan.findFirst({
+    where: { userId },
+    orderBy: { createdAt: 'desc' },
+  });
+  if (!planRow) throw new HttpError(404, 'No plan yet — generate one first');
+
+  const days = planRow.days as unknown as DayPlan[];
+  const targets = planRow.targets as unknown as PlanTargets;
+  const day = days.find((d) => d.dayIndex === dayIndex) ?? days[dayIndex];
+  if (!day) throw new HttpError(400, 'Invalid day');
+  const mealIdx = day.meals.findIndex((m) => m.slot === slot);
+  if (mealIdx < 0) throw new HttpError(400, 'No such meal on this day');
+
+  const current = day.meals[mealIdx]!;
+  const kcalTarget =
+    current.kcal > 0 ? current.kcal : Math.round(targets.dailyKcal * (SLOT_KCAL_WEIGHTS[slot] ?? 0.2));
+
+  const { profile, sensitive } = await requireCompleteProfile(userId);
+  const foods = await prisma.food.findMany();
+  const prefs: PlanPreferences = {
+    dietType: profile.dietType,
+    allergies: sensitive.allergies,
+    conditions: sensitive.conditions,
+    locale: 'IN',
+  };
+  const eligible = eligibleFoods(foods.map(toFoodItem), prefs);
+  const ordered = [
+    ...eligible.filter((f) => f.locale === prefs.locale),
+    ...eligible.filter((f) => f.locale !== prefs.locale),
+  ];
+
+  const avoidIds = current.items.map((i) => i.foodId);
+  const newMeal = buildSwapMeal(slot, ordered, kcalTarget, prefs.dietType, dayIndex, avoidIds, 1);
+  day.meals[mealIdx] = newMeal;
+
+  // Recompute the day totals from its meals.
+  const sum = (pick: (i: (typeof newMeal.items)[number]) => number) =>
+    day.meals.reduce((s, m) => s + m.items.reduce((t, i) => t + pick(i), 0), 0);
+  day.totals = {
+    kcal: round(sum((i) => i.kcal), 0),
+    proteinG: round(sum((i) => i.proteinG), 1),
+    carbG: round(sum((i) => i.carbG), 1),
+    fatG: round(sum((i) => i.fatG), 1),
+    fiberG: round(sum((i) => i.fiberG), 1),
+    sodiumMg: round(sum((i) => i.sodiumMg), 0),
+  };
+
+  await prisma.dietPlan.update({
+    where: { id: planRow.id },
+    data: { days: days as unknown as object },
+  });
+
+  return { id: planRow.id, createdAt: planRow.createdAt, days, targets };
 }
 
 export async function latestPlan(userId: string) {

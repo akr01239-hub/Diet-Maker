@@ -55,7 +55,17 @@ class AppRepository @Inject constructor(
 
     suspend fun generatePlan(): Result<PlanDto?> = runCatching { api.generatePlan(mapOf("days" to 7)).plan }
 
+    suspend fun swapMeal(dayIndex: Int, slot: String): Result<PlanDto?> = runCatching {
+        api.swapMeal(com.nutriai.data.remote.dto.SwapMealRequest(dayIndex, slot)).plan
+    }
+
     suspend fun chat(message: String): Result<ChatReply> = runCatching { api.chat(ChatRequest(message)).reply }
+
+    suspend fun adaptation(): Result<com.nutriai.data.remote.dto.Adaptation> =
+        runCatching { api.adaptation().adaptation }
+
+    suspend fun applyAdaptation(): Result<com.nutriai.data.remote.dto.AdaptApplyResponse> =
+        runCatching { api.applyAdaptation() }
 
     suspend fun searchFoods(q: String): Result<List<com.nutriai.data.remote.dto.FoodDto>> = runCatching {
         api.foodsSearch(if (q.isBlank()) null else q).foods

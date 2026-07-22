@@ -107,6 +107,43 @@ function buildMeal(
   return { slot, items, kcal, proteinG };
 }
 
+/**
+ * Builds a single replacement meal for a slot at (roughly) a target calorie level, avoiding
+ * the foods currently used so a "swap" actually changes the dish. `variant` rotates the pick.
+ */
+export function buildSwapMeal(
+  slot: MealSlot,
+  eligible: FoodItem[],
+  kcalTarget: number,
+  dietType: string,
+  dayIndex: number,
+  avoidIds: string[],
+  variant: number,
+): Meal {
+  const all = candidatesForSlot(eligible, slot, dietType);
+  const filtered = all.filter((f) => !avoidIds.includes(f.id));
+  const pool = filtered.length > 0 ? filtered : all;
+  const items: MealItem[] = [];
+  const twoItems = MAIN_SLOTS.includes(slot) && pool.length > 1;
+  const slotSeed = MEAL_SLOTS.indexOf(slot) * 3 + dayIndex * 2 + variant;
+
+  if (twoItems) {
+    const protein = pickRotated(pool, slotSeed);
+    const byFiber = [...pool].sort((a, b) => b.fiberG - a.fiberG);
+    let second = pickRotated(byFiber, slotSeed + 1);
+    if (second && protein && second.id === protein.id) second = pickRotated(byFiber, slotSeed + 2);
+    if (protein) items.push(toItem(protein, gramsForKcal(protein, kcalTarget * 0.5)));
+    if (second) items.push(toItem(second, gramsForKcal(second, kcalTarget * 0.5)));
+  } else {
+    const only = pickRotated(pool, slotSeed);
+    if (only) items.push(toItem(only, gramsForKcal(only, kcalTarget)));
+  }
+
+  const kcal = round(items.reduce((s, i) => s + i.kcal, 0), 0);
+  const proteinG = round(items.reduce((s, i) => s + i.proteinG, 0), 1);
+  return { slot, items, kcal, proteinG };
+}
+
 const LIGHT_TAGS = new Set(['fruit', 'beverage', 'light', 'probiotic', 'high-fiber']);
 
 function buildDay(

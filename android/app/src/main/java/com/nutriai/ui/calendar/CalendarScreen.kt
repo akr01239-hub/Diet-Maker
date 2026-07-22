@@ -38,6 +38,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewModelScope
 import com.nutriai.data.AppRepository
+import com.nutriai.data.remote.dto.Adaptation
 import com.nutriai.data.remote.dto.DayPlan
 import com.nutriai.data.remote.dto.ExerciseLogDto
 import com.nutriai.data.remote.dto.ExerciseLogRequest
@@ -63,6 +64,9 @@ data class CalendarState(
     val lastPerf: Map<String, LastPerformance> = emptyMap(),
     /** Exercise logs the user recorded on the selected day. */
     val selectedLogs: List<ExerciseLogDto> = emptyList(),
+    /** Adaptive coaching insight from recent logging + weight trend. */
+    val adaptation: Adaptation? = null,
+    val applying: Boolean = false,
 )
 
 @HiltViewModel
@@ -82,6 +86,7 @@ class CalendarViewModel @Inject constructor(
             val plan = repository.latestPlan()
             val workout = repository.exercisePlan()
             val lastPerf = repository.lastPerformance().getOrDefault(emptyMap())
+            val adaptation = repository.adaptation().getOrNull()
 
             val dietDays = plan.getOrNull()?.days.orEmpty()
             val workoutPlan = workout.getOrNull()
@@ -106,6 +111,31 @@ class CalendarViewModel @Inject constructor(
                 selectedDate = defaultDate,
                 lastPerf = lastPerf,
                 selectedLogs = logs,
+                adaptation = adaptation,
+            )
+        }
+    }
+
+    /** Swaps a single meal in the plan for a different dish at similar calories. */
+    fun swapMeal(dayIndex: Int, slot: String) {
+        viewModelScope.launch {
+            repository.swapMeal(dayIndex, slot).getOrNull()?.let { plan ->
+                _state.value = _state.value.copy(dietDays = plan.days)
+            }
+        }
+    }
+
+    /** Applies the coach's recommendation: rebuilds the plan (at the adjusted target). */
+    fun applyAdaptation() {
+        _state.value = _state.value.copy(applying = true)
+        viewModelScope.launch {
+            repository.applyAdaptation()
+            val plan = repository.latestPlan().getOrNull()
+            val adaptation = repository.adaptation().getOrNull()
+            _state.value = _state.value.copy(
+                applying = false,
+                dietDays = plan?.days.orEmpty(),
+                adaptation = adaptation,
             )
         }
     }
@@ -203,6 +233,16 @@ fun CalendarScreen(
             }
         }
 
+        state.adaptation?.takeIf { it.status != "insufficient_data" }?.let { adapt ->
+            item {
+                AdaptiveInsightCard(
+                    adaptation = adapt,
+                    applying = state.applying,
+                    onApply = { viewModel.applyAdaptation() },
+                )
+            }
+        }
+
         if (state.loading) {
             item { CircularProgressIndicator() }
         }
@@ -269,11 +309,23 @@ fun CalendarScreen(
                 items(dietDay.meals) { meal ->
                     Card(Modifier.fillMaxWidth()) {
                         Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                            Text(
-                                meal.slot.replaceFirstChar { it.uppercase() },
-                                style = MaterialTheme.typography.titleSmall,
-                                color = MaterialTheme.colorScheme.primary,
-                            )
+                            Row(
+                                Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically,
+                            ) {
+                                Text(
+                                    meal.slot.replaceFirstChar { it.uppercase() },
+                                    style = MaterialTheme.typography.titleSmall,
+                                    color = MaterialTheme.colorScheme.primary,
+                                )
+                                Text(
+                                    "🔄 Swap",
+                                    style = MaterialTheme.typography.labelMedium,
+                                    color = MaterialTheme.colorScheme.primary,
+                                    modifier = Modifier.clickable { viewModel.swapMeal(dietDay.dayIndex, meal.slot) },
+                                )
+                            }
                             meal.items.forEach { mealItem ->
                                 Text(
                                     "• ${mealItem.name} — ${mealItem.grams.toInt()}g (${mealItem.kcal.toInt()}kcal)",
@@ -409,6 +461,48 @@ fun CalendarScreen(
                 textAlign = TextAlign.Center,
                 modifier = Modifier.fillMaxWidth().padding(top = 4.dp),
             )
+        }
+    }
+}
+
+@Composable
+private fun AdaptiveInsightCard(
+    adaptation: Adaptation,
+    applying: Boolean,
+    onApply: () -> Unit,
+) {
+    val onTrack = adaptation.status == "on_track"
+    Card(
+        Modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(
+            containerColor = if (onTrack) {
+                MaterialTheme.colorScheme.secondaryContainer
+            } else {
+                MaterialTheme.colorScheme.tertiaryContainer
+            },
+        ),
+    ) {
+        Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Text(
+                if (onTrack) "🎯 Coach: on track" else "🧭 Coach insight",
+                style = MaterialTheme.typography.titleSmall,
+                fontWeight = FontWeight.Bold,
+            )
+            Text(adaptation.message, style = MaterialTheme.typography.bodyMedium)
+            if (adaptation.status == "adjust_target") {
+                Button(
+                    onClick = onApply,
+                    enabled = !applying,
+                    modifier = Modifier.fillMaxWidth(),
+                ) {
+                    if (applying) {
+                        CircularProgressIndicator(Modifier.width(20.dp))
+                    } else {
+                        val sign = if (adaptation.suggestedKcalDelta >= 0) "+" else ""
+                        Text("Apply ($sign${adaptation.suggestedKcalDelta} kcal) & rebuild plan")
+                    }
+                }
+            }
         }
     }
 }

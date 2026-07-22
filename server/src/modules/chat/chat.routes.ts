@@ -5,6 +5,8 @@ import { requireAuth, type AuthedRequest } from '../../middleware/auth';
 import { chat } from './chat.service';
 import { getAdaptation, defaultReminders } from './adaptive.service';
 import { getMe } from '../auth/auth.service';
+import { generateAndSavePlan } from '../food/plan.service';
+import { tzOffsetMin } from '../../lib/tz';
 
 export const chatRouter = Router();
 
@@ -27,6 +29,18 @@ chatRouter.get(
   asyncHandler(async (req: AuthedRequest, res) => {
     const adaptation = await getAdaptation(req.user!.id);
     res.json({ adaptation });
+  }),
+);
+
+chatRouter.post(
+  '/adapt/apply',
+  requireAuth,
+  asyncHandler(async (req: AuthedRequest, res) => {
+    const adaptation = await getAdaptation(req.user!.id);
+    // Only a target-adjustment recommendation changes calories; behaviour/on-track just rebuild.
+    const kcalDelta = adaptation.status === 'adjust_target' ? adaptation.suggestedKcalDelta : 0;
+    const plan = await generateAndSavePlan(req.user!.id, 7, tzOffsetMin(req), kcalDelta);
+    res.status(201).json({ adaptation, applied: kcalDelta !== 0, kcalDelta, plan });
   }),
 );
 

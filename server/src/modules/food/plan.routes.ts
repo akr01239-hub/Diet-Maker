@@ -2,14 +2,20 @@ import { Router } from 'express';
 import { z } from 'zod';
 import { asyncHandler } from '../../lib/asyncHandler';
 import { requireAuth, type AuthedRequest } from '../../middleware/auth';
-import { generateAndSavePlan, latestPlan } from './plan.service';
+import { generateAndSavePlan, latestPlan, swapMeal } from './plan.service';
 import { tzOffsetMin } from '../../lib/tz';
 import { prisma } from '../../lib/prisma';
 import { searchUsda, type FoodSearchItem } from './usda';
+import { MEAL_SLOTS, type MealSlot } from './food.types';
 
 export const planRouter = Router();
 
 const genSchema = z.object({ days: z.number().int().min(1).max(30).optional() });
+
+const swapSchema = z.object({
+  dayIndex: z.number().int().min(0).max(30),
+  slot: z.enum(MEAL_SLOTS as [string, ...string[]]),
+});
 
 /** Generate + persist a new plan from the user's stored profile. */
 planRouter.post(
@@ -27,6 +33,17 @@ planRouter.get(
   requireAuth,
   asyncHandler(async (req: AuthedRequest, res) => {
     const plan = await latestPlan(req.user!.id);
+    res.json({ plan });
+  }),
+);
+
+/** Swap one meal in the latest plan for a different dish at similar calories. */
+planRouter.post(
+  '/plan/swap',
+  requireAuth,
+  asyncHandler(async (req: AuthedRequest, res) => {
+    const { dayIndex, slot } = swapSchema.parse(req.body);
+    const plan = await swapMeal(req.user!.id, dayIndex, slot as MealSlot);
     res.json({ plan });
   }),
 );

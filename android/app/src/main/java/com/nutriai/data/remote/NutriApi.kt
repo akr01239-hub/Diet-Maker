@@ -58,8 +58,17 @@ interface NutriApi {
     @GET("plan/latest")
     suspend fun latestPlan(): PlanEnvelope
 
+    @POST("plan/swap")
+    suspend fun swapMeal(@Body body: com.nutriai.data.remote.dto.SwapMealRequest): PlanEnvelope
+
     @POST("chat")
     suspend fun chat(@Body body: ChatRequest): ChatEnvelope
+
+    @GET("adapt")
+    suspend fun adaptation(): com.nutriai.data.remote.dto.AdaptEnvelope
+
+    @POST("adapt/apply")
+    suspend fun applyAdaptation(): com.nutriai.data.remote.dto.AdaptApplyResponse
 
     @GET("foods")
     suspend fun foods(@Query("q") q: String?): FoodsEnvelope
