@@ -14,6 +14,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -29,6 +30,7 @@ import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -99,9 +101,25 @@ private fun DashboardTab(
     viewModel: DashboardViewModel = hiltViewModel(),
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
+    var showDelete by remember { mutableStateOf(false) }
 
     // Refresh every time the Home tab becomes visible (e.g. after logging food).
     LaunchedEffect(Unit) { viewModel.refresh() }
+
+    if (showDelete) {
+        AlertDialog(
+            onDismissRequest = { showDelete = false },
+            title = { Text("Delete account?") },
+            text = { Text("This permanently deletes your account and all your data from our servers. This cannot be undone.") },
+            confirmButton = {
+                TextButton(onClick = {
+                    showDelete = false
+                    viewModel.deleteAccount(onLogout)
+                }) { Text("Delete", color = MaterialTheme.colorScheme.error) }
+            },
+            dismissButton = { TextButton(onClick = { showDelete = false }) { Text("Cancel") } },
+        )
+    }
 
     Column(
         Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(16.dp),
@@ -117,6 +135,9 @@ private fun DashboardTab(
 
         OutlinedButton(onClick = { viewModel.logout(onLogout) }, modifier = Modifier.fillMaxWidth()) {
             Text("Log out")
+        }
+        TextButton(onClick = { showDelete = true }, modifier = Modifier.fillMaxWidth()) {
+            Text("Delete account", color = MaterialTheme.colorScheme.error)
         }
         Text(
             "Educational guidance, not medical advice — consult a professional.",
@@ -299,6 +320,44 @@ private fun PlanTab(viewModel: PlanViewModel = hiltViewModel()) {
 @Composable
 private fun LogTab(viewModel: LogFoodViewModel = hiltViewModel()) {
     val state by viewModel.state.collectAsStateWithLifecycle()
+    var pendingFood by remember { mutableStateOf<com.nutriai.data.remote.dto.FoodDto?>(null) }
+    var qtyText by remember { mutableStateOf("") }
+
+    // Quantity dialog — set the exact grams for THIS food before logging (accurate calories).
+    pendingFood?.let { food ->
+        AlertDialog(
+            onDismissRequest = { pendingFood = null },
+            title = { Text("How much ${food.name}?") },
+            text = {
+                Column {
+                    Text("${food.kcal.toInt()} kcal per 100 g", style = MaterialTheme.typography.bodySmall)
+                    OutlinedTextField(
+                        value = qtyText,
+                        onValueChange = { qtyText = it.filter { c -> c.isDigit() } },
+                        label = { Text("Grams") },
+                        singleLine = true,
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                        modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
+                    )
+                    val g = qtyText.toDoubleOrNull() ?: 0.0
+                    Text(
+                        "= ${(food.kcal * g / 100).toInt()} kcal · ${(food.proteinG * g / 100).toInt()} g protein",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.padding(top = 6.dp),
+                    )
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = {
+                    val g = qtyText.toDoubleOrNull()
+                    if (g != null && g > 0) viewModel.log(food, g)
+                    pendingFood = null
+                }) { Text("Add") }
+            },
+            dismissButton = { TextButton(onClick = { pendingFood = null }) { Text("Cancel") } },
+        )
+    }
 
     LazyColumn(
         Modifier.fillMaxSize().padding(16.dp),
@@ -319,16 +378,6 @@ private fun LogTab(viewModel: LogFoodViewModel = hiltViewModel()) {
                     }
                 }
             }
-        }
-        item {
-            OutlinedTextField(
-                value = state.grams,
-                onValueChange = viewModel::onGrams,
-                label = { Text("Grams") },
-                singleLine = true,
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                modifier = Modifier.fillMaxWidth(),
-            )
         }
         item {
             Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
@@ -365,7 +414,10 @@ private fun LogTab(viewModel: LogFoodViewModel = hiltViewModel()) {
                                 style = MaterialTheme.typography.bodySmall,
                             )
                         }
-                        Button(onClick = { viewModel.log(food) }) { Text("+ Add") }
+                        Button(onClick = {
+                            pendingFood = food
+                            qtyText = food.typicalServingG.toInt().toString()
+                        }) { Text("+ Add") }
                     }
                 }
             }

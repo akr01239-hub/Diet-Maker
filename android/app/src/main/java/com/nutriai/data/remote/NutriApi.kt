@@ -116,4 +116,8 @@ interface NutriApi {
     // ---- Workout ----
     @GET("exercise-plan")
     suspend fun exercisePlan(): com.nutriai.data.remote.dto.WorkoutEnvelope
+
+    // ---- Account ----
+    @retrofit2.http.DELETE("me")
+    suspend fun deleteAccount()
 }

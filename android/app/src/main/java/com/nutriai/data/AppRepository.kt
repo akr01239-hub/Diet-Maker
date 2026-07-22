@@ -126,6 +126,8 @@ class AppRepository @Inject constructor(
     suspend fun exercisePlan(): Result<com.nutriai.data.remote.dto.WeeklyWorkout> =
         runCatching { api.exercisePlan().plan }
 
+    suspend fun deleteAccount(): Result<Unit> = runCatching { api.deleteAccount() }
+
     // ---- Barcode ----
     suspend fun barcode(code: String): Result<com.nutriai.data.remote.dto.BarcodeFood> =
         runCatching { api.barcode(code).food }

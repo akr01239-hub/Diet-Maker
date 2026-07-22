@@ -55,6 +55,14 @@ class DashboardViewModel @Inject constructor(
             onDone()
         }
     }
+
+    fun deleteAccount(onDone: () -> Unit) {
+        viewModelScope.launch {
+            repository.deleteAccount()
+            repository.logout() // clear local tokens after server-side deletion
+            onDone()
+        }
+    }
 }
 
 // ---- Plan ----
@@ -172,8 +180,8 @@ class LogFoodViewModel @Inject constructor(
         }
     }
 
-    fun log(food: com.nutriai.data.remote.dto.FoodDto) {
-        val grams = _state.value.grams.toDoubleOrNull() ?: food.typicalServingG
+    fun log(food: com.nutriai.data.remote.dto.FoodDto, gramsOverride: Double? = null) {
+        val grams = gramsOverride ?: _state.value.grams.toDoubleOrNull() ?: food.typicalServingG
         viewModelScope.launch {
             val r = repository.logFoodItem(_state.value.slot, food, grams)
             _state.value = _state.value.copy(
