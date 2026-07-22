@@ -885,7 +885,7 @@ private fun DayPill(
     }
 
     Card(
-        modifier = Modifier.width(64.dp).clickable(onClick = onClick),
+        modifier = Modifier.width(74.dp).clickable(onClick = onClick),
         colors = CardDefaults.cardColors(containerColor = container),
         elevation = CardDefaults.cardElevation(defaultElevation = if (isSelected) 6.dp else 2.dp),
     ) {
@@ -899,12 +899,17 @@ private fun DayPill(
                 style = MaterialTheme.typography.labelMedium,
                 color = content,
                 maxLines = 1,
+                overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
+                textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+                modifier = Modifier.fillMaxWidth(),
             )
             Text(
                 dayNumber,
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.Bold,
                 color = content,
+                textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+                modifier = Modifier.fillMaxWidth(),
             )
         }
     }

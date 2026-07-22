@@ -76,9 +76,13 @@ class DashboardViewModel @Inject constructor(
             }
         }
         // Safety/medical advisories (guardrail flags) — shown as a card on the dashboard.
+        // Drop the generic DISCLAIMER (already in the footer) so the card only appears
+        // when there's a real condition/medication note to show.
         viewModelScope.launch {
             repository.latestCalc().getOrNull()?.let { calc ->
-                _state.value = _state.value.copy(safetyFlags = calc.flags)
+                _state.value = _state.value.copy(
+                    safetyFlags = calc.flags.filter { it.code != "DISCLAIMER" },
+                )
             }
         }
     }

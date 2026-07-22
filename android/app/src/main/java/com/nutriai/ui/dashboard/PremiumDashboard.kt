@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -330,11 +331,12 @@ private fun MacroRow(dashboard: Dashboard) {
     val proteinPercent = (dashboard.protein.percent ?: 0.0).coerceIn(0.0, 100.0).toFloat()
     Row(
         modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.spacedBy(14.dp),
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
     ) {
         StatTile(
             label = "Protein",
             value = "${proteinConsumed.toInt()} g",
+            icon = "💪",
             fraction = proteinPercent / 100f,
             accent = BrandGreen,
             modifier = Modifier.weight(1f),
@@ -342,6 +344,7 @@ private fun MacroRow(dashboard: Dashboard) {
         StatTile(
             label = "Carbs",
             value = "${dashboard.macros.carbG.toInt()} g",
+            icon = "🌾",
             fraction = null,
             accent = BrandAmber,
             modifier = Modifier.weight(1f),
@@ -349,6 +352,7 @@ private fun MacroRow(dashboard: Dashboard) {
         StatTile(
             label = "Fat",
             value = "${dashboard.macros.fatG.toInt()} g",
+            icon = "🥑",
             fraction = null,
             accent = BrandGreenDark,
             modifier = Modifier.weight(1f),
@@ -360,30 +364,41 @@ private fun MacroRow(dashboard: Dashboard) {
 private fun StatTile(
     label: String,
     value: String,
+    icon: String,
     fraction: Float?,
     accent: Color,
     modifier: Modifier = Modifier,
 ) {
     Card(
         modifier = modifier,
-        shape = RoundedCornerShape(24.dp),
-        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+        shape = RoundedCornerShape(22.dp),
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
+        colors = CardDefaults.cardColors(containerColor = accent.copy(alpha = 0.10f)),
     ) {
         Column(
-            modifier = Modifier.padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(10.dp),
+            modifier = Modifier.fillMaxWidth().padding(14.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp),
         ) {
-            Text(
-                label,
-                style = MaterialTheme.typography.labelMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
+            // Icon chip
+            Box(
+                modifier = Modifier
+                    .size(34.dp)
+                    .clip(CircleShape)
+                    .background(accent.copy(alpha = 0.22f)),
+                contentAlignment = Alignment.Center,
+            ) { Text(icon, style = MaterialTheme.typography.titleMedium) }
+
             Text(
                 value,
                 style = MaterialTheme.typography.titleLarge,
                 fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.onSurface,
+                color = accent,
+            )
+            Text(
+                label,
+                style = MaterialTheme.typography.labelMedium,
+                fontWeight = FontWeight.Medium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
             LinearProgressIndicator(
                 progress = { (fraction ?: 1f).coerceIn(0f, 1f) },
@@ -392,7 +407,7 @@ private fun StatTile(
                     .height(6.dp)
                     .clip(RoundedCornerShape(3.dp)),
                 color = accent,
-                trackColor = accent.copy(alpha = 0.18f),
+                trackColor = accent.copy(alpha = 0.20f),
             )
         }
     }
@@ -684,36 +699,45 @@ private fun SafetyCard(flags: List<com.nutriai.data.remote.dto.Flag>) {
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(24.dp),
         elevation = CardDefaults.cardElevation(defaultElevation = 3.dp),
-        colors = CardDefaults.cardColors(
-            containerColor = if (hasCritical) {
-                MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.5f)
-            } else {
-                MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
-            },
-        ),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
     ) {
         Column(
             modifier = Modifier.fillMaxWidth().padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(10.dp),
         ) {
-            Text(
-                "🩺 Health & safety notes",
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.onSurface,
-            )
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                Text("🩺", style = MaterialTheme.typography.titleMedium)
+                Text(
+                    "Health & safety notes",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onSurface,
+                )
+                if (hasCritical) {
+                    Box(
+                        Modifier.clip(RoundedCornerShape(8.dp)).background(MaterialTheme.colorScheme.error).padding(horizontal = 8.dp, vertical = 2.dp),
+                    ) { Text("See a doctor", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onError, fontWeight = FontWeight.Bold) }
+                }
+            }
             sorted.forEach { f ->
                 val (icon, tint) = when (f.severity) {
                     "critical" -> "⛔" to MaterialTheme.colorScheme.error
                     "warning" -> "⚠️" to Color(0xFFB45309)
-                    else -> "ℹ️" to MaterialTheme.colorScheme.onSurfaceVariant
+                    else -> "ℹ️" to BrandGreenDeep
                 }
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(14.dp))
+                        .background(tint.copy(alpha = 0.10f))
+                        .padding(horizontal = 12.dp, vertical = 10.dp),
+                    horizontalArrangement = Arrangement.spacedBy(10.dp),
+                ) {
                     Text(icon, style = MaterialTheme.typography.bodyMedium)
                     Text(
                         f.message,
                         style = MaterialTheme.typography.bodySmall,
-                        color = tint,
+                        color = MaterialTheme.colorScheme.onSurface,
                         modifier = Modifier.weight(1f),
                     )
                 }
