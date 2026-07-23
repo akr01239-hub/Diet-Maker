@@ -127,13 +127,21 @@ describe('generateWeekPlan', () => {
     }
   });
 
-  it('main meals are a proper plate: a staple grain plus at least one more dish', () => {
-    const plan = generateWeekPlan(SEED_FOODS, targets, prefs());
+  it('every main meal has a staple (roti/rice) + an accompaniment — never solo, never staple-less', () => {
     const byId = new Map(SEED_FOODS.map((f) => [f.id, f]));
-    for (const day of plan.days) {
-      for (const m of day.meals.filter((x) => ['breakfast', 'lunch', 'dinner'].includes(x.slot))) {
-        expect(m.items.length).toBeGreaterThanOrEqual(2);
-        expect(m.items.some((i) => byId.get(i.foodId)?.tags.includes('grain'))).toBe(true);
+    const isGrain = (id: string) => byId.get(id)?.tags.includes('grain') ?? false;
+    for (const dietType of ['nonveg', 'veg', 'vegan', 'eggetarian'] as const) {
+      const plan = generateWeekPlan(SEED_FOODS, targets, prefs({ dietType }));
+      for (const day of plan.days) {
+        for (const m of day.meals.filter((x) => ['breakfast', 'lunch', 'dinner'].includes(x.slot))) {
+          // At least 2 items (never a solo roti/dal/sabzi).
+          expect(m.items.length).toBeGreaterThanOrEqual(2);
+          // Exactly one staple grain — present, but never two grains.
+          const grains = m.items.filter((i) => isGrain(i.foodId)).length;
+          expect(grains).toBe(1);
+          // ...and at least one non-grain accompaniment (dal/protein/sabzi).
+          expect(m.items.some((i) => !isGrain(i.foodId))).toBe(true);
+        }
       }
     }
   });
