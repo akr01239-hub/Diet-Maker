@@ -27,6 +27,8 @@ data class DashboardState(
     val stress: Int? = null,
     val safetyFlags: List<com.nutriai.data.remote.dto.Flag> = emptyList(),
     val riskFindings: List<com.nutriai.data.remote.dto.RiskFinding> = emptyList(),
+    val weekDays: List<com.nutriai.data.remote.dto.ReportDay> = emptyList(),
+    val weekKcalTarget: Double? = null,
     val error: String? = null,
 )
 
@@ -111,6 +113,15 @@ class DashboardViewModel @Inject constructor(
         viewModelScope.launch {
             repository.risk().getOrNull()?.let { risk ->
                 _state.value = _state.value.copy(riskFindings = risk.findings)
+            }
+        }
+        // Last-7-days goal monitor (calorie adherence per day).
+        viewModelScope.launch {
+            repository.weeklyReport().getOrNull()?.let { rep ->
+                _state.value = _state.value.copy(
+                    weekDays = rep.days,
+                    weekKcalTarget = rep.targets?.dailyKcal,
+                )
             }
         }
     }

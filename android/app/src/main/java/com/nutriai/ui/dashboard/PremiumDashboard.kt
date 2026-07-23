@@ -87,6 +87,8 @@ fun PremiumDashboard(
     onSaveVitals: (Int?, Int?) -> Unit = { _, _ -> },
     safetyFlags: List<com.nutriai.data.remote.dto.Flag> = emptyList(),
     riskFindings: List<com.nutriai.data.remote.dto.RiskFinding> = emptyList(),
+    weekDays: List<com.nutriai.data.remote.dto.ReportDay> = emptyList(),
+    weekKcalTarget: Double? = null,
     modifier: Modifier = Modifier,
 ) {
     val d = dashboard
@@ -118,6 +120,11 @@ fun PremiumDashboard(
 
         // 3. Macro row
         item { MacroRow(dashboard = d) }
+
+        // 3b. Day-to-day goal monitor (last 7 days' calorie adherence).
+        if (weekDays.isNotEmpty() && weekKcalTarget != null && weekKcalTarget > 0) {
+            item { GoalMonitorCard(days = weekDays, target = weekKcalTarget) }
+        }
 
         // 4. Steps (Health Connect) — above hydration
         item { StepsCard(steps = steps, stepsKcal = stepsKcal, hasPermission = stepsPermission, available = stepsAvailable, onConnect = onConnectSteps) }
@@ -550,6 +557,69 @@ private fun StatTile(
         }
     }
 }
+
+// ---------------------------------------------------------------------------
+// 3b. Day-to-day goal monitor
+// ---------------------------------------------------------------------------
+
+@Composable
+private fun GoalMonitorCard(days: List<com.nutriai.data.remote.dto.ReportDay>, target: Double) {
+    // Take the most recent 7 days in chronological order.
+    val week = days.takeLast(7)
+    val maxKcal = (week.maxOfOrNull { it.kcal } ?: target).coerceAtLeast(target).coerceAtLeast(1.0)
+    val hit = week.count { it.kcal > 0 && it.kcal <= target * 1.1 }
+
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(24.dp),
+        elevation = CardDefaults.cardElevation(defaultElevation = 3.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+    ) {
+        Column(Modifier.fillMaxWidth().padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+                Text("📊 7-day goal monitor", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurface)
+                Text("$hit/${week.size} on target", style = MaterialTheme.typography.labelMedium, color = BrandGreenDeep, fontWeight = FontWeight.SemiBold)
+            }
+            Text("Calories vs your ${target.toInt()} kcal goal", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Row(
+                Modifier.fillMaxWidth().height(96.dp),
+                horizontalArrangement = Arrangement.spacedBy(6.dp),
+                verticalAlignment = Alignment.Bottom,
+            ) {
+                week.forEach { day ->
+                    val frac = (day.kcal / maxKcal).coerceIn(0.0, 1.0).toFloat()
+                    val over = day.kcal > target * 1.15
+                    val under = day.kcal in 0.1..(target * 0.7)
+                    val logged = day.kcal > 0
+                    val barColor = when {
+                        !logged -> MaterialTheme.colorScheme.outline.copy(alpha = 0.25f)
+                        over -> Color(0xFFB45309)
+                        under -> BrandAmber
+                        else -> BrandGreen
+                    }
+                    Column(Modifier.weight(1f), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Bottom) {
+                        Text(if (logged) "${(day.kcal / 100).toInt() * 100}" else "—", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1)
+                        Spacer(Modifier.height(2.dp))
+                        Box(
+                            Modifier
+                                .fillMaxWidth(0.7f)
+                                .fillMaxHeight(frac.coerceAtLeast(0.04f))
+                                .clip(RoundedCornerShape(topStart = 6.dp, topEnd = 6.dp))
+                                .background(barColor),
+                        )
+                        Spacer(Modifier.height(4.dp))
+                        Text(dayShort(day.date), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1)
+                    }
+                }
+            }
+        }
+    }
+}
+
+/** "YYYY-MM-DD" → short weekday (Mon/Tue…), falling back to the day-of-month. */
+private fun dayShort(date: String): String = runCatching {
+    java.time.LocalDate.parse(date).dayOfWeek.getDisplayName(java.time.format.TextStyle.SHORT, java.util.Locale.getDefault())
+}.getOrElse { date.substringAfterLast('-') }
 
 // ---------------------------------------------------------------------------
 // 4. Hydration card
