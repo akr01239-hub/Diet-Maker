@@ -113,6 +113,20 @@ describe('generateWeekPlan', () => {
     }
   });
 
+  it('never puts two grains in one main meal (staple + dal/sabzi, not roti + rice)', () => {
+    const byId = new Map(SEED_FOODS.map((f) => [f.id, f]));
+    const isGrain = (id: string) => byId.get(id)?.tags.includes('grain') ?? false;
+    for (const dietType of ['nonveg', 'veg', 'vegan', 'eggetarian'] as const) {
+      const plan = generateWeekPlan(SEED_FOODS, targets, prefs({ dietType }));
+      for (const day of plan.days) {
+        for (const m of day.meals.filter((x) => ['breakfast', 'lunch', 'dinner'].includes(x.slot))) {
+          const grains = m.items.filter((i) => isGrain(i.foodId)).length;
+          expect(grains).toBeLessThanOrEqual(1);
+        }
+      }
+    }
+  });
+
   it('main meals are a proper plate: a staple grain plus at least one more dish', () => {
     const plan = generateWeekPlan(SEED_FOODS, targets, prefs());
     const byId = new Map(SEED_FOODS.map((f) => [f.id, f]));

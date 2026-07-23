@@ -98,6 +98,58 @@ const LIGHT_SLOT_TAGS = new Set([
   'salad',
 ]);
 
+/**
+ * Builds a proper Indian plate for a main meal: exactly ONE staple grain (roti OR rice) + a
+ * non-grain protein/dal + a vegetable when available. The protein slot NEVER falls back to a
+ * grain, so a plate can never be "two grains". `skip(f)` marks foods to avoid if possible
+ * (already eaten today, or the dish being swapped out). Shared by generation and swap.
+ */
+function buildPlate(
+  candidates: FoodItem[],
+  eligible: FoodItem[],
+  slotKcal: number,
+  seed: number,
+  skip: (f: FoodItem) => boolean,
+): MealItem[] {
+  const chosen = new Set<string>();
+  const items: MealItem[] = [];
+  const add = (f: FoodItem | undefined, share: number) => {
+    if (f && !chosen.has(f.id)) {
+      chosen.add(f.id);
+      items.push(toItem(f, gramsForKcal(f, slotKcal * share)));
+    }
+  };
+  const pickFrom = (list: FoodItem[], s: number) => {
+    const fresh = list.filter((f) => !chosen.has(f.id) && !skip(f));
+    const notInMeal = list.filter((f) => !chosen.has(f.id));
+    return pickRotated(fresh.length ? fresh : notInMeal.length ? notInMeal : list, s);
+  };
+  // Staples/proteins/veg from the slot's candidates, falling back to the whole pool if the slot
+  // itself has none (so a plate always gets a base + a dal).
+  const pickGroup = (pred: (f: FoodItem) => boolean) => {
+    const inSlot = candidates.filter(pred);
+    return inSlot.length ? inSlot : eligible.filter(pred);
+  };
+  const nonGrain = (list: FoodItem[]) => list.filter((f) => !isGrain(f));
+  const grains = pickGroup(isGrain);
+  const proteins = pickGroup((f) => isProteinFood(f) && !isGrain(f));
+  const veggies = pickGroup((f) => isVegFood(f) && !isGrain(f) && !isProteinFood(f));
+
+  // 1) one staple grain
+  add(pickFrom(grains.length ? grains : candidates, seed), veggies.length && proteins.length ? 0.45 : 0.55);
+  // 2) a dal/protein — strictly NON-grain so we never end up with two grains
+  const proteinPool = proteins.length ? proteins : nonGrain(candidates);
+  if (proteinPool.length) add(pickFrom(proteinPool, seed + 1), veggies.length ? 0.35 : 0.45);
+  // 3) a vegetable when available
+  if (veggies.length) add(pickFrom(veggies, seed + 2), 0.2);
+  // Safety net: guarantee ≥2 items, preferring a non-grain complement.
+  if (items.length < 2) {
+    const complement = nonGrain(candidates).filter((f) => !chosen.has(f.id));
+    add(pickFrom(complement.length ? complement : candidates, seed + 3), 0.5);
+  }
+  return items;
+}
+
 function buildMeal(
   slot: MealSlot,
   eligible: FoodItem[],
@@ -109,43 +161,9 @@ function buildMeal(
   const candidates = candidatesForSlot(eligible, slot, dietType);
   const slotSeed = MEAL_SLOTS.indexOf(slot) * 3 + dayIndex * 2;
 
-  const chosen = new Set<string>();
-  const items: MealItem[] = [];
-  const add = (f: FoodItem | undefined, share: number) => {
-    if (f && !chosen.has(f.id)) {
-      chosen.add(f.id);
-      items.push(toItem(f, gramsForKcal(f, slotKcal * share)));
-    }
-  };
-  // Prefer a food NOT already eaten anywhere today (kills the "chicken at every meal" bug),
-  // then any not-yet-in-this-meal food, then anything. Never fails — just repeats as a last resort.
-  const pick = (list: FoodItem[], seed: number) => {
-    const fresh = list.filter((f) => !chosen.has(f.id) && !usedToday.has(f.id));
-    const notInMeal = list.filter((f) => !chosen.has(f.id));
-    return pickRotated(fresh.length ? fresh : notInMeal.length ? notInMeal : list, seed);
-  };
-
-  // Main meals = a proper Indian plate: a staple (roti OR rice) + a dal/protein/sabzi +
-  // a vegetable when available. Light slots stay a single, genuinely light item.
+  // Main meals = a proper Indian plate. Light slots stay a single, genuinely light item.
   if (MAIN_SLOTS.includes(slot) && candidates.length > 1) {
-    // Staples/proteins/veg are drawn from the whole eligible pool if the slot itself has none,
-    // so a plate always gets a roti/rice base even when staples aren't slot-tagged.
-    const pickGroup = (pred: (f: FoodItem) => boolean) => {
-      const inSlot = candidates.filter(pred);
-      return inSlot.length ? inSlot : eligible.filter(pred);
-    };
-    const grains = pickGroup(isGrain);
-    const proteins = pickGroup((f) => isProteinFood(f) && !isGrain(f));
-    const veggies = pickGroup((f) => isVegFood(f) && !isGrain(f) && !isProteinFood(f));
-
-    const grain = pick(grains.length ? grains : candidates, slotSeed);
-    add(grain, veggies.length && proteins.length ? 0.45 : 0.55);
-    const protein = pick(proteins.length ? proteins : candidates, slotSeed + 1);
-    add(protein, veggies.length ? 0.35 : 0.45);
-    if (veggies.length) add(pick(veggies, slotSeed + 2), 0.2);
-
-    // Safety net: if we somehow only got one item, add a complementary second.
-    if (items.length < 2) add(pick(candidates, slotSeed + 3), 0.5);
+    const items = buildPlate(candidates, eligible, slotKcal, slotSeed, (f) => usedToday.has(f.id));
     items.forEach((i) => usedToday.add(i.foodId));
     return meal(slot, items);
   }
@@ -158,7 +176,13 @@ function buildMeal(
     if (la !== lb) return la - lb;
     return a.kcal - b.kcal;
   });
-  add(pick(lightFirst, slotSeed), 1);
+  const only = pickRotated(
+    lightFirst.filter((f) => !usedToday.has(f.id)).length
+      ? lightFirst.filter((f) => !usedToday.has(f.id))
+      : lightFirst,
+    slotSeed,
+  );
+  const items = only ? [toItem(only, gramsForKcal(only, slotKcal))] : [];
   items.forEach((i) => usedToday.add(i.foodId));
   return meal(slot, items);
 }
@@ -176,28 +200,20 @@ export function buildSwapMeal(
   avoidIds: string[],
   variant: number,
 ): Meal {
-  const all = candidatesForSlot(eligible, slot, dietType);
-  const filtered = all.filter((f) => !avoidIds.includes(f.id));
-  const pool = filtered.length > 0 ? filtered : all;
-  const items: MealItem[] = [];
-  const twoItems = MAIN_SLOTS.includes(slot) && pool.length > 1;
+  const candidates = candidatesForSlot(eligible, slot, dietType);
   const slotSeed = MEAL_SLOTS.indexOf(slot) * 3 + dayIndex * 2 + variant;
+  const avoid = new Set(avoidIds);
 
-  if (twoItems) {
-    const protein = pickRotated(pool, slotSeed);
-    const byFiber = [...pool].sort((a, b) => b.fiberG - a.fiberG);
-    let second = pickRotated(byFiber, slotSeed + 1);
-    if (second && protein && second.id === protein.id) second = pickRotated(byFiber, slotSeed + 2);
-    if (protein) items.push(toItem(protein, gramsForKcal(protein, kcalTarget * 0.5)));
-    if (second) items.push(toItem(second, gramsForKcal(second, kcalTarget * 0.5)));
-  } else {
-    const only = pickRotated(pool, slotSeed);
-    if (only) items.push(toItem(only, gramsForKcal(only, kcalTarget)));
+  // Main meals get a proper plate (staple + dal/protein + veg), avoiding the swapped-out foods
+  // so the dish actually changes — and never producing two grains.
+  if (MAIN_SLOTS.includes(slot) && candidates.length > 1) {
+    const items = buildPlate(candidates, eligible, kcalTarget, slotSeed, (f) => avoid.has(f.id));
+    return meal(slot, items);
   }
 
-  const kcal = round(items.reduce((s, i) => s + i.kcal, 0), 0);
-  const proteinG = round(items.reduce((s, i) => s + i.proteinG, 0), 1);
-  return { slot, items, kcal, proteinG };
+  const pool = candidates.filter((f) => !avoid.has(f.id));
+  const only = pickRotated(pool.length ? pool : candidates, slotSeed);
+  return meal(slot, only ? [toItem(only, gramsForKcal(only, kcalTarget))] : []);
 }
 
 /** Scales a meal item's grams (and every nutrient, linearly) by `factor`, capped at MAX_GRAMS. */
