@@ -27,7 +27,8 @@ fun SplashScreen(onFinished: () -> Unit) {
 
     LaunchedEffect(Unit) {
         visible = true
-        delay(2200)
+        // Just long enough for the brand fade to land — not a gratuitous blocking wait.
+        delay(1200)
         onFinished()
     }
 
