@@ -153,22 +153,15 @@ fun PremiumDashboard(
             item { JourneyCard(dashboard = d) }
         }
 
-        // 7. Footer: logout / disclaimer (Delete account lives in Settings)
+        // 7. Footer: disclaimer only (Log out + Delete account live in Settings)
         item {
-            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                OutlinedButton(
-                    onClick = onLogout,
-                    modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(24.dp),
-                ) { Text("Log out") }
-                Text(
-                    "Educational guidance, not medical advice — consult a professional.",
-                    style = MaterialTheme.typography.labelSmall,
-                    textAlign = TextAlign.Center,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.fillMaxWidth().padding(top = 4.dp),
-                )
-            }
+            Text(
+                "Educational guidance, not medical advice — consult a professional.",
+                style = MaterialTheme.typography.labelSmall,
+                textAlign = TextAlign.Center,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.fillMaxWidth().padding(top = 4.dp),
+            )
         }
     }
 }
