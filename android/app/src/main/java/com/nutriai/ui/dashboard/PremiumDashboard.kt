@@ -385,9 +385,9 @@ private fun CalorieRingCard(
                 ) {
                     if (maintenanceKcal != null && maintenanceKcal > 0) {
                         MiniRing(
-                            title = "🔥 Body burns",
+                            title = "🔥 Daily burn",
                             centerValue = "${maintenanceKcal.toInt()}",
-                            centerLabel = "kcal/day",
+                            centerLabel = "est. full day",
                             percent = 100f,
                             accent = BrandAmber,
                         )
@@ -405,7 +405,8 @@ private fun CalorieRingCard(
                 if (maintenanceKcal != null && maintenanceKcal > cal.target) {
                     val deficit = (maintenanceKcal - cal.target).toInt()
                     Text(
-                        "Eat ~${cal.target.toInt()} kcal to stay ~$deficit under what your body burns → steady fat loss.",
+                        "Over a full day your body burns about ${maintenanceKcal.toInt()} kcal (estimate). " +
+                            "Eat ~${cal.target.toInt()} to stay ~$deficit under that → steady fat loss.",
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         textAlign = TextAlign.Center,
