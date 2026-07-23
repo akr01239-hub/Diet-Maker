@@ -25,7 +25,11 @@ import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.foundation.clickable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateMapOf
+import androidx.compose.runtime.remember
+import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -87,6 +91,8 @@ fun GroceryScreen(
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
     val grocery = state.grocery
+    // Session-scoped "ticked off while shopping" set, keyed by ingredient name.
+    val checked = remember { mutableStateMapOf<String, Boolean>() }
 
     LazyColumn(
         modifier = modifier.fillMaxWidth().padding(horizontal = 16.dp),
@@ -121,7 +127,7 @@ fun GroceryScreen(
         }
 
         grocery?.categories?.forEach { cat ->
-            item { CategoryCard(cat) }
+            item { CategoryCard(cat, checked) }
         }
     }
 }
@@ -157,7 +163,10 @@ private fun HeroHeader(totalItems: Int, weeklyKcal: Int, targetWeeklyKcal: Int?)
 }
 
 @Composable
-private fun CategoryCard(cat: GroceryCategory) {
+private fun CategoryCard(
+    cat: GroceryCategory,
+    checked: androidx.compose.runtime.snapshots.SnapshotStateMap<String, Boolean>,
+) {
     Card(
         Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(20.dp),
@@ -187,6 +196,7 @@ private fun CategoryCard(cat: GroceryCategory) {
                 cat.items.forEach { line ->
                     HorizontalDivider(thickness = 1.dp, color = border)
                     val u = if (line.unit == "pcs") "pcs" else "g"
+                    val isChecked = checked[line.name] == true
                     GroceryRow(
                         item = line.name,
                         serving = "${line.perServing} $u",
@@ -195,6 +205,8 @@ private fun CategoryCard(cat: GroceryCategory) {
                         totalBottom = if (line.kcal > 0) "${line.kcal} kcal" else null,
                         border = border,
                         header = false,
+                        checked = isChecked,
+                        onToggle = { checked[line.name] = !isChecked },
                     )
                 }
             }
@@ -211,20 +223,27 @@ private fun GroceryRow(
     totalBottom: String?,
     border: Color,
     header: Boolean,
+    checked: Boolean = false,
+    onToggle: (() -> Unit)? = null,
 ) {
     val cellStyle = MaterialTheme.typography.bodySmall
     val labelStyle = MaterialTheme.typography.labelSmall
     val onVar = MaterialTheme.colorScheme.onSurfaceVariant
+    val rowMod = Modifier
+        .fillMaxWidth()
+        .height(IntrinsicSize.Min)
+        .then(if (onToggle != null) Modifier.clickable { onToggle() } else Modifier)
     Row(
-        Modifier.fillMaxWidth().height(IntrinsicSize.Min),
+        rowMod,
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Text(
-            item,
+            if (header) item else if (checked) "✓ $item" else item,
             Modifier.weight(0.36f).padding(horizontal = 8.dp, vertical = 8.dp),
             style = if (header) labelStyle else cellStyle,
             fontWeight = if (header) FontWeight.SemiBold else FontWeight.Normal,
-            color = if (header) onVar else MaterialTheme.colorScheme.onSurface,
+            textDecoration = if (checked) TextDecoration.LineThrough else null,
+            color = if (header) onVar else if (checked) onVar else MaterialTheme.colorScheme.onSurface,
         )
         Box(Modifier.width(1.dp).fillMaxHeight().background(border))
         Text(
