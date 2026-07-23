@@ -64,6 +64,8 @@ export interface PlanTargets {
   sodiumMaxMg?: number;
   /** Daily kcal adjustment applied to compensate for last week (carry-over). */
   carryOverKcal?: number;
+  /** Generator version this plan was built with — lets the client auto-refresh stale plans. */
+  planVersion?: number;
 }
 
 export interface PlanPreferences {

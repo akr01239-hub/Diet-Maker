@@ -283,7 +283,7 @@ data class DayPlan(
 )
 
 @Serializable
-data class PlanTargets(val dailyKcal: Double, val proteinG: Double)
+data class PlanTargets(val dailyKcal: Double, val proteinG: Double, val planVersion: Int = 0)
 
 @Serializable
 data class PlanDto(val id: String? = null, val days: List<DayPlan> = emptyList(), val targets: PlanTargets? = null)
