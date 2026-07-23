@@ -1046,11 +1046,6 @@ private fun RiskCard(findings: List<com.nutriai.data.remote.dto.RiskFinding>) {
                     Text("→ ${f.nextAction}", style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.Medium, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
             }
-            Text(
-                "Educational signals from your numbers — not a diagnosis. Confirm anything concerning with a doctor.",
-                style = MaterialTheme.typography.labelSmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
         }
     }
 }

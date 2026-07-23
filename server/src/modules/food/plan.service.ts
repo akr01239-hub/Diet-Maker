@@ -85,24 +85,11 @@ export async function generateAndSavePlan(
     throw new HttpError(503, 'Food database is empty — run the seed');
   }
 
-  // ---- Calorie carry-over: compensate next week for the last 7 days' surplus/deficit ----
-  const now = new Date();
-  const since = new Date(now.getTime() - 7 * 86_400_000);
-  const recentLogs = await prisma.foodLog.findMany({
-    where: { userId, loggedAt: { gte: since } },
-    select: { loggedAt: true, kcal: true },
-  });
-  const perDay = new Map<string, number>();
-  for (const l of recentLogs) {
-    const k = l.loggedAt.toISOString().slice(0, 10);
-    perDay.set(k, (perDay.get(k) ?? 0) + l.kcal);
-  }
-  let cumulativeDelta = 0; // + = ate over target across logged days
-  for (const kcal of perDay.values()) cumulativeDelta += kcal - calc.dailyKcal;
-  // Spread the surplus/deficit over the coming week, capped ±300/day for safety.
-  const carryOverKcal = Math.max(-300, Math.min(300, Math.round(-cumulativeDelta / 7)));
-  targets.dailyKcal = Math.max(1200, calc.dailyKcal + carryOverKcal);
-  targets.carryOverKcal = carryOverKcal;
+  // The plan targets your daily calorie goal directly, so the meal plan always adds up to the
+  // goal shown on the dashboard. (Automatic week-to-week carry-over was removed — it silently
+  // reduced the plan below the goal, so the diet total disagreed with the dashboard and read
+  // as a bug. Intentional changes still flow through the coach recommendation below.)
+  targets.carryOverKcal = 0;
 
   // Adaptive override: when the user applies the coach's recommendation, bake the
   // suggested calorie delta into this plan (still floored for safety).
