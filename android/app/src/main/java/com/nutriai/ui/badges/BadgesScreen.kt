@@ -209,7 +209,7 @@ private data class BadgeVisual(val emoji: String, val accent: Color)
 
 /** Distinct emoji + accent per badge so they look varied (not identical gray locks). */
 private fun badgeVisual(badge: Badge): BadgeVisual {
-    val t = (badge.title + " " + badge.id).lowercase()
+    val t = (badge.title + " " + badge.code).lowercase()
     return when {
         "streak" in t || "day" in t -> BadgeVisual("🔥", Color(0xFFF97316))
         "week" in t -> BadgeVisual("🗓️", Color(0xFF6366F1))
