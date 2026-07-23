@@ -15,6 +15,7 @@ import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.GridItemSpan
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -27,6 +28,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
@@ -203,19 +205,34 @@ private fun BadgesHero(earned: Int, total: Int) {
     }
 }
 
+private data class BadgeVisual(val emoji: String, val accent: Color)
+
+/** Distinct emoji + accent per badge so they look varied (not identical gray locks). */
+private fun badgeVisual(badge: Badge): BadgeVisual {
+    val t = (badge.title + " " + badge.id).lowercase()
+    return when {
+        "streak" in t || "day" in t -> BadgeVisual("🔥", Color(0xFFF97316))
+        "week" in t -> BadgeVisual("🗓️", Color(0xFF6366F1))
+        "consist" in t || "king" in t -> BadgeVisual("👑", Color(0xFFEAB308))
+        "hydrat" in t || "water" in t -> BadgeVisual("💧", Color(0xFF0EA5E9))
+        "protein" in t -> BadgeVisual("💪", Color(0xFFEF4444))
+        "track" in t || "progress" in t -> BadgeVisual("📈", Color(0xFF10B981))
+        "kilo" in t || "weight" in t -> BadgeVisual("⚖️", Color(0xFF8B5CF6))
+        "bite" in t || "first" in t -> BadgeVisual("🍽️", BrandGreen)
+        else -> BadgeVisual("🏆", BrandGreen)
+    }
+}
+
 @Composable
 private fun BadgeCard(badge: Badge) {
     val earned = badge.earned
+    val v = badgeVisual(badge)
     Card(
-        modifier = Modifier.fillMaxWidth().height(148.dp),
-        shape = RoundedCornerShape(18.dp),
-        elevation = CardDefaults.cardElevation(defaultElevation = if (earned) 3.dp else 1.dp),
+        modifier = Modifier.fillMaxWidth().height(150.dp),
+        shape = RoundedCornerShape(20.dp),
+        elevation = CardDefaults.cardElevation(defaultElevation = if (earned) 4.dp else 1.dp),
         colors = CardDefaults.cardColors(
-            containerColor = if (earned) {
-                BrandGreen.copy(alpha = 0.12f)
-            } else {
-                MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f)
-            },
+            containerColor = if (earned) v.accent.copy(alpha = 0.12f) else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.45f),
         ),
     ) {
         Column(
@@ -223,22 +240,30 @@ private fun BadgeCard(badge: Badge) {
             verticalArrangement = Arrangement.spacedBy(6.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
-            // Icon medallion
-            Box(
-                modifier = Modifier
-                    .size(48.dp)
-                    .clip(RoundedCornerShape(14.dp))
-                    .background(
-                        if (earned) BrandGreen else MaterialTheme.colorScheme.outline.copy(alpha = 0.25f),
-                    ),
-                contentAlignment = Alignment.Center,
-            ) {
-                Text(
-                    if (earned) "🏆" else "🔒",
-                    style = MaterialTheme.typography.titleLarge,
-                    fontWeight = FontWeight.Bold,
-                    color = if (earned) Color.White else MaterialTheme.colorScheme.onSurfaceVariant,
-                )
+            // Colourful medallion — gradient when earned, soft tint + lock badge when not.
+            Box(contentAlignment = Alignment.Center) {
+                Box(
+                    modifier = Modifier
+                        .size(52.dp)
+                        .clip(CircleShape)
+                        .then(
+                            if (earned) {
+                                Modifier.background(Brush.linearGradient(listOf(v.accent, v.accent.copy(alpha = 0.7f))))
+                            } else {
+                                Modifier.background(v.accent.copy(alpha = 0.16f))
+                            },
+                        ),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Text(v.emoji, style = MaterialTheme.typography.headlineSmall, modifier = Modifier.alpha(if (earned) 1f else 0.6f))
+                }
+                if (!earned) {
+                    Box(
+                        Modifier.align(Alignment.BottomEnd).size(20.dp).clip(CircleShape)
+                            .background(MaterialTheme.colorScheme.surface),
+                        contentAlignment = Alignment.Center,
+                    ) { Text("🔒", style = MaterialTheme.typography.labelSmall) }
+                }
             }
 
             Text(
@@ -248,7 +273,7 @@ private fun BadgeCard(badge: Badge) {
                 textAlign = androidx.compose.ui.text.style.TextAlign.Center,
                 maxLines = 1,
                 overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
-                color = if (earned) BrandGreenDeep else MaterialTheme.colorScheme.onSurface,
+                color = if (earned) v.accent else MaterialTheme.colorScheme.onSurface,
             )
             Text(
                 badge.description,

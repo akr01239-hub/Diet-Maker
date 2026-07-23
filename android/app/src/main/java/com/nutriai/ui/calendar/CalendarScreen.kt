@@ -1,6 +1,9 @@
 package com.nutriai.ui.calendar
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.ui.graphics.Color
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
@@ -553,18 +556,12 @@ fun CalendarScreen(
                                     Text("No exercises listed.", style = MaterialTheme.typography.bodyMedium)
                                 } else {
                                     val focus = workoutDay.focus.ifBlank { null }
-                                    val wb = MaterialTheme.colorScheme.outline.copy(alpha = 0.4f)
-                                    Column(Modifier.fillMaxWidth().clip(RoundedCornerShape(10.dp)).border(1.dp, wb, RoundedCornerShape(10.dp))) {
-                                        Row(Modifier.fillMaxWidth().padding(horizontal = 10.dp, vertical = 6.dp)) {
-                                            Text("Exercise", Modifier.weight(1f), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                                            Text("Sets×Reps", Modifier.width(72.dp), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant, textAlign = TextAlign.Center)
-                                            Spacer(Modifier.width(64.dp))
-                                        }
+                                    Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                                         workoutDay.exercises.forEachIndexed { i, ex ->
-                                            if (i > 0) HorizontalDivider(thickness = 1.dp, color = wb)
                                             val last = state.lastPerf[ex.name]
                                             val done = state.selectedLogs.any { it.exerciseName == ex.name }
                                             ExerciseRow(
+                                                index = i + 1,
                                                 name = ex.name,
                                                 prescription = "${ex.sets} × ${ex.reps}",
                                                 last = last,
@@ -830,41 +827,62 @@ private fun WorkoutWellnessCard(
 
 @Composable
 private fun ExerciseRow(
+    index: Int,
     name: String,
     prescription: String,
     last: LastPerformance?,
     done: Boolean,
     onLog: () -> Unit,
 ) {
-    Row(
-        Modifier.fillMaxWidth().padding(vertical = 2.dp),
-        verticalAlignment = Alignment.CenterVertically,
+    val green = MaterialTheme.colorScheme.primary
+    Card(
+        Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(16.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = if (done) green.copy(alpha = 0.10f) else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f),
+        ),
+        elevation = CardDefaults.cardElevation(defaultElevation = if (done) 2.dp else 1.dp),
     ) {
-        Column(Modifier.weight(1f)) {
-            Text(
-                (if (done) "✓ " else "") + name,
-                style = MaterialTheme.typography.bodyMedium,
-                fontWeight = if (done) FontWeight.SemiBold else FontWeight.Normal,
-            )
-            last?.weightKg?.let {
-                val hint = buildString {
-                    append("last ${fmtNum(it)} kg")
-                    last.reps?.let { r -> append(" × $r") }
-                }
-                Text(hint, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        Row(
+            Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 10.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+            // Number / done badge.
+            Box(
+                Modifier.size(30.dp).clip(CircleShape).background(if (done) green else green.copy(alpha = 0.18f)),
+                contentAlignment = Alignment.Center,
+            ) {
+                Text(
+                    if (done) "✓" else "$index",
+                    style = MaterialTheme.typography.labelLarge,
+                    fontWeight = FontWeight.Bold,
+                    color = if (done) Color.White else green,
+                )
             }
-        }
-        // Aligned "Sets × Reps" target column.
-        Text(
-            prescription,
-            Modifier.width(72.dp),
-            style = MaterialTheme.typography.bodyMedium,
-            fontWeight = FontWeight.SemiBold,
-            textAlign = TextAlign.Center,
-            color = MaterialTheme.colorScheme.primary,
-        )
-        OutlinedButton(onClick = onLog, modifier = Modifier.padding(start = 8.dp)) {
-            Text(if (done) "Log again" else "Log")
+            Column(Modifier.weight(1f)) {
+                Text(name, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold)
+                // Sets×reps pill + optional last-performance hint.
+                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text(
+                        prescription,
+                        Modifier.clip(RoundedCornerShape(8.dp)).background(green.copy(alpha = 0.14f)).padding(horizontal = 8.dp, vertical = 2.dp),
+                        style = MaterialTheme.typography.labelMedium,
+                        fontWeight = FontWeight.Bold,
+                        color = green,
+                    )
+                    last?.weightKg?.let {
+                        val hint = buildString {
+                            append("last ${fmtNum(it)} kg")
+                            last.reps?.let { r -> append(" × $r") }
+                        }
+                        Text(hint, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    }
+                }
+            }
+            OutlinedButton(onClick = onLog, contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 14.dp, vertical = 6.dp)) {
+                Text(if (done) "Again" else "Log")
+            }
         }
     }
 }
