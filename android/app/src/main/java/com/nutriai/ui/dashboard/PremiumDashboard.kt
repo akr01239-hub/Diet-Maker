@@ -89,6 +89,7 @@ fun PremiumDashboard(
     riskFindings: List<com.nutriai.data.remote.dto.RiskFinding> = emptyList(),
     weekDays: List<com.nutriai.data.remote.dto.ReportDay> = emptyList(),
     weekKcalTarget: Double? = null,
+    maintenanceKcal: Double? = null,
     modifier: Modifier = Modifier,
 ) {
     val d = dashboard
@@ -106,7 +107,7 @@ fun PremiumDashboard(
         item { CoachCard(name = greetingName, dashboard = d, sleepHours = sleepHours, steps = steps) }
 
         // 2. Calorie ring
-        item { CalorieRingCard(dashboard = d, burnedKcal = stepsKcal, onCompleteProfile = onCompleteProfile) }
+        item { CalorieRingCard(dashboard = d, burnedKcal = stepsKcal, maintenanceKcal = maintenanceKcal, onCompleteProfile = onCompleteProfile) }
 
         // 2b. Health & safety notes (guardrail flags: conditions, medication interactions…)
         if (safetyFlags.isNotEmpty()) {
@@ -334,7 +335,12 @@ private fun CoachCard(name: String?, dashboard: Dashboard, sleepHours: Double?, 
 // ---------------------------------------------------------------------------
 
 @Composable
-private fun CalorieRingCard(dashboard: Dashboard, burnedKcal: Int = 0, onCompleteProfile: () -> Unit) {
+private fun CalorieRingCard(
+    dashboard: Dashboard,
+    burnedKcal: Int = 0,
+    maintenanceKcal: Double? = null,
+    onCompleteProfile: () -> Unit,
+) {
     val cal = dashboard.calories
     Card(
         modifier = Modifier.fillMaxWidth(),
@@ -368,35 +374,44 @@ private fun CalorieRingCard(dashboard: Dashboard, burnedKcal: Int = 0, onComplet
                     colors = ButtonDefaults.buttonColors(containerColor = BrandGreen),
                 ) { Text("Set your goal") }
             } else {
-                // Simple, intuitive model: left = goal − eaten (so an un-eaten morning shows
-                // exactly your goal, no confusing gap). Burned steps are shown separately as info.
                 val remaining = cal.target - cal.consumed
-                val percent = if (cal.target > 0) (cal.consumed / cal.target * 100).coerceIn(0.0, 100.0).toFloat() else 0f
-                val trackColor = MaterialTheme.colorScheme.surfaceVariant
-                Box(
-                    modifier = Modifier.size(158.dp),
-                    contentAlignment = Alignment.Center,
+                val eatenPct = if (cal.target > 0) (cal.consumed / cal.target * 100).coerceIn(0.0, 100.0).toFloat() else 0f
+
+                // Two rings: what the body BURNS (maintenance/TDEE) vs what to EAT (deficit target).
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceEvenly,
+                    verticalAlignment = Alignment.Top,
                 ) {
-                    RingCanvas(
-                        percent = percent,
-                        trackColor = trackColor,
-                        modifier = Modifier.fillMaxSize(),
-                    )
-                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        Text(
-                            "${remaining.toInt().coerceAtLeast(0)}",
-                            style = MaterialTheme.typography.headlineLarge,
-                            fontWeight = FontWeight.Bold,
-                            color = MaterialTheme.colorScheme.onSurface,
-                        )
-                        Text(
-                            "kcal left",
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    if (maintenanceKcal != null && maintenanceKcal > 0) {
+                        MiniRing(
+                            title = "🔥 Body burns",
+                            centerValue = "${maintenanceKcal.toInt()}",
+                            centerLabel = "kcal/day",
+                            percent = 100f,
+                            accent = BrandAmber,
                         )
                     }
+                    MiniRing(
+                        title = "🎯 Eat to lose",
+                        centerValue = "${remaining.toInt().coerceAtLeast(0)}",
+                        centerLabel = "of ${cal.target.toInt()} left",
+                        percent = eatenPct,
+                        accent = BrandGreen,
+                    )
                 }
-                // Budget breakdown: Goal + Burned − Eaten.
+
+                // Plain-language explanation of the deficit.
+                if (maintenanceKcal != null && maintenanceKcal > cal.target) {
+                    val deficit = (maintenanceKcal - cal.target).toInt()
+                    Text(
+                        "Eat ~${cal.target.toInt()} kcal to stay ~$deficit under what your body burns → steady fat loss.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        textAlign = TextAlign.Center,
+                    )
+                }
+
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceEvenly,
@@ -411,6 +426,20 @@ private fun CalorieRingCard(dashboard: Dashboard, burnedKcal: Int = 0, onComplet
 }
 
 @Composable
+private fun MiniRing(title: String, centerValue: String, centerLabel: String, percent: Float, accent: Color) {
+    Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(6.dp)) {
+        Text(title, style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        Box(modifier = Modifier.size(118.dp), contentAlignment = Alignment.Center) {
+            RingCanvas(percent = percent, trackColor = MaterialTheme.colorScheme.surfaceVariant, accent = accent, modifier = Modifier.fillMaxSize())
+            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                Text(centerValue, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurface)
+                Text(centerLabel, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant, textAlign = TextAlign.Center)
+            }
+        }
+    }
+}
+
+@Composable
 private fun BudgetPart(label: String, value: String, color: Color) {
     Column(horizontalAlignment = Alignment.CenterHorizontally) {
         Text(value, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, color = color)
@@ -419,8 +448,12 @@ private fun BudgetPart(label: String, value: String, color: Color) {
 }
 
 @Composable
-private fun RingCanvas(percent: Float, trackColor: Color, modifier: Modifier = Modifier) {
-    val sweepBrush = Brush.linearGradient(colors = listOf(BrandGreenLight, BrandGreen, BrandLime))
+private fun RingCanvas(percent: Float, trackColor: Color, accent: Color? = null, modifier: Modifier = Modifier) {
+    val sweepBrush = if (accent != null) {
+        Brush.linearGradient(colors = listOf(accent.copy(alpha = 0.7f), accent))
+    } else {
+        Brush.linearGradient(colors = listOf(BrandGreenLight, BrandGreen, BrandLime))
+    }
     Canvas(modifier = modifier) {
         val strokeWidthPx = 20.dp.toPx()
         val inset = strokeWidthPx / 2f

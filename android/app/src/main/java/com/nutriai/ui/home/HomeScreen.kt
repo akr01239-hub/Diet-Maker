@@ -156,6 +156,7 @@ private fun DashboardTab(
             riskFindings = state.riskFindings,
             weekDays = state.weekDays,
             weekKcalTarget = state.weekKcalTarget,
+            maintenanceKcal = state.maintenanceKcal,
             onConnectSteps = {
                 if (state.stepsAvailable) {
                     runCatching { stepLauncher.launch(stepPerms) }

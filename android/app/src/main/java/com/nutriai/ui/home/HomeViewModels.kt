@@ -29,6 +29,7 @@ data class DashboardState(
     val riskFindings: List<com.nutriai.data.remote.dto.RiskFinding> = emptyList(),
     val weekDays: List<com.nutriai.data.remote.dto.ReportDay> = emptyList(),
     val weekKcalTarget: Double? = null,
+    val maintenanceKcal: Double? = null, // TDEE — what the body burns/day
     val error: String? = null,
 )
 
@@ -109,6 +110,7 @@ class DashboardViewModel @Inject constructor(
             repository.latestCalc().getOrNull()?.let { calc ->
                 _state.value = _state.value.copy(
                     safetyFlags = calc.flags.filter { it.code != "DISCLAIMER" },
+                    maintenanceKcal = calc.tdee,
                 )
             }
         }
