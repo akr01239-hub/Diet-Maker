@@ -375,11 +375,10 @@ private fun CalorieRingCard(dashboard: Dashboard, burnedKcal: Int = 0, onComplet
                     colors = ButtonDefaults.buttonColors(containerColor = BrandGreen),
                 ) { Text("Set your goal") }
             } else {
-                // Exercise calories add to the budget (like Fitbit / MyFitnessPal):
-                // budget = goal + burned; left = budget − eaten.
-                val budget = cal.target + burnedKcal
-                val remaining = budget - cal.consumed
-                val percent = if (budget > 0) (cal.consumed / budget * 100).coerceIn(0.0, 100.0).toFloat() else 0f
+                // Simple, intuitive model: left = goal − eaten (so an un-eaten morning shows
+                // exactly your goal, no confusing gap). Burned steps are shown separately as info.
+                val remaining = cal.target - cal.consumed
+                val percent = if (cal.target > 0) (cal.consumed / cal.target * 100).coerceIn(0.0, 100.0).toFloat() else 0f
                 val trackColor = MaterialTheme.colorScheme.surfaceVariant
                 Box(
                     modifier = Modifier.size(158.dp),
@@ -410,8 +409,8 @@ private fun CalorieRingCard(dashboard: Dashboard, burnedKcal: Int = 0, onComplet
                     horizontalArrangement = Arrangement.SpaceEvenly,
                 ) {
                     BudgetPart("🎯 Goal", "${cal.target.toInt()}", MaterialTheme.colorScheme.onSurface)
-                    BudgetPart("🔥 Burned", "+$burnedKcal", BrandGreen)
-                    BudgetPart("🍽️ Eaten", "-${cal.consumed.toInt()}", BrandAmber)
+                    BudgetPart("🍽️ Eaten", "${cal.consumed.toInt()}", BrandAmber)
+                    BudgetPart("🔥 Activity", "$burnedKcal", BrandGreen)
                 }
             }
         }
