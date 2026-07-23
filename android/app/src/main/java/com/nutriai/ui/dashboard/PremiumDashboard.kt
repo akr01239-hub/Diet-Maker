@@ -274,9 +274,9 @@ private fun buildCoachInsights(
         }
     }
 
-    // Hydration — nudge if behind (before evening).
+    // Hydration — nudge only from mid-day on (being behind first thing after waking is normal).
     val waterPct = (dashboard.water.percent ?: 0.0)
-    if (hour in 10..21 && waterPct < 55) {
+    if (hour in 14..21 && waterPct < 55) {
         out += Insight("💧", "You're at ${waterPct.toInt()}% of your water goal — have a glass now.")
     }
 
@@ -708,7 +708,8 @@ private fun VitalsCard(
 
     Card(
         modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(20.dp),
+        shape = RoundedCornerShape(28.dp),
+        elevation = CardDefaults.cardElevation(defaultElevation = 6.dp),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
     ) {
         Row(
