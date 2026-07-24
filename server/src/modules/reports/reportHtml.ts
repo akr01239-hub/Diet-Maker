@@ -66,22 +66,43 @@ function bar(pct: number, color: string): string {
   return `<div class="bar"><i style="width:${clamp(pct)}%;background:${color}"></i></div>`;
 }
 
+/** Compact kcal label, e.g. 1720 → "1.7k", 640 → "640". */
+function kLabel(v: number): string {
+  return v >= 1000 ? `${(v / 1000).toFixed(1).replace(/\.0$/, '')}k` : String(Math.round(v));
+}
+
 function trendChart(r: WeeklyReport): string {
   const days = r.days.slice(-14);
   if (!days.length) return '';
   const target = r.targets?.dailyKcal ?? 0;
-  const max = Math.max(target, ...days.map((d) => d.kcal)) * 1.05 || 1;
-  const w = 300, h = 120, bw = Math.min(30, (w - 8) / days.length - 6);
-  const step = (w - 8) / days.length;
-  const ty = target > 0 ? h - (target / max) * h : -1;
-  const bars = days.map((d, i) => {
-    const bh = (d.kcal / max) * h;
-    const x = 6 + i * step;
+  const max = Math.max(target, ...days.map((d) => d.kcal)) * 1.12 || 1;
+  const W = 300, chartH = 104, topPad = 16, botPad = 18;
+  const H = topPad + chartH + botPad;
+  const step = W / days.length;
+  const bw = Math.min(24, step - 7);
+  const parts: string[] = [];
+
+  // Target reference line + its value.
+  if (target > 0) {
+    const ty = topPad + chartH - (target / max) * chartH;
+    parts.push(`<line x1="0" y1="${ty.toFixed(1)}" x2="${W}" y2="${ty.toFixed(1)}" stroke="var(--accent)" stroke-width="1" stroke-dasharray="4 4" opacity=".55"/>`);
+    parts.push(`<text x="${W - 2}" y="${(ty - 3).toFixed(1)}" text-anchor="end" style="font-family:var(--mono);font-size:8px;fill:var(--accent)">target ${n(target)}</text>`);
+  }
+
+  days.forEach((d, i) => {
+    const bh = Math.max(2, (d.kcal / max) * chartH);
+    const cx = i * step + step / 2;
+    const x = cx - bw / 2;
+    const y = topPad + chartH - bh;
     const col = target > 0 && d.kcal > target * 1.15 ? 'var(--crit)' : target > 0 && d.kcal < target * 0.7 ? 'var(--warn)' : 'var(--good)';
-    return `<rect x="${x.toFixed(1)}" y="${(h - bh).toFixed(1)}" width="${bw.toFixed(1)}" height="${bh.toFixed(1)}" rx="3" fill="${col}"/>`;
-  }).join('');
-  const line = ty >= 0 ? `<line x1="0" y1="${ty.toFixed(1)}" x2="${w}" y2="${ty.toFixed(1)}" stroke="var(--accent)" stroke-width="1" stroke-dasharray="4 4" opacity=".55"/><text x="${w}" y="${(ty - 4).toFixed(1)}" text-anchor="end" class="axis">target</text>` : '';
-  return `<svg viewBox="0 0 ${w} ${h}">${line}${bars}</svg>`;
+    parts.push(`<rect x="${x.toFixed(1)}" y="${y.toFixed(1)}" width="${bw.toFixed(1)}" height="${bh.toFixed(1)}" rx="3" fill="${col}"/>`);
+    // value above the bar
+    parts.push(`<text x="${cx.toFixed(1)}" y="${(y - 4).toFixed(1)}" text-anchor="middle" style="font-family:var(--mono);font-size:8px;fill:var(--muted)">${kLabel(d.kcal)}</text>`);
+    // date below the axis (DD)
+    parts.push(`<text x="${cx.toFixed(1)}" y="${(H - 5).toFixed(1)}" text-anchor="middle" style="font-family:var(--mono);font-size:8px;fill:var(--faint)">${d.date.slice(-2)}</text>`);
+  });
+
+  return `<svg viewBox="0 0 ${W} ${H}">${parts.join('')}</svg>`;
 }
 
 function mealBreakdown(entries: FoodEntry[]): string {
