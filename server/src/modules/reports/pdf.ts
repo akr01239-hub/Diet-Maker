@@ -36,8 +36,12 @@ export function renderReportPdf(r: WeeklyReport): Promise<Buffer> {
     doc.on('end', () => resolve(Buffer.concat(chunks)));
     doc.on('error', reject);
 
-    const ensure = (need: number) => {
-      if (doc.y + need > PAGE_BOTTOM) doc.addPage();
+    const ensure = (need: number): boolean => {
+      if (doc.y + need > PAGE_BOTTOM) {
+        doc.addPage();
+        return true;
+      }
+      return false;
     };
 
     // ---- Header band ----
@@ -83,33 +87,41 @@ export function renderReportPdf(r: WeeklyReport): Promise<Buffer> {
         row(doc, [d.date, String(d.kcal), String(d.proteinG), status], [150, 110, 110, 125], i, [INK, INK, INK, statusColor]);
       });
     }
+    doc.moveDown(0.6);
+
+    // Totals + body maximum (TDEE).
+    statCards(doc, [
+      ['Total intake (7d)', `${r.totalIntakeKcal}`, GREEN],
+      ['Total target (7d)', r.totalTargetKcal != null ? `${r.totalTargetKcal}` : '—', INK],
+      ['Body max/day (TDEE)', r.maintenanceKcal != null ? `${Math.round(r.maintenanceKcal)}` : '—', AMBER],
+    ]);
+
+    // AI energy-balance prediction.
+    if (r.prediction) predictionBox(doc, r.prediction);
     doc.moveDown(1);
 
-    // ---- What you ate — grouped by day, meals listed under each date ----
+    // ---- What you ate — ONE fully-gridded table (Date / Meal / Item / Qty / kcal) ----
     if (r.entries.length) {
       ensure(120);
       sectionHeader(doc, 'What you ate (last 7 days)');
-      const widths = [110, 250, 65, 70];
-      const byDate = new Map<string, typeof r.entries>();
-      for (const e of r.entries) {
-        const arr = byDate.get(e.date) ?? [];
-        arr.push(e);
-        byDate.set(e.date, arr);
-      }
-      const dates = [...byDate.keys()].sort((a, b) => b.localeCompare(a)); // newest first
-      for (const date of dates) {
-        const items = byDate.get(date)!.slice().sort((a, b) => MEAL_ORDER.indexOf(a.mealSlot) - MEAL_ORDER.indexOf(b.mealSlot));
-        const dayKcal = items.reduce((s, e) => s + e.kcal, 0);
-        ensure(24 + 20 + Math.min(items.length, 3) * 20);
-        dateBar(doc, formatDate(date), dayKcal);
-        tableHeader(doc, ['Meal', 'Item', 'Qty', 'kcal'], widths);
-        items.forEach((e, i) => {
-          ensure(22);
-          row(doc, [slotLabel(e.mealSlot), e.name, `${e.grams} g`, String(e.kcal)], widths, i, [GREEN_DEEP, INK, INK, INK]);
-        });
-        doc.moveDown(0.5);
-      }
-      doc.moveDown(0.5);
+      const widths = [95, 90, 190, 55, 65];
+      // Newest date first; within a date, ordered breakfast → dinner.
+      const sorted = r.entries.slice().sort(
+        (a, b) => b.date.localeCompare(a.date) || MEAL_ORDER.indexOf(a.mealSlot) - MEAL_ORDER.indexOf(b.mealSlot),
+      );
+      gridHeader(doc, ['Date', 'Meal', 'Item', 'Qty', 'kcal'], widths);
+      let prevDate = '';
+      sorted.forEach((e, i) => {
+        if (ensure(20)) {
+          gridHeader(doc, ['Date', 'Meal', 'Item', 'Qty', 'kcal'], widths);
+          prevDate = '';
+        }
+        // Only print the date on its first row (merged look), but keep every cell bordered.
+        const dateCell = e.date === prevDate ? '' : formatDate(e.date);
+        prevDate = e.date;
+        gridRow(doc, [dateCell, slotLabel(e.mealSlot), e.name, `${e.grams} g`, String(e.kcal)], widths, i, [GREY, GREEN_DEEP, INK, INK, INK]);
+      });
+      doc.moveDown(1);
     }
 
     // ---- Water intake ----
@@ -174,13 +186,69 @@ function statCards(doc: PDFKit.PDFDocument, cards: Array<[string, string, string
   doc.fillColor(INK);
 }
 
-/** A tinted date banner above a day's meals, with the day's total on the right. */
-function dateBar(doc: PDFKit.PDFDocument, dateLabel: string, dayKcal: number) {
+const GRID_BORDER = '#C9CFD6';
+
+/** Draws the cell borders (verticals + bottom) for one fully-gridded row. */
+function cellBorders(doc: PDFKit.PDFDocument, y: number, h: number, widths: number[]) {
+  doc.save();
+  doc.lineWidth(0.5).strokeColor(GRID_BORDER);
+  let x = PAGE_LEFT;
+  for (let i = 0; i <= widths.length; i++) {
+    doc.moveTo(x, y).lineTo(x, y + h).stroke();
+    if (i < widths.length) x += widths[i]!;
+  }
+  doc.moveTo(PAGE_LEFT, y + h).lineTo(x, y + h).stroke();
+  doc.restore();
+}
+
+/** Green header row of a fully-gridded table. */
+function gridHeader(doc: PDFKit.PDFDocument, cols: string[], widths: number[]) {
   const y = doc.y;
-  doc.roundedRect(PAGE_LEFT, y, CONTENT_W, 20, 4).fill(GREEN_TINT);
-  doc.fillColor(GREEN_DEEP).font('Helvetica-Bold').fontSize(10).text(dateLabel, PAGE_LEFT + 8, y + 6);
-  doc.fillColor(GREY).font('Helvetica-Bold').fontSize(9).text(`${dayKcal} kcal`, PAGE_LEFT, y + 6, { width: CONTENT_W - 8, align: 'right' });
-  doc.y = y + 22;
+  const h = 20;
+  const totalW = widths.reduce((a, b) => a + b, 0);
+  doc.rect(PAGE_LEFT, y, totalW, h).fill(GREEN);
+  let x = PAGE_LEFT + 5;
+  doc.fillColor('#FFFFFF').font('Helvetica-Bold').fontSize(9);
+  cols.forEach((c, i) => {
+    doc.text(c.toUpperCase(), x, y + 6, { width: widths[i]! - 8, ellipsis: true });
+    x += widths[i]!;
+  });
+  cellBorders(doc, y, h, widths);
+  doc.y = y + h;
+  doc.fillColor(INK);
+}
+
+/** One fully-gridded (all-border) data row. */
+function gridRow(doc: PDFKit.PDFDocument, cells: string[], widths: number[], index: number, colors: string[]) {
+  const y = doc.y;
+  const h = 18;
+  const totalW = widths.reduce((a, b) => a + b, 0);
+  if (index % 2 === 1) doc.rect(PAGE_LEFT, y, totalW, h).fill(ROW_ALT);
+  let x = PAGE_LEFT + 5;
+  doc.font('Helvetica').fontSize(8.5);
+  cells.forEach((c, i) => {
+    doc.fillColor(colors[i] ?? INK).text(c, x, y + 5, { width: widths[i]! - 8, ellipsis: true });
+    x += widths[i]!;
+  });
+  cellBorders(doc, y, h, widths);
+  doc.y = y + h;
+  doc.fillColor(INK);
+}
+
+/** Highlighted next-month weight-prediction panel. */
+function predictionBox(doc: PDFKit.PDFDocument, p: import('./report').Prediction) {
+  const y = doc.y;
+  const h = 62;
+  doc.roundedRect(PAGE_LEFT, y, CONTENT_W, h, 8).fill('#FFF7ED');
+  doc.fillColor(AMBER).font('Helvetica-Bold').fontSize(11).text('AI weight prediction  ·  next month', PAGE_LEFT + 12, y + 10);
+  const weight = p.projectedWeightKg != null ? `${p.projectedWeightKg} kg` : '—';
+  const delta = p.projectedMonthlyDeltaKg;
+  const deltaStr = `${delta > 0 ? '+' : ''}${delta} kg/month`;
+  const deltaColor = delta < 0 ? GREEN : delta > 0 ? AMBER : GREY;
+  doc.fillColor(INK).font('Helvetica-Bold').fontSize(17).text(weight, PAGE_LEFT + 12, y + 26, { continued: true });
+  doc.font('Helvetica').fontSize(10).fillColor(deltaColor).text(`   ${deltaStr}   ·   balance ${p.dailyBalanceKcal > 0 ? '+' : ''}${p.dailyBalanceKcal} kcal/day`);
+  doc.font('Helvetica').fontSize(8.5).fillColor(GREY).text(p.note, PAGE_LEFT + 12, y + 48, { width: CONTENT_W - 24 });
+  doc.y = y + h + 6;
   doc.fillColor(INK);
 }
 

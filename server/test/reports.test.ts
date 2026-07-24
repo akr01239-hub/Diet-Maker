@@ -1,4 +1,33 @@
+import { predictNextMonth } from '../src/modules/reports/report';
 import { describe, it, expect } from 'vitest';
+
+describe('predictNextMonth (energy-balance weight prediction)', () => {
+  it('predicts loss when logged intake is below maintenance', () => {
+    const p = predictNextMonth({ avgDailyIntake: 1800, maintenanceKcal: 2400, currentWeightKg: 80, weightLossBlocked: false })!;
+    expect(p.dailyBalanceKcal).toBe(-600);
+    expect(p.projectedMonthlyDeltaKg).toBeLessThan(0); // -600*30/7700 ≈ -2.3 kg
+    expect(p.projectedWeightKg!).toBeLessThan(80);
+  });
+
+  it('predicts a small gain above maintenance', () => {
+    const p = predictNextMonth({ avgDailyIntake: 2600, maintenanceKcal: 2400, currentWeightKg: 70, weightLossBlocked: false })!;
+    expect(p.projectedMonthlyDeltaKg).toBeGreaterThan(0);
+    expect(p.projectedWeightKg!).toBeGreaterThan(70);
+  });
+
+  it('never predicts loss when weight loss is medically blocked', () => {
+    const p = predictNextMonth({ avgDailyIntake: 1500, maintenanceKcal: 2400, currentWeightKg: 60, weightLossBlocked: true })!;
+    expect(p.projectedMonthlyDeltaKg).toBeGreaterThanOrEqual(0);
+    expect(p.blocked).toBe(true);
+  });
+
+  it('caps the monthly change to a sane range and returns null without data', () => {
+    const huge = predictNextMonth({ avgDailyIntake: 500, maintenanceKcal: 4000, currentWeightKg: 90, weightLossBlocked: false })!;
+    expect(huge.projectedMonthlyDeltaKg).toBe(-4); // clamped
+    expect(predictNextMonth({ avgDailyIntake: null, maintenanceKcal: 2400, currentWeightKg: 80, weightLossBlocked: false })).toBeNull();
+  });
+});
+
 import { buildGroceryList } from '../src/modules/reports/grocery';
 import { buildWeeklyReport, reportToCsv } from '../src/modules/reports/report';
 import { computeBadges, badgeSummary } from '../src/modules/reports/gamification';

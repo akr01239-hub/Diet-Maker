@@ -30,6 +30,59 @@ export interface AllTimeStats {
   totalWaterMl: number;
 }
 
+/** Data-driven next-month weight prediction from actual energy balance. */
+export interface Prediction {
+  avgDailyIntake: number;
+  maintenanceKcal: number; // TDEE — what the body burns/day (its "max" to hold weight)
+  dailyBalanceKcal: number; // intake − maintenance (negative = deficit)
+  projectedMonthlyDeltaKg: number;
+  projectedWeightKg: number | null;
+  blocked: boolean;
+  note: string;
+}
+
+/** ~7700 kcal ≈ 1 kg of body weight. */
+const KCAL_PER_KG = 7700;
+
+/**
+ * Predicts next month's weight from the user's ACTUAL logged intake vs the calories their body
+ * burns (TDEE, which already includes their usual activity level). Honours medical guardrails
+ * (no predicted loss when weight loss is blocked for disease/pregnancy/underweight) and reflects
+ * fasting automatically (fasting days lower the logged intake). Capped to a sane ±4 kg/month so
+ * sparse data can't produce absurd numbers. Pure & testable.
+ */
+export function predictNextMonth(input: {
+  avgDailyIntake: number | null;
+  maintenanceKcal: number | null;
+  currentWeightKg: number | null;
+  weightLossBlocked: boolean;
+}): Prediction | null {
+  const { avgDailyIntake, maintenanceKcal, currentWeightKg } = input;
+  if (avgDailyIntake == null || !maintenanceKcal) return null;
+  const rawBalance = Math.round(avgDailyIntake - maintenanceKcal);
+  const balance = input.weightLossBlocked ? Math.max(0, rawBalance) : rawBalance;
+  let monthlyDelta = Math.round(((balance * 30) / KCAL_PER_KG) * 10) / 10;
+  monthlyDelta = Math.max(-4, Math.min(4, monthlyDelta));
+  const projectedWeightKg =
+    currentWeightKg != null ? Math.round((currentWeightKg + monthlyDelta) * 10) / 10 : null;
+  const note = input.weightLossBlocked
+    ? 'Weight loss is paused for medical safety, so this assumes you hold steady.'
+    : balance < 0
+      ? 'Based on your logged intake staying below what your body burns.'
+      : balance > 0
+        ? 'Your logged intake is currently at/above maintenance — a small gain is likely.'
+        : 'Your intake is right at maintenance — weight is holding steady.';
+  return {
+    avgDailyIntake: Math.round(avgDailyIntake),
+    maintenanceKcal,
+    dailyBalanceKcal: balance,
+    projectedMonthlyDeltaKg: monthlyDelta,
+    projectedWeightKg,
+    blocked: input.weightLossBlocked,
+    note,
+  };
+}
+
 export interface WeeklyReport {
   name: string;
   generatedAt: string;
@@ -43,6 +96,13 @@ export interface WeeklyReport {
   allTime: AllTimeStats | null;
   avgKcal: number | null;
   adherencePct: number | null;
+  /** Sum of logged calories over the week. */
+  totalIntakeKcal: number;
+  /** Daily target × logged days. */
+  totalTargetKcal: number | null;
+  /** TDEE — the body's daily "max" to hold weight. */
+  maintenanceKcal: number | null;
+  prediction: Prediction | null;
   disclaimer: string;
 }
 
@@ -57,6 +117,9 @@ export interface BuildReportInput {
   entries?: FoodEntry[];
   waterByDay?: WaterDay[];
   allTime?: AllTimeStats | null;
+  maintenanceKcal?: number | null; // TDEE
+  currentWeightKg?: number | null;
+  weightLossBlocked?: boolean;
 }
 
 const DISCLAIMER =
@@ -71,6 +134,15 @@ export function buildWeeklyReport(input: BuildReportInput): WeeklyReport {
       ? round((avgKcal / input.targets.dailyKcal) * 100, 0)
       : null;
 
+  const totalIntakeKcal = round(input.days.reduce((s, d) => s + d.kcal, 0), 0);
+  const totalTargetKcal = input.targets ? round(input.targets.dailyKcal * input.days.length, 0) : null;
+  const prediction = predictNextMonth({
+    avgDailyIntake: avgKcal,
+    maintenanceKcal: input.maintenanceKcal ?? null,
+    currentWeightKg: input.currentWeightKg ?? input.latestWeightKg ?? null,
+    weightLossBlocked: input.weightLossBlocked ?? false,
+  });
+
   return {
     name: input.name,
     generatedAt: input.generatedAt,
@@ -84,6 +156,10 @@ export function buildWeeklyReport(input: BuildReportInput): WeeklyReport {
     allTime: input.allTime ?? null,
     avgKcal,
     adherencePct,
+    totalIntakeKcal,
+    totalTargetKcal,
+    maintenanceKcal: input.maintenanceKcal ?? null,
+    prediction,
     disclaimer: DISCLAIMER,
   };
 }

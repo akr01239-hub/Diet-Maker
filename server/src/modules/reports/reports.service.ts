@@ -31,8 +31,19 @@ async function latestTargets(userId: string) {
     orderBy: { createdAt: 'desc' },
   });
   return snap?.result as
-    | { dailyKcal: number; proteinG: number; waterMl: number; bmi: number }
+    | { dailyKcal: number; proteinG: number; waterMl: number; bmi: number; tdee?: number; weightLossBlocked?: boolean }
     | undefined;
+}
+
+/** Current weight from the encrypted profile (for the weight prediction). */
+async function currentWeight(userId: string): Promise<number | null> {
+  const profile = await prisma.profile.findUnique({ where: { userId } });
+  if (!profile?.sensitiveEnc) return null;
+  try {
+    return decryptJson<{ currentWeightKg: number }>(profile.sensitiveEnc).currentWeightKg;
+  } catch {
+    return null;
+  }
 }
 
 async function weightPoints(userId: string): Promise<WeightPoint[]> {
@@ -128,7 +139,7 @@ async function allTimeStats(userId: string) {
 }
 
 export async function getWeeklyReport(userId: string, generatedAt: string, now: Date = new Date()) {
-  const [user, targets, wp, days, entries, waterByDay, allTime] = await Promise.all([
+  const [user, targets, wp, days, entries, waterByDay, allTime, curWeight] = await Promise.all([
     prisma.user.findUnique({ where: { id: userId } }),
     latestTargets(userId),
     weightPoints(userId),
@@ -136,6 +147,7 @@ export async function getWeeklyReport(userId: string, generatedAt: string, now: 
     weekEntries(userId, now),
     weekWater(userId, now),
     allTimeStats(userId),
+    currentWeight(userId),
   ]);
   const trend = weightTrend(wp);
   return buildWeeklyReport({
@@ -149,6 +161,9 @@ export async function getWeeklyReport(userId: string, generatedAt: string, now: 
     entries,
     waterByDay,
     allTime,
+    maintenanceKcal: targets?.tdee ?? null,
+    currentWeightKg: curWeight,
+    weightLossBlocked: targets?.weightLossBlocked ?? false,
   });
 }
 
