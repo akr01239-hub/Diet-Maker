@@ -1,6 +1,8 @@
 package com.nutriai.ui.move
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -19,6 +21,9 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -63,6 +68,8 @@ fun MoveScreen(modifier: Modifier = Modifier, viewModel: MoveViewModel = hiltVie
     val state by viewModel.state.collectAsStateWithLifecycle()
     val plan = state.plan
     val today = plan?.days?.firstOrNull { it.label == "Today" } ?: plan?.days?.firstOrNull { !it.rest }
+    var selectedIdx by remember(plan) { mutableStateOf<Int?>(null) }
+    val shownDay = selectedIdx?.let { i -> plan?.days?.getOrNull(i) } ?: today
 
     LazyColumn(
         modifier = modifier.fillMaxSize().padding(horizontal = 16.dp),
@@ -82,17 +89,20 @@ fun MoveScreen(modifier: Modifier = Modifier, viewModel: MoveViewModel = hiltVie
             }
         }
 
-        // Week strip: train vs rest days.
+        // Week strip: tap a day to view its session.
         plan?.days?.takeIf { it.isNotEmpty() }?.let { days ->
             item {
-                Text("This week", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                Text("This week · tap a day", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
             }
-            item { WeekStrip(days) }
+            item {
+                val current = selectedIdx ?: days.indexOfFirst { it === shownDay }
+                WeekStrip(days, selectedIndex = current, onSelect = { selectedIdx = it })
+            }
         }
 
-        // Today's session.
-        today?.let { day ->
-            item { Text(if (day.label == "Today") "Today · ${day.focus}" else day.focus, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold) }
+        // Selected day's session (defaults to today).
+        shownDay?.let { day ->
+            item { Text(if (day.label == "Today") "Today · ${day.focus}" else "${day.label ?: "Day ${day.dayIndex + 1}"} · ${day.focus}", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold) }
             if (day.rest || day.exercises.isEmpty()) {
                 item { Card(Modifier.fillMaxWidth(), shape = RoundedCornerShape(20.dp)) { Text("Rest & recovery day — light movement, stretch, hydrate.", Modifier.padding(18.dp)) } }
             } else {
@@ -147,13 +157,16 @@ private fun Hero(plan: WeeklyWorkout?) {
 }
 
 @Composable
-private fun WeekStrip(days: List<WorkoutDay>) {
+private fun WeekStrip(days: List<WorkoutDay>, selectedIndex: Int, onSelect: (Int) -> Unit) {
     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-        days.take(7).forEach { d ->
+        days.take(7).forEachIndexed { i, d ->
             val rest = d.rest
+            val selected = i == selectedIndex
             Column(
                 Modifier.weight(1f).clip(RoundedCornerShape(12.dp))
                     .background(if (rest) MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f) else MaterialTheme.colorScheme.primary.copy(alpha = 0.15f))
+                    .then(if (selected) Modifier.border(2.dp, MaterialTheme.colorScheme.primary, RoundedCornerShape(12.dp)) else Modifier)
+                    .clickable { onSelect(i) }
                     .padding(vertical = 10.dp),
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.spacedBy(3.dp),
@@ -162,7 +175,8 @@ private fun WeekStrip(days: List<WorkoutDay>) {
                 Text(
                     d.label?.take(3) ?: "D${d.dayIndex + 1}",
                     style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    color = if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
+                    fontWeight = if (selected) FontWeight.Bold else FontWeight.Normal,
                     maxLines = 1,
                 )
             }
