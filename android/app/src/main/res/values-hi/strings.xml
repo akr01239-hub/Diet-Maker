@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name">NutriAI</string>
+    <string name="app_name">Kaizen</string>
+    <string name="tagline">छोटी आदतें. बड़े नतीजे.</string>
     <string name="disclaimer">शैक्षिक मार्गदर्शन, चिकित्सा सलाह नहीं — कृपया किसी विशेषज्ञ से परामर्श करें।</string>
     <string name="login">लॉग इन करें</string>
     <string name="sign_up">साइन अप करें</string>

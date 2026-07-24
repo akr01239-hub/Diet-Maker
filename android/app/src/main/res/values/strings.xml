@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name">NutriAI</string>
+    <string name="app_name">Kaizen</string>
+    <string name="tagline">Small Habits. Big Results.</string>
     <string name="disclaimer">Educational guidance, not medical advice — consult a professional.</string>
     <string name="login">Log in</string>
     <string name="sign_up">Sign up</string>

@@ -35,7 +35,7 @@ fun SplashScreen(onFinished: () -> Unit) {
     Box(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.surface)) {
         Image(
             painter = painterResource(R.drawable.splash_nutriai),
-            contentDescription = "NutriAI — Diet · Exercise · Discipline",
+            contentDescription = "Kaizen — Small Habits. Big Results.",
             contentScale = ContentScale.Crop,
             modifier = Modifier.fillMaxSize().alpha(fade),
         )
