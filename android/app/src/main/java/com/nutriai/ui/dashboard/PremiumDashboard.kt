@@ -590,8 +590,16 @@ private fun StatTile(
 
 @Composable
 private fun GoalMonitorCard(days: List<com.nutriai.data.remote.dto.ReportDay>, target: Double) {
-    // Take the most recent 7 days in chronological order.
-    val week = days.takeLast(7)
+    // Always render the last 7 CALENDAR days (fill un-logged days with 0) so the bars are a
+    // consistent, sensible width even when only a couple of days have data.
+    val today = remember { java.time.LocalDate.now() }
+    val byDate = remember(days) { days.associateBy { it.date } }
+    val week = remember(days) {
+        (6 downTo 0).map { off ->
+            val iso = today.minusDays(off.toLong()).toString()
+            byDate[iso] ?: com.nutriai.data.remote.dto.ReportDay(date = iso, kcal = 0.0, proteinG = 0.0)
+        }
+    }
     val maxKcal = (week.maxOfOrNull { it.kcal } ?: target).coerceAtLeast(target).coerceAtLeast(1.0)
     val hit = week.count { it.kcal > 0 && it.kcal <= target * 1.1 }
 
