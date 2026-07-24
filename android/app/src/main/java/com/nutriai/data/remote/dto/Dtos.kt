@@ -15,6 +15,15 @@ data class RegisterRequest(
 data class LoginRequest(val email: String, val password: String)
 
 @Serializable
+data class VerifyIdentityRequest(val email: String, val dob: String)
+
+@Serializable
+data class VerifyIdentityResponse(val verified: Boolean = false)
+
+@Serializable
+data class ResetPasswordRequest(val email: String, val dob: String, val newPassword: String)
+
+@Serializable
 data class Tokens(val accessToken: String, val refreshToken: String, val expiresIn: Long)
 
 @Serializable

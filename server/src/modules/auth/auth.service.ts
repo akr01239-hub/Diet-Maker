@@ -1,7 +1,8 @@
 import { prisma } from '../../lib/prisma';
-import { randomToken, sha256 } from '../../lib/crypto';
+import { randomToken, sha256, decryptJson } from '../../lib/crypto';
 import { HttpError } from '../../middleware/error';
 import { hashPassword, verifyPassword } from './password';
+import type { SensitiveData } from '../profile/profile.schemas';
 import {
   ACCESS_TTL_SECONDS,
   refreshExpiryDate,
@@ -77,6 +78,45 @@ export async function login(email: string, password: string) {
 }
 
 /** Rotates the refresh token: the presented one is revoked and a new pair is issued. */
+/** The user's date of birth from their encrypted profile (the reliable copy), 'YYYY-MM-DD'. */
+async function storedDob(userId: string): Promise<string | null> {
+  const profile = await prisma.profile.findUnique({ where: { userId } });
+  if (!profile?.sensitiveEnc) return null;
+  try {
+    return decryptJson<SensitiveData>(profile.sensitiveEnc).dob;
+  } catch {
+    return null;
+  }
+}
+
+/** Checks the account identity for a password reset: email exists AND date of birth matches. */
+export async function verifyIdentity(email: string, dob: string): Promise<boolean> {
+  const user = await prisma.user.findUnique({ where: { email: email.toLowerCase().trim() } });
+  if (!user) return false;
+  const d = await storedDob(user.id);
+  return d != null && d === dob;
+}
+
+/**
+ * Self-service password reset gated by email + date of birth. Re-verifies server-side (never
+ * trusts a client "verified" flag), sets the new password, and revokes every existing session
+ * for safety. Note: knowledge-based (email + DOB) verification is convenient but weaker than an
+ * emailed one-time link — swap to that once an email provider is configured.
+ */
+export async function resetPassword(email: string, dob: string, newPassword: string): Promise<void> {
+  const user = await prisma.user.findUnique({ where: { email: email.toLowerCase().trim() } });
+  const ok = user ? (await storedDob(user.id)) === dob : false;
+  if (!user || !ok) {
+    throw new HttpError(400, "We couldn't verify your details. Check your email and date of birth.");
+  }
+  await prisma.user.update({
+    where: { id: user.id },
+    data: { passwordHash: await hashPassword(newPassword) },
+  });
+  await prisma.refreshToken.deleteMany({ where: { userId: user.id } }); // log out everywhere
+  await prisma.auditLog.create({ data: { userId: user.id, action: 'auth.reset_password' } });
+}
+
 export async function refresh(rawToken: string): Promise<AuthTokens> {
   const tokenHash = sha256(rawToken);
   const record = await prisma.refreshToken.findUnique({

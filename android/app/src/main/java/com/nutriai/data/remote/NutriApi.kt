@@ -37,6 +37,12 @@ interface NutriApi {
     @POST("auth/login")
     suspend fun login(@Body body: LoginRequest): AuthResponse
 
+    @POST("auth/forgot-password/verify")
+    suspend fun forgotVerify(@Body body: com.nutriai.data.remote.dto.VerifyIdentityRequest): com.nutriai.data.remote.dto.VerifyIdentityResponse
+
+    @POST("auth/reset-password")
+    suspend fun resetPassword(@Body body: com.nutriai.data.remote.dto.ResetPasswordRequest): retrofit2.Response<Unit>
+
     @GET("profile")
     suspend fun getProfile(): ProfileEnvelope
 

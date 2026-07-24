@@ -15,6 +15,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
+import com.nutriai.ui.auth.ForgotPasswordScreen
 import com.nutriai.ui.auth.LoginScreen
 import com.nutriai.ui.auth.RegisterScreen
 import com.nutriai.ui.home.HomeScreen
@@ -25,6 +26,7 @@ import com.nutriai.ui.splash.SplashScreen
 private object Routes {
     const val LOGIN = "login"
     const val REGISTER = "register"
+    const val FORGOT = "forgot"
     const val ONBOARDING = "onboarding"
     const val HOME = "home"
 }
@@ -59,6 +61,13 @@ fun AppRoot(startTab: Int = 0, sessionViewModel: SessionViewModel = hiltViewMode
                     navController.navigate(Routes.ONBOARDING) { popUpTo(Routes.LOGIN) { inclusive = true } }
                 },
                 onGoToRegister = { navController.navigate(Routes.REGISTER) },
+                onForgotPassword = { navController.navigate(Routes.FORGOT) },
+            )
+        }
+        composable(Routes.FORGOT) {
+            ForgotPasswordScreen(
+                onDone = { navController.popBackStack(Routes.LOGIN, inclusive = false) },
+                onBack = { navController.popBackStack() },
             )
         }
         composable(Routes.REGISTER) {

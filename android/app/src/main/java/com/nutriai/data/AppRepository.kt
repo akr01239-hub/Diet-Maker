@@ -40,6 +40,18 @@ class AppRepository @Inject constructor(
         tokenStore.save(res.tokens.accessToken, res.tokens.refreshToken)
     }
 
+    /** Forgot-password step 1: verify email + DOB. Returns true if they match an account. */
+    suspend fun forgotVerify(email: String, dob: String): Result<Boolean> = runCatching {
+        api.forgotVerify(com.nutriai.data.remote.dto.VerifyIdentityRequest(email.trim(), dob)).verified
+    }
+
+    /** Forgot-password step 2: set a new password (server re-verifies email + DOB). */
+    suspend fun resetPassword(email: String, dob: String, newPassword: String): Result<Unit> = runCatching {
+        val res = api.resetPassword(com.nutriai.data.remote.dto.ResetPasswordRequest(email.trim(), dob, newPassword))
+        if (!res.isSuccessful) error("We couldn't verify your details. Check your email and date of birth.")
+        Unit
+    }
+
     suspend fun logout() = tokenStore.clear()
 
     suspend fun saveProfile(body: ProfileUpsertRequest): Result<Unit> = runCatching {
