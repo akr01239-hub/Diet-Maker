@@ -228,6 +228,10 @@ class AppRepository @Inject constructor(
     suspend fun weeklyReport(): Result<com.nutriai.data.remote.dto.WeeklyReport> =
         runCatching { api.weeklyReport().report }
 
+    /** Premium HTML report over a consolidated span (range = weekly|monthly, count = periods). */
+    suspend fun reportHtml(range: String, count: Int): Result<String> =
+        runCatching { api.reportHtml(range, count).html }
+
     // ---- Gamification ----
     suspend fun gamification(): Result<com.nutriai.data.remote.dto.Gamification> =
         runCatching { api.gamification().gamification }

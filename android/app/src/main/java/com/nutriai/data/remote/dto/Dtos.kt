@@ -680,6 +680,9 @@ data class WeeklyReport(
 @Serializable
 data class ReportEnvelope(val report: WeeklyReport)
 
+@Serializable
+data class ReportHtmlResponse(val html: String = "")
+
 // ---- Gamification ----
 @Serializable
 data class Badge(val code: String, val title: String, val description: String, val earned: Boolean)

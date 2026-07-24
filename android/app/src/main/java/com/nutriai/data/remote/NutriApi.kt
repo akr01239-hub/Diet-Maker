@@ -159,6 +159,12 @@ interface NutriApi {
     @GET("reports/weekly.json")
     suspend fun weeklyReport(): ReportEnvelope
 
+    @GET("report/view")
+    suspend fun reportHtml(
+        @retrofit2.http.Query("range") range: String,
+        @retrofit2.http.Query("count") count: Int,
+    ): com.nutriai.data.remote.dto.ReportHtmlResponse
+
     // ---- Gamification ----
     @GET("gamification")
     suspend fun gamification(): GamificationEnvelope

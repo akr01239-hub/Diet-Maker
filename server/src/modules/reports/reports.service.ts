@@ -7,6 +7,7 @@ import { waterTotal, listFood } from '../logging/logging.service';
 import type { DayPlan, FoodItem, MealSlot } from '../food/food.types';
 import { buildGroceryList } from './grocery';
 import { buildWeeklyReport, type ReportDay } from './report';
+import { renderReportHtml } from './reportHtml';
 import { computeBadges, badgeSummary, type GamificationStats } from './gamification';
 
 function toFoodItem(f: {
@@ -72,8 +73,8 @@ export async function getGrocery(userId: string) {
   return { ...grocery, targetWeeklyKcal };
 }
 
-async function last7Days(userId: string, now: Date): Promise<ReportDay[]> {
-  const since = new Date(now.getTime() - 7 * 86_400_000);
+async function daysInRange(userId: string, now: Date, windowDays = 7): Promise<ReportDay[]> {
+  const since = new Date(now.getTime() - windowDays * 86_400_000);
   const logs = await prisma.foodLog.findMany({
     where: { userId, loggedAt: { gte: since } },
     select: { loggedAt: true, kcal: true, proteinG: true },
@@ -92,8 +93,8 @@ async function last7Days(userId: string, now: Date): Promise<ReportDay[]> {
 }
 
 /** Itemised food-log entries for the last 7 days (newest first), for the detailed table. */
-async function weekEntries(userId: string, now: Date) {
-  const since = new Date(now.getTime() - 7 * 86_400_000);
+async function entriesInRange(userId: string, now: Date, windowDays = 7) {
+  const since = new Date(now.getTime() - windowDays * 86_400_000);
   const logs = await prisma.foodLog.findMany({
     where: { userId, loggedAt: { gte: since } },
     orderBy: { loggedAt: 'desc' },
@@ -110,8 +111,8 @@ async function weekEntries(userId: string, now: Date) {
 }
 
 /** Water intake per day for the last 7 days. */
-async function weekWater(userId: string, now: Date) {
-  const since = new Date(now.getTime() - 7 * 86_400_000);
+async function waterInRange(userId: string, now: Date, windowDays = 7) {
+  const since = new Date(now.getTime() - windowDays * 86_400_000);
   const logs = await prisma.waterLog.findMany({
     where: { userId, loggedAt: { gte: since } },
     select: { loggedAt: true, amountMl: true },
@@ -138,14 +139,19 @@ async function allTimeStats(userId: string) {
   };
 }
 
-export async function getWeeklyReport(userId: string, generatedAt: string, now: Date = new Date()) {
+export async function getWeeklyReport(
+  userId: string,
+  generatedAt: string,
+  now: Date = new Date(),
+  windowDays = 7,
+) {
   const [user, targets, wp, days, entries, waterByDay, allTime, curWeight] = await Promise.all([
     prisma.user.findUnique({ where: { id: userId } }),
     latestTargets(userId),
     weightPoints(userId),
-    last7Days(userId, now),
-    weekEntries(userId, now),
-    weekWater(userId, now),
+    daysInRange(userId, now, windowDays),
+    entriesInRange(userId, now, windowDays),
+    waterInRange(userId, now, windowDays),
     allTimeStats(userId),
     currentWeight(userId),
   ]);
@@ -165,6 +171,30 @@ export async function getWeeklyReport(userId: string, generatedAt: string, now: 
     currentWeightKg: curWeight,
     weightLossBlocked: targets?.weightLossBlocked ?? false,
   });
+}
+
+/**
+ * Renders an in-app HTML report over a consolidated span: `count` weeks or months back from now.
+ * count is clamped to 1–12. Returns a self-contained HTML string.
+ */
+export async function getReportView(
+  userId: string,
+  range: 'weekly' | 'monthly',
+  count: number,
+  now: Date = new Date(),
+): Promise<string> {
+  const c = Math.max(1, Math.min(12, Math.round(count) || 1));
+  const windowDays = range === 'monthly' ? c * 30 : c * 7;
+  const report = await getWeeklyReport(userId, now.toISOString(), now, windowDays);
+  const label =
+    range === 'monthly'
+      ? c === 1
+        ? 'Last month'
+        : `Last ${c} months`
+      : c === 1
+        ? 'Last week'
+        : `Last ${c} weeks`;
+  return renderReportHtml(report, { label });
 }
 
 export async function getGamification(userId: string, now: Date = new Date()) {

@@ -1,7 +1,7 @@
 import { Router } from 'express';
 import { asyncHandler } from '../../lib/asyncHandler';
 import { requireAuth, type AuthedRequest } from '../../middleware/auth';
-import { getGrocery, getWeeklyReport, getGamification } from './reports.service';
+import { getGrocery, getWeeklyReport, getGamification, getReportView } from './reports.service';
 import { reportToCsv } from './report';
 import { renderReportPdf } from './pdf';
 
@@ -13,6 +13,18 @@ reportsRouter.get(
   asyncHandler(async (req: AuthedRequest, res) => {
     const grocery = await getGrocery(req.user!.id);
     res.json({ grocery });
+  }),
+);
+
+// In-app HTML report — GET /report/view?range=weekly|monthly&count=N  → { html }.
+reportsRouter.get(
+  '/report/view',
+  requireAuth,
+  asyncHandler(async (req: AuthedRequest, res) => {
+    const range = req.query.range === 'monthly' ? 'monthly' : 'weekly';
+    const count = Number(req.query.count);
+    const html = await getReportView(req.user!.id, range, Number.isFinite(count) ? count : 1);
+    res.json({ html });
   }),
 );
 

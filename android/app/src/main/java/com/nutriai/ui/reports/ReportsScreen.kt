@@ -124,6 +124,13 @@ fun ReportsScreen(
     val state by viewModel.state.collectAsStateWithLifecycle()
     val context = LocalContext.current
     var pdfMsg by remember { mutableStateOf<String?>(null) }
+    var showViewer by remember { mutableStateOf(false) }
+
+    if (showViewer) {
+        androidx.activity.compose.BackHandler(enabled = true) { showViewer = false }
+        ReportViewerScreen(onClose = { showViewer = false })
+        return
+    }
 
     LazyColumn(
         modifier = modifier.fillMaxSize().padding(horizontal = 16.dp),
@@ -132,6 +139,13 @@ fun ReportsScreen(
     ) {
         state.report?.let { report ->
             item { HeroSummaryCard(report) }
+            item {
+                androidx.compose.material3.Button(
+                    onClick = { showViewer = true },
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(24.dp),
+                ) { Text("📄  View full report — weekly / monthly") }
+            }
         }
 
         if (state.loading) {
