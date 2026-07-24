@@ -631,16 +631,20 @@ private fun GoalMonitorCard(days: List<com.nutriai.data.remote.dto.ReportDay>, t
                         under -> BrandAmber
                         else -> BrandGreen
                     }
-                    Column(Modifier.weight(1f), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Bottom) {
+                    Column(Modifier.weight(1f), horizontalAlignment = Alignment.CenterHorizontally) {
                         Text(if (logged) "${(day.kcal / 100).toInt() * 100}" else "—", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1)
                         Spacer(Modifier.height(2.dp))
-                        Box(
-                            Modifier
-                                .fillMaxWidth(0.5f)
-                                .fillMaxHeight(frac.coerceAtLeast(0.04f))
-                                .clip(RoundedCornerShape(topStart = 5.dp, topEnd = 5.dp))
-                                .background(barColor),
-                        )
+                        // Bar lives in the leftover space between the value and the weekday label,
+                        // so even a full-height (max) day still shows its label underneath.
+                        Box(Modifier.weight(1f).fillMaxWidth(), contentAlignment = Alignment.BottomCenter) {
+                            Box(
+                                Modifier
+                                    .fillMaxWidth(0.5f)
+                                    .fillMaxHeight(frac.coerceAtLeast(0.04f))
+                                    .clip(RoundedCornerShape(topStart = 5.dp, topEnd = 5.dp))
+                                    .background(barColor),
+                            )
+                        }
                         Spacer(Modifier.height(4.dp))
                         Text(dayShort(day.date), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1)
                     }
