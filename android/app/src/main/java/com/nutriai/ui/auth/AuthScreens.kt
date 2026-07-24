@@ -35,13 +35,10 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
-import androidx.compose.ui.text.SpanStyle
-import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -243,11 +240,16 @@ private fun AuthScaffold(
                 modifier = Modifier.size(96.dp),
             )
             Text(
-                buildAnnotatedString {
-                    withStyle(SpanStyle(color = Color.White, fontWeight = FontWeight.Bold)) { append("Nutri") }
-                    withStyle(SpanStyle(color = BrandGreenLight, fontWeight = FontWeight.Bold)) { append("AI") }
-                },
-                fontSize = 36.sp,
+                "Kaizen",
+                color = Color.White,
+                fontSize = 40.sp,
+                fontWeight = FontWeight.Bold,
+            )
+            Text(
+                "Small Habits. Big Results.",
+                color = BrandGreenLight,
+                fontSize = 13.sp,
+                fontWeight = FontWeight.Medium,
             )
             Text(title, color = Color.White, fontSize = 20.sp, fontWeight = FontWeight.SemiBold)
             Text(subtitle, color = Color(0xFFCFE9D9), fontSize = 13.sp)

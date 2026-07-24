@@ -9,25 +9,36 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.FilterChip
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -35,6 +46,8 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewModelScope
 import com.nutriai.data.AppRepository
+import com.nutriai.data.remote.dto.ExerciseItem
+import com.nutriai.data.remote.dto.ExerciseLogRequest
 import com.nutriai.data.remote.dto.WeeklyWorkout
 import com.nutriai.data.remote.dto.WorkoutDay
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -44,7 +57,48 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
-data class MoveState(val loading: Boolean = true, val plan: WeeklyWorkout? = null, val error: String? = null)
+/**
+ * The Move pillar — mirrors the Diet tab's segmented switcher so everything active lives under one
+ * tab: [Exercise | Meditation | Log]. Meditation reuses the mind-&-body content; Log shows what
+ * you actually did, with the calories it burned.
+ */
+@Composable
+fun MoveScreen(modifier: Modifier = Modifier, initialSection: Int = 0) {
+    var section by remember { mutableIntStateOf(initialSection.coerceIn(0, 2)) }
+    val labels = listOf("Exercise", "Meditation", "Log")
+
+    Column(modifier.fillMaxSize()) {
+        Row(
+            Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 8.dp),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            labels.forEachIndexed { i, label ->
+                FilterChip(
+                    selected = section == i,
+                    onClick = { section = i },
+                    label = { Text(label) },
+                    modifier = Modifier.semantics { contentDescription = "$label section" },
+                )
+            }
+        }
+        when (section) {
+            0 -> ExerciseTab(Modifier.fillMaxSize())
+            1 -> com.nutriai.ui.wellness.WellnessScreen(Modifier.fillMaxSize())
+            else -> MoveLogScreen(Modifier.fillMaxSize())
+        }
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Exercise tab
+// ---------------------------------------------------------------------------
+
+data class MoveState(
+    val loading: Boolean = true,
+    val plan: WeeklyWorkout? = null,
+    val error: String? = null,
+    val toast: String? = null,
+)
 
 @HiltViewModel
 class MoveViewModel @Inject constructor(private val repository: AppRepository) : ViewModel() {
@@ -57,19 +111,53 @@ class MoveViewModel @Inject constructor(private val repository: AppRepository) :
         _state.value = _state.value.copy(loading = true, error = null)
         viewModelScope.launch {
             val r = repository.exercisePlan()
-            _state.value = if (r.isSuccess) MoveState(loading = false, plan = r.getOrNull())
-            else MoveState(loading = false, error = "Generate a plan first (Diet tab)")
+            _state.value = if (r.isSuccess) _state.value.copy(loading = false, plan = r.getOrNull(), error = null)
+            else _state.value.copy(loading = false, error = "Generate a plan first (Diet tab)")
         }
     }
+
+    /** Log a performed set, then reload the plan so the next-session suggestion updates. */
+    fun logSet(name: String, focus: String?, weightKg: Double?, reps: Int?, sets: Int?) {
+        viewModelScope.launch {
+            val r = repository.logExercise(
+                ExerciseLogRequest(exerciseName = name, focus = focus, weightKg = weightKg, reps = reps, sets = sets),
+            )
+            if (r.isSuccess) {
+                val kcal = r.getOrNull()?.kcal ?: 0
+                val plan = repository.exercisePlan().getOrNull()
+                _state.value = _state.value.copy(
+                    plan = plan ?: _state.value.plan,
+                    toast = "Logged $name · ~$kcal kcal 🔥",
+                )
+            } else {
+                _state.value = _state.value.copy(toast = "Couldn't log — try again")
+            }
+        }
+    }
+
+    fun clearToast() { _state.value = _state.value.copy(toast = null) }
 }
 
 @Composable
-fun MoveScreen(modifier: Modifier = Modifier, viewModel: MoveViewModel = hiltViewModel()) {
+private fun ExerciseTab(modifier: Modifier = Modifier, viewModel: MoveViewModel = hiltViewModel()) {
     val state by viewModel.state.collectAsStateWithLifecycle()
     val plan = state.plan
     val today = plan?.days?.firstOrNull { it.label == "Today" } ?: plan?.days?.firstOrNull { !it.rest }
     var selectedIdx by remember(plan) { mutableStateOf<Int?>(null) }
     val shownDay = selectedIdx?.let { i -> plan?.days?.getOrNull(i) } ?: today
+
+    var logTarget by remember { mutableStateOf<ExerciseItem?>(null) }
+
+    logTarget?.let { ex ->
+        LogSetDialog(
+            exercise = ex,
+            onDismiss = { logTarget = null },
+            onConfirm = { w, reps, sets ->
+                viewModel.logSet(ex.name, shownDay?.focus, w, reps, sets)
+                logTarget = null
+            },
+        )
+    }
 
     LazyColumn(
         modifier = modifier.fillMaxSize().padding(horizontal = 16.dp),
@@ -77,6 +165,19 @@ fun MoveScreen(modifier: Modifier = Modifier, viewModel: MoveViewModel = hiltVie
         contentPadding = androidx.compose.foundation.layout.PaddingValues(vertical = 16.dp),
     ) {
         item { Hero(plan) }
+
+        state.toast?.let { msg ->
+            item {
+                Card(
+                    Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(14.dp),
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer),
+                ) {
+                    Text(msg, Modifier.padding(14.dp), color = MaterialTheme.colorScheme.onPrimaryContainer, fontWeight = FontWeight.Medium)
+                }
+                LaunchedEffect(msg) { kotlinx.coroutines.delay(2500); viewModel.clearToast() }
+            }
+        }
 
         if (state.loading) {
             item { Box(Modifier.fillMaxWidth().padding(32.dp), contentAlignment = Alignment.Center) { CircularProgressIndicator() } }
@@ -89,42 +190,21 @@ fun MoveScreen(modifier: Modifier = Modifier, viewModel: MoveViewModel = hiltVie
             }
         }
 
-        // Week strip: tap a day to view its session.
         plan?.days?.takeIf { it.isNotEmpty() }?.let { days ->
-            item {
-                Text("This week · tap a day", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
-            }
+            item { Text("This week · tap a day", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold) }
             item {
                 val current = selectedIdx ?: days.indexOfFirst { it === shownDay }
                 WeekStrip(days, selectedIndex = current, onSelect = { selectedIdx = it })
             }
         }
 
-        // Selected day's session (defaults to today).
         shownDay?.let { day ->
             item { Text(if (day.label == "Today") "Today · ${day.focus}" else "${day.label ?: "Day ${day.dayIndex + 1}"} · ${day.focus}", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold) }
             if (day.rest || day.exercises.isEmpty()) {
                 item { Card(Modifier.fillMaxWidth(), shape = RoundedCornerShape(20.dp)) { Text("Rest & recovery day — light movement, stretch, hydrate.", Modifier.padding(18.dp)) } }
             } else {
                 items(day.exercises.size) { i ->
-                    val ex = day.exercises[i]
-                    Card(Modifier.fillMaxWidth(), shape = RoundedCornerShape(16.dp)) {
-                        Row(
-                            Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 12.dp),
-                            horizontalArrangement = Arrangement.spacedBy(12.dp),
-                            verticalAlignment = Alignment.CenterVertically,
-                        ) {
-                            Box(Modifier.size(30.dp).clip(CircleShape).background(MaterialTheme.colorScheme.primary.copy(alpha = 0.18f)), contentAlignment = Alignment.Center) {
-                                Text("${i + 1}", fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
-                            }
-                            Text(ex.name, Modifier.weight(1f), style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold)
-                            Text(
-                                "${ex.sets} × ${ex.reps}",
-                                Modifier.clip(RoundedCornerShape(8.dp)).background(MaterialTheme.colorScheme.primary.copy(alpha = 0.12f)).padding(horizontal = 8.dp, vertical = 3.dp),
-                                style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary,
-                            )
-                        }
-                    }
+                    ExerciseCard(index = i, ex = day.exercises[i], onLog = { logTarget = day.exercises[i] })
                 }
             }
         }
@@ -136,6 +216,89 @@ fun MoveScreen(modifier: Modifier = Modifier, viewModel: MoveViewModel = hiltVie
         }
     }
 }
+
+@Composable
+private fun ExerciseCard(index: Int, ex: ExerciseItem, onLog: () -> Unit) {
+    Card(Modifier.fillMaxWidth(), shape = RoundedCornerShape(16.dp)) {
+        Column(Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Row(horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.CenterVertically) {
+                Box(Modifier.size(30.dp).clip(CircleShape).background(MaterialTheme.colorScheme.primary.copy(alpha = 0.18f)), contentAlignment = Alignment.Center) {
+                    Text("${index + 1}", fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
+                }
+                Text(ex.name, Modifier.weight(1f), style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold)
+                Text(
+                    "${ex.sets} × ${ex.reps}",
+                    Modifier.clip(RoundedCornerShape(8.dp)).background(MaterialTheme.colorScheme.primary.copy(alpha = 0.12f)).padding(horizontal = 8.dp, vertical = 3.dp),
+                    style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary,
+                )
+            }
+
+            ex.nextSession?.let { ns ->
+                val target = buildString {
+                    append("Next: ")
+                    if (ns.suggestedWeightKg != null) append("${trimKg(ns.suggestedWeightKg)} kg × ")
+                    append("${ns.suggestedReps} × ${ns.suggestedSets}")
+                    if (ns.deload) append(" · deload")
+                }
+                Text(
+                    target,
+                    style = MaterialTheme.typography.labelMedium,
+                    color = if (ns.deload) MaterialTheme.colorScheme.tertiary else MaterialTheme.colorScheme.primary,
+                    fontWeight = FontWeight.SemiBold,
+                )
+            }
+
+            TextButton(
+                onClick = onLog,
+                modifier = Modifier.heightIn(min = 48.dp).semantics { contentDescription = "Log a set of ${ex.name}" },
+            ) { Text("＋ Log set") }
+        }
+    }
+}
+
+@Composable
+private fun LogSetDialog(exercise: ExerciseItem, onDismiss: () -> Unit, onConfirm: (Double?, Int?, Int?) -> Unit) {
+    val ns = exercise.nextSession
+    var weight by remember { mutableStateOf(ns?.suggestedWeightKg?.let { trimKg(it) } ?: "") }
+    var reps by remember { mutableStateOf((ns?.suggestedReps ?: firstInt(exercise.reps))?.toString() ?: "") }
+    var sets by remember { mutableStateOf((ns?.suggestedSets ?: exercise.sets).toString()) }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Log · ${exercise.name}") },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                OutlinedTextField(
+                    value = weight, onValueChange = { weight = it.filter { c -> c.isDigit() || c == '.' } },
+                    label = { Text("Weight (kg) — optional") }, singleLine = true,
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal), modifier = Modifier.fillMaxWidth(),
+                )
+                Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                    OutlinedTextField(
+                        value = reps, onValueChange = { reps = it.filter { c -> c.isDigit() } },
+                        label = { Text("Reps") }, singleLine = true,
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number), modifier = Modifier.weight(1f),
+                    )
+                    OutlinedTextField(
+                        value = sets, onValueChange = { sets = it.filter { c -> c.isDigit() } },
+                        label = { Text("Sets") }, singleLine = true,
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number), modifier = Modifier.weight(1f),
+                    )
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = { onConfirm(weight.toDoubleOrNull(), reps.toIntOrNull(), sets.toIntOrNull()) }) { Text("Save") }
+        },
+        dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel") } },
+    )
+}
+
+/** "42.5" → "42.5", "40.0" → "40". */
+private fun trimKg(v: Double): String = if (v == v.toLong().toDouble()) v.toLong().toString() else v.toString()
+
+/** First integer in a reps string like "8-10" or "12". */
+private fun firstInt(reps: String): Int? = Regex("\\d+").find(reps)?.value?.toIntOrNull()
 
 @Composable
 private fun Hero(plan: WeeklyWorkout?) {
@@ -167,7 +330,9 @@ private fun WeekStrip(days: List<WorkoutDay>, selectedIndex: Int, onSelect: (Int
                     .background(if (rest) MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f) else MaterialTheme.colorScheme.primary.copy(alpha = 0.15f))
                     .then(if (selected) Modifier.border(2.dp, MaterialTheme.colorScheme.primary, RoundedCornerShape(12.dp)) else Modifier)
                     .clickable { onSelect(i) }
-                    .padding(vertical = 10.dp),
+                    .heightIn(min = 48.dp)
+                    .padding(vertical = 10.dp)
+                    .semantics { contentDescription = "${d.label ?: "Day ${d.dayIndex + 1}"}${if (rest) ", rest day" else ""}" },
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.spacedBy(3.dp),
             ) {

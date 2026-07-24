@@ -80,7 +80,7 @@ class ReportViewerViewModel @Inject constructor(
 
 /** Renders the currently-loaded report WebView to a PDF via Android's print system. */
 private fun printReport(context: Context, web: WebView) {
-    val jobName = "NutriAI Health Report"
+    val jobName = "Kaizen Health Report"
     val pm = context.getSystemService(Context.PRINT_SERVICE) as PrintManager
     val adapter = web.createPrintDocumentAdapter(jobName)
     pm.print(jobName, adapter, PrintAttributes.Builder().build())

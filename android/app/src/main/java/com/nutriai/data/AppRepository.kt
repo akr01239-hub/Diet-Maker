@@ -128,6 +128,12 @@ class AppRepository @Inject constructor(
     suspend fun recommendWellness(mood: Int?): Result<com.nutriai.data.remote.dto.WellnessRecommendation> =
         runCatching { api.recommendWellness(mood).recommendation }
 
+    suspend fun logWellnessSession(refId: String): Result<com.nutriai.data.remote.dto.WellnessSessionDto> =
+        runCatching { api.logWellnessSession(com.nutriai.data.remote.dto.WellnessSessionRequest(refId)).session }
+
+    suspend fun wellnessHistory(): Result<com.nutriai.data.remote.dto.WellnessHistory> =
+        runCatching { api.wellnessHistory() }
+
     // ---- AI vision ----
     suspend fun assessBodyPhoto(imageBase64: String): Result<com.nutriai.data.remote.dto.BodyAssessment> =
         runCatching { api.assessBodyPhoto(com.nutriai.data.remote.dto.PhotoRequest(imageBase64)).assessment }
@@ -255,8 +261,8 @@ class AppRepository @Inject constructor(
         runCatching { api.exercisePlan().plan }
 
     // ---- Workout logging ----
-    suspend fun logExercise(body: com.nutriai.data.remote.dto.ExerciseLogRequest): Result<Unit> =
-        runCatching { api.logExercise(body); Unit }
+    suspend fun logExercise(body: com.nutriai.data.remote.dto.ExerciseLogRequest): Result<com.nutriai.data.remote.dto.ExerciseLogDto> =
+        runCatching { api.logExercise(body).entry }
 
     suspend fun exerciseLogs(date: String?): Result<List<com.nutriai.data.remote.dto.ExerciseLogDto>> =
         runCatching { api.exerciseLogs(date).entries }

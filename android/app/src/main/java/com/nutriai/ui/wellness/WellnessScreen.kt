@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
@@ -24,6 +25,7 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import android.speech.tts.TextToSpeech
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
@@ -41,6 +43,8 @@ import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -64,7 +68,7 @@ import kotlinx.coroutines.launch
 import java.util.Locale
 import javax.inject.Inject
 
-data class WellnessUiState(val loading: Boolean = true, val wellness: Wellness? = null)
+data class WellnessUiState(val loading: Boolean = true, val wellness: Wellness? = null, val toast: String? = null)
 
 @HiltViewModel
 class WellnessViewModel @Inject constructor(
@@ -76,9 +80,24 @@ class WellnessViewModel @Inject constructor(
     init {
         viewModelScope.launch {
             val w = repository.wellness().getOrNull()
-            _state.value = WellnessUiState(loading = false, wellness = w)
+            _state.value = _state.value.copy(loading = false, wellness = w)
         }
     }
+
+    /** Records a completed yoga/meditation/breathing session (calories computed server-side). */
+    fun logSession(refId: String) {
+        viewModelScope.launch {
+            val r = repository.logWellnessSession(refId)
+            _state.value = if (r.isSuccess) {
+                val s = r.getOrNull()
+                _state.value.copy(toast = "Logged ${s?.refName ?: "session"} · ~${s?.kcal ?: 0} kcal 🔥")
+            } else {
+                _state.value.copy(toast = "Couldn't log — try again")
+            }
+        }
+    }
+
+    fun clearToast() { _state.value = _state.value.copy(toast = null) }
 }
 
 @Composable
@@ -87,7 +106,8 @@ fun WellnessScreen(modifier: Modifier = Modifier, viewModel: WellnessViewModel =
     var active by remember { mutableStateOf<Meditation?>(null) }
 
     active?.let { med ->
-        MeditationSession(med, onClose = { active = null })
+        // Finishing the session (the only exit is "Done") logs it, connecting it to calories.
+        MeditationSession(med, onClose = { viewModel.logSession(med.id); active = null })
         return
     }
 
@@ -99,13 +119,26 @@ fun WellnessScreen(modifier: Modifier = Modifier, viewModel: WellnessViewModel =
     ) {
         item { Hero() }
 
+        state.toast?.let { msg ->
+            item {
+                Card(
+                    Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(14.dp),
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer),
+                ) {
+                    Text(msg, Modifier.padding(14.dp), color = MaterialTheme.colorScheme.onPrimaryContainer, fontWeight = FontWeight.Medium)
+                }
+                LaunchedEffect(msg) { delay(2500); viewModel.clearToast() }
+            }
+        }
+
         if (state.loading) {
             item { Box(Modifier.fillMaxWidth().padding(24.dp), contentAlignment = Alignment.Center) { CircularProgressIndicator(color = BrandGreen) } }
         }
 
         if (w != null && w.yoga.isNotEmpty()) {
             item { SectionLabel("🧘 Yoga flows") }
-            items(w.yoga, key = { it.id }) { YogaFlowCard(it) }
+            items(w.yoga, key = { it.id }) { YogaFlowCard(it, onDone = { viewModel.logSession(it.id) }) }
         }
         if (w != null && w.meditation.isNotEmpty()) {
             item { SectionLabel("🌬️ Meditation & breathing") }
@@ -137,7 +170,7 @@ private fun SectionLabel(text: String) {
 }
 
 @Composable
-private fun YogaFlowCard(flow: YogaFlow) {
+private fun YogaFlowCard(flow: YogaFlow, onDone: () -> Unit) {
     var expanded by remember { mutableStateOf(false) }
     Card(
         Modifier.fillMaxWidth().clickable { expanded = !expanded },
@@ -151,6 +184,12 @@ private fun YogaFlowCard(flow: YogaFlow) {
                     Text("${flow.focus}  ·  ${flow.durationMin} min  ·  ${flow.level}", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
                 Text(if (expanded) "▲" else "▼")
+            }
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
+                TextButton(
+                    onClick = onDone,
+                    modifier = Modifier.heightIn(min = 48.dp).semantics { contentDescription = "Mark ${flow.name} done" },
+                ) { Text("✓ Mark done") }
             }
             if (expanded) {
                 // Aligned table: #  |  Pose + cue  |  Hold

@@ -40,7 +40,6 @@ import com.nutriai.ui.grocery.GroceryScreen
 import com.nutriai.ui.reports.ReportsScreen
 import com.nutriai.ui.body.BodyScreen
 import com.nutriai.ui.settings.SettingsScreen
-import com.nutriai.ui.wellness.WellnessScreen
 import com.nutriai.ui.theme.BrandGreen
 import com.nutriai.ui.theme.BrandGreenDeep
 

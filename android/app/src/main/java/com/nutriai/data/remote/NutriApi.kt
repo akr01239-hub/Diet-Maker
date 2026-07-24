@@ -91,6 +91,12 @@ interface NutriApi {
     @GET("wellness/recommend")
     suspend fun recommendWellness(@Query("mood") mood: Int?): com.nutriai.data.remote.dto.WellnessRecommendationEnvelope
 
+    @POST("wellness/session")
+    suspend fun logWellnessSession(@Body body: com.nutriai.data.remote.dto.WellnessSessionRequest): com.nutriai.data.remote.dto.WellnessSessionEnvelope
+
+    @GET("wellness/history")
+    suspend fun wellnessHistory(): com.nutriai.data.remote.dto.WellnessHistory
+
     // ---- AI vision ----
     @POST("body/assess-photo")
     suspend fun assessBodyPhoto(@Body body: com.nutriai.data.remote.dto.PhotoRequest): com.nutriai.data.remote.dto.BodyAssessEnvelope

@@ -70,7 +70,22 @@ data class SensitiveData(
 
 // ---- Workout / exercise plan ----
 @Serializable
-data class ExerciseItem(val name: String, val sets: Int, val reps: String, val type: String)
+data class NextSession(
+    val suggestedWeightKg: Double? = null,
+    val suggestedReps: Int,
+    val suggestedSets: Int,
+    val deload: Boolean = false,
+    val rationale: String = "",
+)
+
+@Serializable
+data class ExerciseItem(
+    val name: String,
+    val sets: Int,
+    val reps: String,
+    val type: String,
+    val nextSession: NextSession? = null,
+)
 
 @Serializable
 data class WorkoutDay(
@@ -119,6 +134,7 @@ data class ExerciseLogDto(
     val reps: Int? = null,
     val weightKg: Double? = null,
     val durationMin: Int? = null,
+    val kcal: Int? = null,
     val notes: String? = null,
 )
 
@@ -433,6 +449,33 @@ data class WellnessRecommendation(
 
 @Serializable
 data class WellnessRecommendationEnvelope(val recommendation: WellnessRecommendation)
+
+// ---- Wellness session logging ----
+@Serializable
+data class WellnessSessionRequest(val refId: String)
+
+@Serializable
+data class WellnessSessionDto(
+    val id: String,
+    val type: String,
+    val refName: String,
+    val durationMin: Int,
+    val kcal: Int = 0,
+    val completedAt: String,
+)
+
+@Serializable
+data class WellnessSessionEnvelope(val session: WellnessSessionDto)
+
+@Serializable
+data class WellnessHistory(
+    val streakDays: Int = 0,
+    val weekCount: Int = 0,
+    val totalSessions: Int = 0,
+    val totalMinutes: Int = 0,
+    val totalKcal: Int = 0,
+    val sessions: List<WellnessSessionDto> = emptyList(),
+)
 
 // ---- AI vision: body assessment + meal photo ----
 @Serializable

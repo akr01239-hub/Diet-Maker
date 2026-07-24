@@ -160,7 +160,7 @@ private fun CoachHeader() {
         Spacer(Modifier.width(14.dp))
         Column {
             Text(
-                "NutriAI Coach",
+                "Kaizen Coach",
                 style = MaterialTheme.typography.titleLarge,
                 fontWeight = FontWeight.Bold,
                 color = MaterialTheme.colorScheme.onSurface,
