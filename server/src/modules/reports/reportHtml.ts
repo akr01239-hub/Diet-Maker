@@ -146,10 +146,9 @@ export function renderReportHtml(r: WeeklyReport, opts: { label: string }): stri
   const meals = mealBreakdown(r.entries);
   const insights = x.insights.map((i) => `<div class="ins ${i.kind}"><div class="ic">${i.kind === 'good' ? '✓' : i.kind === 'water' ? '◐' : '!'}</div><div class="t">${i.text}</div></div>`).join('');
 
-  return `<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>NutriAI Report</title>
+  return `<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="color-scheme" content="light only"><title>NutriAI Report</title>
 <style>
-:root{--bg:#F7F9F8;--surface:#fff;--surface-2:#EEF3F0;--line:#E4EAE7;--ink:#0F1A16;--muted:#5C6B64;--faint:#8A968F;--accent:#0E7A46;--accent-weak:#E4F2EA;--good:#16A34A;--water:#2563EB;--warn:#D97706;--crit:#DC2626;--good-bg:#E7F5EC;--water-bg:#E6EEFC;--warn-bg:#FBF0E0;--crit-bg:#FBE9E9;--mono:ui-monospace,Menlo,Consolas,monospace;--sans:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
-@media(prefers-color-scheme:dark){:root{--bg:#0B120F;--surface:#121C17;--surface-2:#0F1813;--line:#1E2C25;--ink:#E9F1EC;--muted:#9DB0A6;--faint:#6E8177;--accent:#37C88A;--accent-weak:#12261C;--good:#3CCB7F;--water:#5B9BF6;--warn:#E9A23B;--crit:#F06A6A;--good-bg:#12261A;--water-bg:#13233C;--warn-bg:#2A2011;--crit-bg:#2C1616}}
+:root{color-scheme:light;--bg:#F3F8F5;--surface:#fff;--surface-2:#EEF3F0;--line:#E1EAE5;--ink:#0F1A16;--muted:#5C6B64;--faint:#8A968F;--accent:#0E7A46;--accent-weak:#E4F2EA;--good:#16A34A;--water:#2563EB;--warn:#D97706;--crit:#DC2626;--good-bg:#E7F5EC;--water-bg:#E6EEFC;--warn-bg:#FBF0E0;--crit-bg:#FBE9E9;--mono:ui-monospace,Menlo,Consolas,monospace;--sans:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
 *{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--sans);line-height:1.5;font-variant-numeric:tabular-nums;-webkit-font-smoothing:antialiased}
 .wrap{max-width:820px;margin:0 auto;padding:20px 16px 60px}
 .num{font-variant-numeric:tabular-nums}

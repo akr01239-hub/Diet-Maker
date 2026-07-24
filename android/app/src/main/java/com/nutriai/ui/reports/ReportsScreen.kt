@@ -123,12 +123,12 @@ fun ReportsScreen(
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
     val context = LocalContext.current
-    var pdfMsg by remember { mutableStateOf<String?>(null) }
     var showViewer by remember { mutableStateOf(false) }
+    var downloadMode by remember { mutableStateOf(false) }
 
     if (showViewer) {
         androidx.activity.compose.BackHandler(enabled = true) { showViewer = false }
-        ReportViewerScreen(onClose = { showViewer = false })
+        ReportViewerScreen(onClose = { showViewer = false }, autoPrint = downloadMode)
         return
     }
 
@@ -139,12 +139,21 @@ fun ReportsScreen(
     ) {
         state.report?.let { report ->
             item { HeroSummaryCard(report) }
+            // Two actions in one row: open the beautiful report, or save it as a PDF.
             item {
-                androidx.compose.material3.Button(
-                    onClick = { showViewer = true },
-                    modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(24.dp),
-                ) { Text("📄  View full report — weekly / monthly") }
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                    Button(
+                        onClick = { downloadMode = true; showViewer = true },
+                        modifier = Modifier.weight(1f).height(52.dp),
+                        shape = RoundedCornerShape(24.dp),
+                        colors = ButtonDefaults.buttonColors(containerColor = BrandGreen),
+                    ) { Text("⤓  Download", fontWeight = FontWeight.SemiBold) }
+                    androidx.compose.material3.OutlinedButton(
+                        onClick = { downloadMode = false; showViewer = true },
+                        modifier = Modifier.weight(1f).height(52.dp),
+                        shape = RoundedCornerShape(24.dp),
+                    ) { Text("👁  View report", fontWeight = FontWeight.SemiBold) }
+                }
             }
         }
 
@@ -167,31 +176,6 @@ fun ReportsScreen(
                 )
             }
             item { DaysCard(report.days) }
-        }
-
-        item {
-            Button(
-                onClick = { pdfMsg = null; viewModel.sharePdf(context) { pdfMsg = it } },
-                modifier = Modifier.fillMaxWidth().height(56.dp),
-                shape = RoundedCornerShape(24.dp),
-                colors = ButtonDefaults.buttonColors(containerColor = BrandGreen),
-            ) {
-                Text(
-                    "📄  Download / Share PDF",
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.SemiBold,
-                )
-            }
-        }
-        pdfMsg?.let { msg ->
-            item {
-                Text(
-                    msg,
-                    color = MaterialTheme.colorScheme.error,
-                    style = MaterialTheme.typography.labelSmall,
-                    modifier = Modifier.padding(horizontal = 4.dp),
-                )
-            }
         }
 
         state.report?.let { report ->
@@ -232,7 +216,7 @@ private fun HeroSummaryCard(report: WeeklyReport) {
         ) {
             Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 Text(
-                    "Weekly report",
+                    "Health report",
                     style = MaterialTheme.typography.titleLarge,
                     fontWeight = FontWeight.Bold,
                     color = Color.White,

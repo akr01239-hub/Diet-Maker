@@ -51,7 +51,7 @@ private val MORE_ITEMS = listOf(
     MoreItem("body", "📸", "Body Check", "Progress photos + AI body-fat"),
     MoreItem("barcode", "📷", "Scan barcode", "Camera food lookup"),
     MoreItem("grocery", "🛒", "Grocery list", "This week's shopping"),
-    MoreItem("reports", "📄", "Weekly report", "Progress + share PDF"),
+    MoreItem("reports", "📄", "Health reports", "Weekly & monthly · view or share"),
     MoreItem("badges", "🏅", "Achievements", "Streaks & milestones"),
     MoreItem("wellness", "🧘", "Mind & Body", "Yoga flows & meditation"),
     MoreItem("family", "👨‍👩‍👧", "Family", "Members with their own plan"),

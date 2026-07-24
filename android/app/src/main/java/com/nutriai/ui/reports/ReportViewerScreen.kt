@@ -1,6 +1,10 @@
 package com.nutriai.ui.reports
 
+import android.content.Context
+import android.print.PrintAttributes
+import android.print.PrintManager
 import android.webkit.WebView
+import android.webkit.WebViewClient
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -18,12 +22,14 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -72,13 +78,34 @@ class ReportViewerViewModel @Inject constructor(
     }
 }
 
+/** Renders the currently-loaded report WebView to a PDF via Android's print system. */
+private fun printReport(context: Context, web: WebView) {
+    val jobName = "NutriAI Health Report"
+    val pm = context.getSystemService(Context.PRINT_SERVICE) as PrintManager
+    val adapter = web.createPrintDocumentAdapter(jobName)
+    pm.print(jobName, adapter, PrintAttributes.Builder().build())
+}
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ReportViewerScreen(
     onClose: () -> Unit,
+    autoPrint: Boolean = false,
     viewModel: ReportViewerViewModel = hiltViewModel(),
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
+    val context = LocalContext.current
+    var webRef by remember { mutableStateOf<WebView?>(null) }
+    var pageReady by remember { mutableStateOf(false) }
+    var printed by remember { mutableStateOf(false) }
+
+    // Download mode: once the beautiful report has rendered, open the Save-as-PDF sheet.
+    LaunchedEffect(autoPrint, pageReady, state.html) {
+        if (autoPrint && pageReady && !printed && state.html.isNotEmpty()) {
+            printed = true
+            webRef?.let { printReport(context, it) }
+        }
+    }
 
     Column(Modifier.fillMaxSize()) {
         // Controls bar
@@ -122,6 +149,8 @@ fun ReportViewerScreen(
                     }
                 }
             }
+
+            TextButton(onClick = { webRef?.let { printReport(context, it) } }, enabled = state.html.isNotEmpty()) { Text("⤓ PDF") }
         }
 
         Box(Modifier.fillMaxSize()) {
@@ -137,6 +166,10 @@ fun ReportViewerScreen(
                         WebView(ctx).apply {
                             settings.javaScriptEnabled = false
                             settings.textZoom = 100
+                            webViewClient = object : WebViewClient() {
+                                override fun onPageFinished(view: WebView?, url: String?) { pageReady = true }
+                            }
+                            webRef = this
                         }
                     },
                     update = { web ->
