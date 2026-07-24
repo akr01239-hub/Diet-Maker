@@ -12,10 +12,17 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.FitnessCenter
+import androidx.compose.material.icons.filled.Home
+import androidx.compose.material.icons.filled.Person
+import androidx.compose.material.icons.filled.Restaurant
+import androidx.compose.material.icons.filled.SelfImprovement
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
@@ -27,17 +34,38 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.navigation.compose.NavHost
+import androidx.navigation.compose.composable
+import androidx.navigation.compose.currentBackStackEntryAsState
+import androidx.navigation.compose.rememberNavController
+
+private data class TabItem(val route: String, val label: String, val icon: ImageVector)
+
+private val TABS = listOf(
+    TabItem("home", "Home", Icons.Filled.Home),
+    TabItem("diet", "Diet", Icons.Filled.Restaurant),
+    TabItem("move", "Move", Icons.Filled.FitnessCenter),
+    TabItem("mind", "Mind", Icons.Filled.SelfImprovement),
+    TabItem("me", "Me", Icons.Filled.Person),
+)
+
+/** Maps a notification's requested tab index to the new tab routes. */
+private fun tabRoute(index: Int): String = when (index) {
+    1 -> "move" // 5 AM workout reminder
+    2 -> "diet" // meal reminders → diet (plan/log/grocery)
+    else -> "home"
+}
 
 @Composable
 fun HomeScreen(
@@ -45,12 +73,21 @@ fun HomeScreen(
     onCompleteProfile: () -> Unit,
     initialTab: Int = 0,
 ) {
-    var tab by remember { mutableIntStateOf(initialTab) }
-    // A notification tap (or new intent) can change the requested tab while Home is showing.
-    LaunchedEffect(initialTab) { if (initialTab in 0..4) tab = initialTab }
-    // System back from any tab returns to Home first (instead of leaving the app abruptly).
-    androidx.activity.compose.BackHandler(enabled = tab != 0) { tab = 0 }
-    val tabs = listOf("🏠" to "Home", "🍽️" to "Plan", "➕" to "Log", "💬" to "Coach", "☰" to "More")
+    val navController = rememberNavController()
+    val backEntry by navController.currentBackStackEntryAsState()
+    val currentRoute = backEntry?.destination?.route ?: "home"
+
+    // A notification tap (or new intent) can request a specific tab while Home is showing.
+    LaunchedEffect(initialTab) {
+        val route = tabRoute(initialTab)
+        if (route != currentRoute) {
+            navController.navigate(route) {
+                popUpTo(navController.graph.startDestinationId) { saveState = true }
+                launchSingleTop = true
+                restoreState = true
+            }
+        }
+    }
 
     Scaffold(
         bottomBar = {
@@ -60,12 +97,20 @@ fun HomeScreen(
                     containerColor = MaterialTheme.colorScheme.surface,
                     tonalElevation = 6.dp,
                 ) {
-                    tabs.forEachIndexed { i, (icon, label) ->
+                    TABS.forEach { item ->
                         NavigationBarItem(
-                            selected = tab == i,
-                            onClick = { tab = i },
-                            icon = { Text(icon) },
-                            label = { Text(label) },
+                            selected = currentRoute == item.route,
+                            onClick = {
+                                if (currentRoute != item.route) {
+                                    navController.navigate(item.route) {
+                                        popUpTo(navController.graph.startDestinationId) { saveState = true }
+                                        launchSingleTop = true
+                                        restoreState = true
+                                    }
+                                }
+                            },
+                            icon = { Icon(item.icon, contentDescription = item.label) },
+                            label = { Text(item.label) },
                             colors = NavigationBarItemDefaults.colors(
                                 selectedIconColor = MaterialTheme.colorScheme.onPrimaryContainer,
                                 selectedTextColor = MaterialTheme.colorScheme.primary,
@@ -79,13 +124,17 @@ fun HomeScreen(
             }
         },
     ) { padding ->
-        Column(Modifier.fillMaxSize().padding(padding)) {
-            when (tab) {
-                0 -> DashboardTab(onLogout = onLogout, onCompleteProfile = onCompleteProfile)
-                1 -> com.nutriai.ui.calendar.CalendarScreen(Modifier.fillMaxSize())
-                2 -> com.nutriai.ui.log.LogScreen(Modifier.fillMaxSize())
-                3 -> com.nutriai.ui.coach.CoachScreen(Modifier.fillMaxSize())
-                else -> MoreScreen(
+        NavHost(
+            navController = navController,
+            startDestination = "home",
+            modifier = Modifier.fillMaxSize().padding(padding),
+        ) {
+            composable("home") { DashboardTab(onLogout = onLogout, onCompleteProfile = onCompleteProfile) }
+            composable("diet") { com.nutriai.ui.diet.DietScreen(Modifier.fillMaxSize()) }
+            composable("move") { com.nutriai.ui.move.MoveScreen(Modifier.fillMaxSize()) }
+            composable("mind") { com.nutriai.ui.wellness.WellnessScreen(Modifier.fillMaxSize()) }
+            composable("me") {
+                MoreScreen(
                     Modifier.fillMaxSize(),
                     onEditProfile = onCompleteProfile,
                     onLoggedOut = onLogout,

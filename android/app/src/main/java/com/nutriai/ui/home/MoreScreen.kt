@@ -47,13 +47,12 @@ import com.nutriai.ui.theme.BrandGreenDeep
 private data class MoreItem(val key: String, val icon: String, val label: String, val subtitle: String)
 
 private val MORE_ITEMS = listOf(
+    MoreItem("coach", "💬", "AI Coach", "Chat with your coach"),
     MoreItem("checkin", "⚖️", "Weekly check-in", "Log weight & measurements"),
     MoreItem("body", "📸", "Body Check", "Progress photos + AI body-fat"),
     MoreItem("barcode", "📷", "Scan barcode", "Camera food lookup"),
-    MoreItem("grocery", "🛒", "Grocery list", "This week's shopping"),
     MoreItem("reports", "📄", "Health reports", "Weekly & monthly · view or share"),
     MoreItem("badges", "🏅", "Achievements", "Streaks & milestones"),
-    MoreItem("wellness", "🧘", "Mind & Body", "Yoga flows & meditation"),
     MoreItem("family", "👨‍👩‍👧", "Family", "Members with their own plan"),
     MoreItem("settings", "⚙️", "Settings", "Profile, account & more"),
 )
@@ -73,16 +72,15 @@ fun MoreScreen(
         null -> MoreMenu(modifier) { selected = it }
         else -> Column(modifier.fillMaxSize()) {
             TextButton(onClick = { selected = null }, modifier = Modifier.padding(4.dp)) {
-                Text("← More")
+                Text("← Me")
             }
             when (selected) {
+                "coach" -> com.nutriai.ui.coach.CoachScreen(Modifier.fillMaxSize())
                 "checkin" -> CheckinScreen(Modifier.fillMaxSize())
                 "body" -> BodyScreen(Modifier.fillMaxSize())
                 "barcode" -> BarcodeScreen(Modifier.fillMaxSize())
-                "grocery" -> GroceryScreen(Modifier.fillMaxSize())
                 "reports" -> ReportsScreen(Modifier.fillMaxSize())
                 "badges" -> BadgesScreen(Modifier.fillMaxSize())
-                "wellness" -> WellnessScreen(Modifier.fillMaxSize())
                 "family" -> FamilyScreen(Modifier.fillMaxSize())
                 "settings" -> SettingsScreen(
                     onEditProfile = onEditProfile,
@@ -112,8 +110,8 @@ private fun MoreMenu(modifier: Modifier = Modifier, onSelect: (String) -> Unit) 
                     .padding(22.dp),
             ) {
                 Column {
-                    Text("More", style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold, color = Color.White)
-                    Text("Tools, insights & extras", style = MaterialTheme.typography.bodyMedium, color = Color.White.copy(alpha = 0.85f))
+                    Text("Me", style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold, color = Color.White)
+                    Text("Coach, progress, family & settings", style = MaterialTheme.typography.bodyMedium, color = Color.White.copy(alpha = 0.85f))
                 }
             }
         }
