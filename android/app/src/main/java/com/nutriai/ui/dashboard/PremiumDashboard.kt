@@ -617,7 +617,7 @@ private fun GoalMonitorCard(days: List<com.nutriai.data.remote.dto.ReportDay>, t
             Text("Calories vs your ${target.toInt()} kcal goal", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             Row(
                 Modifier.fillMaxWidth().height(96.dp),
-                horizontalArrangement = Arrangement.spacedBy(6.dp),
+                horizontalArrangement = Arrangement.spacedBy(10.dp),
                 verticalAlignment = Alignment.Bottom,
             ) {
                 week.forEach { day ->
@@ -636,9 +636,9 @@ private fun GoalMonitorCard(days: List<com.nutriai.data.remote.dto.ReportDay>, t
                         Spacer(Modifier.height(2.dp))
                         Box(
                             Modifier
-                                .fillMaxWidth(0.7f)
+                                .fillMaxWidth(0.5f)
                                 .fillMaxHeight(frac.coerceAtLeast(0.04f))
-                                .clip(RoundedCornerShape(topStart = 6.dp, topEnd = 6.dp))
+                                .clip(RoundedCornerShape(topStart = 5.dp, topEnd = 5.dp))
                                 .background(barColor),
                         )
                         Spacer(Modifier.height(4.dp))

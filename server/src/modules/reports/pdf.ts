@@ -16,6 +16,16 @@ const CONTENT_W = PAGE_RIGHT - PAGE_LEFT; // 495
 const PAGE_BOTTOM = 792;
 
 const slotLabel = (s: string) => (s ? s.charAt(0).toUpperCase() + s.slice(1) : s);
+const MEAL_ORDER = ['wakeup', 'breakfast', 'midmorning', 'lunch', 'eveningsnack', 'dinner', 'bedtime'];
+
+/** "2026-07-24" -> "Thu, 24 Jul 2026". */
+function formatDate(iso: string): string {
+  const d = new Date(`${iso}T00:00:00Z`);
+  if (isNaN(d.getTime())) return iso;
+  const wd = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'][d.getUTCDay()];
+  const mo = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'][d.getUTCMonth()];
+  return `${wd}, ${d.getUTCDate()} ${mo} ${d.getUTCFullYear()}`;
+}
 
 /** Renders a WeeklyReport to a colourful, well-organised PDF Buffer (pdfkit, pure JS). */
 export function renderReportPdf(r: WeeklyReport): Promise<Buffer> {
@@ -75,22 +85,31 @@ export function renderReportPdf(r: WeeklyReport): Promise<Buffer> {
     }
     doc.moveDown(1);
 
-    // ---- What you ate (itemised) ----
+    // ---- What you ate — grouped by day, meals listed under each date ----
     if (r.entries.length) {
-      ensure(140);
+      ensure(120);
       sectionHeader(doc, 'What you ate (last 7 days)');
-      tableHeader(doc, ['Date', 'Meal', 'Item', 'Qty', 'kcal'], [80, 85, 200, 60, 70]);
-      r.entries.forEach((e, i) => {
-        ensure(22);
-        row(
-          doc,
-          [e.date, slotLabel(e.mealSlot), e.name, `${e.grams} g`, String(e.kcal)],
-          [80, 85, 200, 60, 70],
-          i,
-          [GREY, GREEN_DEEP, INK, INK, INK],
-        );
-      });
-      doc.moveDown(1);
+      const widths = [110, 250, 65, 70];
+      const byDate = new Map<string, typeof r.entries>();
+      for (const e of r.entries) {
+        const arr = byDate.get(e.date) ?? [];
+        arr.push(e);
+        byDate.set(e.date, arr);
+      }
+      const dates = [...byDate.keys()].sort((a, b) => b.localeCompare(a)); // newest first
+      for (const date of dates) {
+        const items = byDate.get(date)!.slice().sort((a, b) => MEAL_ORDER.indexOf(a.mealSlot) - MEAL_ORDER.indexOf(b.mealSlot));
+        const dayKcal = items.reduce((s, e) => s + e.kcal, 0);
+        ensure(24 + 20 + Math.min(items.length, 3) * 20);
+        dateBar(doc, formatDate(date), dayKcal);
+        tableHeader(doc, ['Meal', 'Item', 'Qty', 'kcal'], widths);
+        items.forEach((e, i) => {
+          ensure(22);
+          row(doc, [slotLabel(e.mealSlot), e.name, `${e.grams} g`, String(e.kcal)], widths, i, [GREEN_DEEP, INK, INK, INK]);
+        });
+        doc.moveDown(0.5);
+      }
+      doc.moveDown(0.5);
     }
 
     // ---- Water intake ----
@@ -152,6 +171,16 @@ function statCards(doc: PDFKit.PDFDocument, cards: Array<[string, string, string
     doc.fillColor(GREY).font('Helvetica').fontSize(8).text(label.toUpperCase(), x, y + 34, { width: w, align: 'center' });
   });
   doc.y = y + h + 6;
+  doc.fillColor(INK);
+}
+
+/** A tinted date banner above a day's meals, with the day's total on the right. */
+function dateBar(doc: PDFKit.PDFDocument, dateLabel: string, dayKcal: number) {
+  const y = doc.y;
+  doc.roundedRect(PAGE_LEFT, y, CONTENT_W, 20, 4).fill(GREEN_TINT);
+  doc.fillColor(GREEN_DEEP).font('Helvetica-Bold').fontSize(10).text(dateLabel, PAGE_LEFT + 8, y + 6);
+  doc.fillColor(GREY).font('Helvetica-Bold').fontSize(9).text(`${dayKcal} kcal`, PAGE_LEFT, y + 6, { width: CONTENT_W - 8, align: 'right' });
+  doc.y = y + 22;
   doc.fillColor(INK);
 }
 
