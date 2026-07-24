@@ -1,7 +1,23 @@
 import PDFDocument from 'pdfkit';
 import type { WeeklyReport } from './report';
 
-/** Renders a WeeklyReport to a PDF Buffer using pdfkit (pure JS, no native deps). */
+// Palette
+const GREEN = '#0E7C3A';
+const GREEN_DEEP = '#0A5C2B';
+const GREEN_TINT = '#E7F4EC';
+const AMBER = '#B45309';
+const GREY = '#6B7280';
+const INK = '#111827';
+const ROW_ALT = '#F6F8F6';
+
+const PAGE_LEFT = 50;
+const PAGE_RIGHT = 545;
+const CONTENT_W = PAGE_RIGHT - PAGE_LEFT; // 495
+const PAGE_BOTTOM = 792;
+
+const slotLabel = (s: string) => (s ? s.charAt(0).toUpperCase() + s.slice(1) : s);
+
+/** Renders a WeeklyReport to a colourful, well-organised PDF Buffer (pdfkit, pure JS). */
 export function renderReportPdf(r: WeeklyReport): Promise<Buffer> {
   return new Promise((resolve, reject) => {
     const doc = new PDFDocument({ size: 'A4', margin: 50 });
@@ -10,48 +26,171 @@ export function renderReportPdf(r: WeeklyReport): Promise<Buffer> {
     doc.on('end', () => resolve(Buffer.concat(chunks)));
     doc.on('error', reject);
 
-    const green = '#0E7C3A';
+    const ensure = (need: number) => {
+      if (doc.y + need > PAGE_BOTTOM) doc.addPage();
+    };
 
-    doc.fillColor(green).fontSize(22).text('NutriAI', { continued: true });
-    doc.fillColor('#555').fontSize(12).text('  Weekly Report');
-    doc.moveDown(0.5);
-    doc.fillColor('#000').fontSize(11);
-    doc.text(`Name: ${r.name}`);
-    doc.text(`Generated: ${r.generatedAt}`);
-    doc.moveDown();
+    // ---- Header band ----
+    doc.rect(0, 0, doc.page.width, 90).fill(GREEN);
+    doc.fillColor('#FFFFFF').font('Helvetica-Bold').fontSize(24).text('NutriAI', PAGE_LEFT, 28);
+    doc.font('Helvetica').fontSize(12).fillColor('#DCFCE7').text('Health & Nutrition Report', PAGE_LEFT, 58);
+    doc.fontSize(10).fillColor('#DCFCE7').text(
+      `${r.name}   ·   ${new Date(r.generatedAt).toDateString()}`,
+      PAGE_LEFT,
+      74,
+    );
+    doc.y = 110;
 
-    const line = (label: string, value: string | number | null) =>
-      doc.font('Helvetica-Bold').text(`${label}: `, { continued: true }).font('Helvetica').text(value === null ? '—' : String(value));
+    // ---- Summary stat cards ----
+    sectionHeader(doc, 'This week at a glance');
+    const consumed = r.avgKcal ?? 0;
+    const target = r.targets?.dailyKcal ?? 0;
+    statCards(doc, [
+      ['Avg calories/day', `${Math.round(consumed)}`, GREEN],
+      ['Daily target', target ? `${Math.round(target)}` : '—', INK],
+      ['Adherence', r.adherencePct != null ? `${r.adherencePct}%` : '—', r.adherencePct != null && r.adherencePct <= 110 ? GREEN : AMBER],
+      ['BMI', r.bmi != null ? `${r.bmi}` : '—', INK],
+    ]);
 
-    doc.fillColor(green).fontSize(14).text('Summary');
-    doc.fillColor('#000').fontSize(11).moveDown(0.3);
-    line('Daily calorie target', r.targets?.dailyKcal ?? null);
-    line('Daily protein target (g)', r.targets?.proteinG ?? null);
-    line('BMI', r.bmi);
-    line('Latest weight (kg)', r.latestWeightKg);
-    line('Weight change (kg)', r.weightDeltaKg);
-    line('Avg calories logged', r.avgKcal);
-    line('Adherence (%)', r.adherencePct);
-    doc.moveDown();
+    doc.font('Helvetica').fontSize(10).fillColor(GREY);
+    const wLine: string[] = [];
+    if (r.latestWeightKg != null) wLine.push(`Latest weight: ${r.latestWeightKg} kg`);
+    if (r.weightDeltaKg != null) wLine.push(`Change: ${r.weightDeltaKg > 0 ? '+' : ''}${r.weightDeltaKg} kg`);
+    if (wLine.length) doc.text(wLine.join('    ·    '), PAGE_LEFT, doc.y);
+    doc.moveDown(1);
 
-    doc.fillColor(green).fontSize(14).text('Daily log (last 7 days)');
-    doc.fillColor('#000').fontSize(11).moveDown(0.3);
-    doc.font('Helvetica-Bold').text('Date', 50, doc.y, { continued: true, width: 180 });
-    doc.text('Calories', { continued: true, width: 120 }).text('Protein (g)');
-    doc.font('Helvetica');
+    // ---- Daily calories vs target ----
+    ensure(140);
+    sectionHeader(doc, 'Daily calories vs target');
+    tableHeader(doc, ['Date', 'Calories', 'Protein (g)', 'vs Target'], [150, 110, 110, 125]);
     if (r.days.length === 0) {
-      doc.fillColor('#777').text('No entries logged yet.');
-      doc.fillColor('#000');
+      emptyRow(doc, 'No entries logged yet.');
     } else {
-      for (const d of r.days) {
-        doc.text(d.date, 50, doc.y, { continued: true, width: 180 });
-        doc.text(String(d.kcal), { continued: true, width: 120 }).text(String(d.proteinG));
-      }
+      r.days.forEach((d, i) => {
+        ensure(22);
+        const status = target > 0 ? (d.kcal <= target * 1.1 ? 'On target' : 'Over') : '—';
+        const statusColor = status === 'On target' ? GREEN : status === 'Over' ? AMBER : GREY;
+        row(doc, [d.date, String(d.kcal), String(d.proteinG), status], [150, 110, 110, 125], i, [INK, INK, INK, statusColor]);
+      });
     }
-    doc.moveDown(2);
+    doc.moveDown(1);
 
-    doc.fillColor('#777').fontSize(9).text(r.disclaimer, { align: 'center' });
+    // ---- What you ate (itemised) ----
+    if (r.entries.length) {
+      ensure(140);
+      sectionHeader(doc, 'What you ate (last 7 days)');
+      tableHeader(doc, ['Date', 'Meal', 'Item', 'Qty', 'kcal'], [80, 85, 200, 60, 70]);
+      r.entries.forEach((e, i) => {
+        ensure(22);
+        row(
+          doc,
+          [e.date, slotLabel(e.mealSlot), e.name, `${e.grams} g`, String(e.kcal)],
+          [80, 85, 200, 60, 70],
+          i,
+          [GREY, GREEN_DEEP, INK, INK, INK],
+        );
+      });
+      doc.moveDown(1);
+    }
+
+    // ---- Water intake ----
+    if (r.waterByDay.length) {
+      ensure(120);
+      sectionHeader(doc, 'Water intake');
+      tableHeader(doc, ['Date', 'Water (ml)', 'Glasses (~250ml)'], [180, 150, 165]);
+      r.waterByDay.forEach((w, i) => {
+        ensure(22);
+        row(doc, [w.date, String(w.ml), `${Math.round(w.ml / 250)}`], [180, 150, 165], i, [GREY, '#0EA5E9', INK]);
+      });
+      doc.moveDown(1);
+    }
+
+    // ---- All-time record ----
+    if (r.allTime) {
+      ensure(110);
+      sectionHeader(doc, 'All-time record');
+      const a = r.allTime;
+      statCards(doc, [
+        ['Days logged', `${a.daysLogged}`, GREEN],
+        ['Total calories', `${a.totalKcal.toLocaleString()}`, INK],
+        ['Avg/day', `${a.avgDailyKcal}`, INK],
+        ['Total water', `${(a.totalWaterMl / 1000).toFixed(1)} L`, '#0EA5E9'],
+      ]);
+      doc.moveDown(1);
+    }
+
+    // ---- Footer ----
+    ensure(40);
+    doc.moveDown(0.5);
+    doc.font('Helvetica-Oblique').fontSize(9).fillColor(GREY).text(r.disclaimer, PAGE_LEFT, doc.y, { width: CONTENT_W, align: 'center' });
 
     doc.end();
   });
+}
+
+// ---------------------------------------------------------------------------
+// Drawing helpers
+// ---------------------------------------------------------------------------
+
+function sectionHeader(doc: PDFKit.PDFDocument, title: string) {
+  const y = doc.y;
+  doc.rect(PAGE_LEFT, y, 4, 16).fill(GREEN);
+  doc.fillColor(GREEN_DEEP).font('Helvetica-Bold').fontSize(14).text(title, PAGE_LEFT + 12, y);
+  doc.moveDown(0.6);
+  doc.fillColor(INK);
+}
+
+function statCards(doc: PDFKit.PDFDocument, cards: Array<[string, string, string]>) {
+  const gap = 10;
+  const w = (CONTENT_W - gap * (cards.length - 1)) / cards.length;
+  const y = doc.y;
+  const h = 54;
+  cards.forEach(([label, value, color], i) => {
+    const x = PAGE_LEFT + i * (w + gap);
+    doc.roundedRect(x, y, w, h, 8).fill(GREEN_TINT);
+    doc.fillColor(color).font('Helvetica-Bold').fontSize(18).text(value, x, y + 10, { width: w, align: 'center' });
+    doc.fillColor(GREY).font('Helvetica').fontSize(8).text(label.toUpperCase(), x, y + 34, { width: w, align: 'center' });
+  });
+  doc.y = y + h + 6;
+  doc.fillColor(INK);
+}
+
+function tableHeader(doc: PDFKit.PDFDocument, cols: string[], widths: number[]) {
+  const y = doc.y;
+  doc.rect(PAGE_LEFT, y, CONTENT_W, 20).fill(GREEN);
+  let x = PAGE_LEFT + 6;
+  doc.fillColor('#FFFFFF').font('Helvetica-Bold').fontSize(9);
+  cols.forEach((c, i) => {
+    doc.text(c.toUpperCase(), x, y + 6, { width: widths[i]! - 8, ellipsis: true });
+    x += widths[i]!;
+  });
+  doc.y = y + 20;
+  doc.fillColor(INK);
+}
+
+function row(
+  doc: PDFKit.PDFDocument,
+  cells: string[],
+  widths: number[],
+  index: number,
+  colors: string[],
+) {
+  const y = doc.y;
+  const h = 20;
+  if (index % 2 === 1) doc.rect(PAGE_LEFT, y, CONTENT_W, h).fill(ROW_ALT);
+  let x = PAGE_LEFT + 6;
+  doc.font('Helvetica').fontSize(9);
+  cells.forEach((c, i) => {
+    doc.fillColor(colors[i] ?? INK).text(c, x, y + 6, { width: widths[i]! - 8, ellipsis: true });
+    x += widths[i]!;
+  });
+  doc.y = y + h;
+  doc.fillColor(INK);
+}
+
+function emptyRow(doc: PDFKit.PDFDocument, text: string) {
+  const y = doc.y;
+  doc.font('Helvetica-Oblique').fontSize(9).fillColor(GREY).text(text, PAGE_LEFT + 6, y + 6);
+  doc.y = y + 20;
+  doc.fillColor(INK);
 }

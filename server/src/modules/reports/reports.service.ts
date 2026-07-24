@@ -80,12 +80,62 @@ async function last7Days(userId: string, now: Date): Promise<ReportDay[]> {
     .map(([date, v]) => ({ date, kcal: round(v.kcal, 0), proteinG: round(v.proteinG, 1) }));
 }
 
+/** Itemised food-log entries for the last 7 days (newest first), for the detailed table. */
+async function weekEntries(userId: string, now: Date) {
+  const since = new Date(now.getTime() - 7 * 86_400_000);
+  const logs = await prisma.foodLog.findMany({
+    where: { userId, loggedAt: { gte: since } },
+    orderBy: { loggedAt: 'desc' },
+    select: { loggedAt: true, mealSlot: true, foodName: true, grams: true, kcal: true, proteinG: true },
+  });
+  return logs.map((l) => ({
+    date: dayKey(l.loggedAt),
+    mealSlot: l.mealSlot,
+    name: l.foodName,
+    grams: round(l.grams, 0),
+    kcal: round(l.kcal, 0),
+    proteinG: round(l.proteinG, 1),
+  }));
+}
+
+/** Water intake per day for the last 7 days. */
+async function weekWater(userId: string, now: Date) {
+  const since = new Date(now.getTime() - 7 * 86_400_000);
+  const logs = await prisma.waterLog.findMany({
+    where: { userId, loggedAt: { gte: since } },
+    select: { loggedAt: true, amountMl: true },
+  });
+  const map = new Map<string, number>();
+  for (const l of logs) map.set(dayKey(l.loggedAt), (map.get(dayKey(l.loggedAt)) ?? 0) + l.amountMl);
+  return [...map.entries()].sort((a, b) => a[0].localeCompare(b[0])).map(([date, ml]) => ({ date, ml }));
+}
+
+/** Lifetime totals, so the report doubles as an all-time record. */
+async function allTimeStats(userId: string) {
+  const [foodAgg, distinctDays, waterAgg] = await Promise.all([
+    prisma.foodLog.aggregate({ where: { userId }, _sum: { kcal: true } }),
+    prisma.foodLog.findMany({ where: { userId }, select: { loggedAt: true } }),
+    prisma.waterLog.aggregate({ where: { userId }, _sum: { amountMl: true } }),
+  ]);
+  const daysLogged = new Set(distinctDays.map((d) => dayKey(d.loggedAt))).size;
+  const totalKcal = round(foodAgg._sum.kcal ?? 0, 0);
+  return {
+    daysLogged,
+    totalKcal,
+    avgDailyKcal: daysLogged > 0 ? round(totalKcal / daysLogged, 0) : 0,
+    totalWaterMl: waterAgg._sum.amountMl ?? 0,
+  };
+}
+
 export async function getWeeklyReport(userId: string, generatedAt: string, now: Date = new Date()) {
-  const [user, targets, wp, days] = await Promise.all([
+  const [user, targets, wp, days, entries, waterByDay, allTime] = await Promise.all([
     prisma.user.findUnique({ where: { id: userId } }),
     latestTargets(userId),
     weightPoints(userId),
     last7Days(userId, now),
+    weekEntries(userId, now),
+    weekWater(userId, now),
+    allTimeStats(userId),
   ]);
   const trend = weightTrend(wp);
   return buildWeeklyReport({
@@ -96,6 +146,9 @@ export async function getWeeklyReport(userId: string, generatedAt: string, now: 
     latestWeightKg: trend.latestKg,
     weightDeltaKg: trend.deltaKg,
     days,
+    entries,
+    waterByDay,
+    allTime,
   });
 }
 

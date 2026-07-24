@@ -6,6 +6,30 @@ export interface ReportDay {
   proteinG: number;
 }
 
+/** A single itemised food-log entry for the detailed table. */
+export interface FoodEntry {
+  date: string; // YYYY-MM-DD
+  mealSlot: string;
+  name: string;
+  grams: number;
+  kcal: number;
+  proteinG: number;
+}
+
+/** Water intake for a single day. */
+export interface WaterDay {
+  date: string;
+  ml: number;
+}
+
+/** Lifetime totals so the report doubles as an all-time record. */
+export interface AllTimeStats {
+  daysLogged: number;
+  totalKcal: number;
+  avgDailyKcal: number;
+  totalWaterMl: number;
+}
+
 export interface WeeklyReport {
   name: string;
   generatedAt: string;
@@ -14,6 +38,9 @@ export interface WeeklyReport {
   latestWeightKg: number | null;
   weightDeltaKg: number | null;
   days: ReportDay[];
+  entries: FoodEntry[];
+  waterByDay: WaterDay[];
+  allTime: AllTimeStats | null;
   avgKcal: number | null;
   adherencePct: number | null;
   disclaimer: string;
@@ -27,6 +54,9 @@ export interface BuildReportInput {
   latestWeightKg: number | null;
   weightDeltaKg: number | null;
   days: ReportDay[];
+  entries?: FoodEntry[];
+  waterByDay?: WaterDay[];
+  allTime?: AllTimeStats | null;
 }
 
 const DISCLAIMER =
@@ -49,6 +79,9 @@ export function buildWeeklyReport(input: BuildReportInput): WeeklyReport {
     latestWeightKg: input.latestWeightKg,
     weightDeltaKg: input.weightDeltaKg,
     days: input.days,
+    entries: input.entries ?? [],
+    waterByDay: input.waterByDay ?? [],
+    allTime: input.allTime ?? null,
     avgKcal,
     adherencePct,
     disclaimer: DISCLAIMER,
@@ -79,6 +112,30 @@ export function reportToCsv(r: WeeklyReport): string {
   lines.push([csvCell('Date'), csvCell('Calories'), csvCell('Protein (g)')].join(','));
   for (const d of r.days) {
     lines.push([csvCell(d.date), csvCell(d.kcal), csvCell(d.proteinG)].join(','));
+  }
+  // Itemised food log.
+  if (r.entries.length) {
+    lines.push('');
+    lines.push(csvCell('What you ate'));
+    lines.push([csvCell('Date'), csvCell('Meal'), csvCell('Item'), csvCell('Qty (g)'), csvCell('Calories'), csvCell('Protein (g)')].join(','));
+    for (const e of r.entries) {
+      lines.push([csvCell(e.date), csvCell(e.mealSlot), csvCell(e.name), csvCell(e.grams), csvCell(e.kcal), csvCell(e.proteinG)].join(','));
+    }
+  }
+  // Water log.
+  if (r.waterByDay.length) {
+    lines.push('');
+    lines.push(csvCell('Water intake'));
+    lines.push([csvCell('Date'), csvCell('Water (ml)')].join(','));
+    for (const w of r.waterByDay) lines.push([csvCell(w.date), csvCell(w.ml)].join(','));
+  }
+  if (r.allTime) {
+    lines.push('');
+    lines.push(csvCell('All-time record'));
+    lines.push([csvCell('Days logged'), csvCell(r.allTime.daysLogged)].join(','));
+    lines.push([csvCell('Total calories consumed'), csvCell(r.allTime.totalKcal)].join(','));
+    lines.push([csvCell('Average daily calories'), csvCell(r.allTime.avgDailyKcal)].join(','));
+    lines.push([csvCell('Total water (ml)'), csvCell(r.allTime.totalWaterMl)].join(','));
   }
   lines.push('');
   lines.push(csvCell(r.disclaimer));
