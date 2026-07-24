@@ -1,11 +1,16 @@
 import { Router } from 'express';
+import { z } from 'zod';
 import { asyncHandler } from '../../lib/asyncHandler';
 import { requireAuth, type AuthedRequest } from '../../middleware/auth';
 import { getWellness, recommendWellness } from './wellness';
+import { logWellnessSession, wellnessHistory } from './wellnessLog.service';
 import { requireCompleteProfile } from '../profile/profile.service';
 import { getCycle } from '../cycle/cycle.service';
+import { tzOffsetMin } from '../../lib/tz';
 
 export const wellnessRouter = Router();
+
+const sessionSchema = z.object({ refId: z.string().min(1).max(80) });
 
 /** Guided yoga flows + meditation/breathing sessions (static, zero-cost). */
 wellnessRouter.get(
@@ -41,5 +46,27 @@ wellnessRouter.get(
       activityLevel: profile.activityLevel,
     });
     res.json({ recommendation });
+  }),
+);
+
+/** Log a completed yoga/meditation/breathing session. Duration + calories are server-computed
+ * from the content id, so the numbers stay authoritative. */
+wellnessRouter.post(
+  '/wellness/session',
+  requireAuth,
+  asyncHandler(async (req: AuthedRequest, res) => {
+    const { refId } = sessionSchema.parse(req.body);
+    const session = await logWellnessSession(req.user!.id, refId);
+    res.status(201).json({ session });
+  }),
+);
+
+/** Wellness streak + weekly totals + recent sessions. */
+wellnessRouter.get(
+  '/wellness/history',
+  requireAuth,
+  asyncHandler(async (req: AuthedRequest, res) => {
+    const history = await wellnessHistory(req.user!.id, tzOffsetMin(req));
+    res.json(history);
   }),
 );

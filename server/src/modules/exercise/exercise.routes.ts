@@ -11,6 +11,7 @@ import type { BodyGoal, ExerciseLocation } from './exercise.types';
 import { exerciseLogSchema } from './exerciseLog.schemas';
 import * as logSvc from './exerciseLog.service';
 import { adaptWorkoutToCycle } from './cycleAdapt';
+import { recommendNextSession, type LoggedSet } from './overload';
 
 export const exerciseRouter = Router();
 
@@ -61,6 +62,44 @@ exerciseRouter.get(
           : 5;
         plan = adaptWorkoutToCycle(plan, periods.map((p) => p.startDate), periodLen);
       }
+    }
+
+    // Progressive-overload: attach each exercise's next-session suggestion from logged history.
+    const logs = await prisma.exerciseLog.findMany({
+      where: { userId: req.user!.id },
+      orderBy: { performedAt: 'desc' },
+      take: 300,
+    });
+    if (logs.length > 0) {
+      const history: LoggedSet[] = logs.map((l) => ({
+        exerciseName: l.exerciseName,
+        date: l.performedAt.toISOString(),
+        weightKg: l.weightKg,
+        reps: l.reps,
+        sets: l.sets,
+      }));
+      const byName = new Map(recommendNextSession(history).map((s) => [s.exerciseName, s]));
+      plan = {
+        ...plan,
+        days: plan.days.map((day) => ({
+          ...day,
+          exercises: day.exercises.map((ex) => {
+            const s = byName.get(ex.name);
+            return s
+              ? {
+                  ...ex,
+                  nextSession: {
+                    suggestedWeightKg: s.suggestedWeightKg,
+                    suggestedReps: s.suggestedReps,
+                    suggestedSets: s.suggestedSets,
+                    deload: s.deload,
+                    rationale: s.rationale,
+                  },
+                }
+              : ex;
+          }),
+        })),
+      };
     }
 
     res.json({ plan });

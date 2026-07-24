@@ -1,9 +1,20 @@
 import { prisma } from '../../lib/prisma';
 import { HttpError } from '../../middleware/error';
 import { dayRange } from '../logging/logging.service';
+import { latestBodyWeightKg } from '../logging/bodyWeight';
+import { exerciseKcal } from '../../calc/activityCalories';
 import type { ExerciseLogBody } from './exerciseLog.schemas';
 
 export async function logExercise(userId: string, body: ExerciseLogBody) {
+  const bodyWeightKg = await latestBodyWeightKg(userId);
+  const kcal = exerciseKcal({
+    name: body.exerciseName,
+    sets: body.sets ?? null,
+    reps: body.reps ?? null,
+    weightKg: body.weightKg ?? null,
+    durationMin: body.durationMin ?? null,
+    bodyWeightKg,
+  });
   return prisma.exerciseLog.create({
     data: {
       userId,
@@ -14,6 +25,7 @@ export async function logExercise(userId: string, body: ExerciseLogBody) {
       reps: body.reps ?? null,
       weightKg: body.weightKg ?? null,
       durationMin: body.durationMin ?? null,
+      kcal,
       notes: body.notes ?? null,
     },
   });

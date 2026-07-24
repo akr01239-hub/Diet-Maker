@@ -4,6 +4,7 @@ import { round } from '../../calc/anthropometry';
 import { HttpError } from '../../middleware/error';
 import type { CheckinBody, FoodLogBody, WaterLogBody } from './logging.schemas';
 import { buildDashboard, dayKey, sumTotals, type WeightPoint } from './dashboard';
+import { wellnessKcalOnDay } from '../wellness/wellnessLog.service';
 import { localDayKey } from '../../lib/tz';
 
 /**
@@ -140,13 +141,19 @@ export async function listCheckins(userId: string) {
 
 export async function getDashboard(userId: string, offsetMin = 0, now: Date = new Date()) {
   const todayKey = localDayKey(offsetMin, now.getTime());
+  const { start: dayStart, end: dayEnd } = dayRange(now, offsetMin);
 
-  const [todayFood, waterMl, snapshot, checkins, distinctDays] = await Promise.all([
+  const [todayFood, waterMl, snapshot, checkins, distinctDays, exerciseBurn, wellnessBurn] = await Promise.all([
     listFood(userId, now, offsetMin),
     waterTotal(userId, now, offsetMin),
     prisma.calcResultSnapshot.findFirst({ where: { userId }, orderBy: { createdAt: 'desc' } }),
     prisma.weeklyCheckin.findMany({ where: { userId }, orderBy: { date: 'asc' } }),
     prisma.foodLog.findMany({ where: { userId }, select: { loggedAt: true } }),
+    prisma.exerciseLog.aggregate({
+      where: { userId, performedAt: { gte: dayStart, lt: dayEnd } },
+      _sum: { kcal: true },
+    }),
+    wellnessKcalOnDay(userId, dayStart, dayEnd),
   ]);
 
   const result = snapshot?.result as
@@ -178,5 +185,6 @@ export async function getDashboard(userId: string, offsetMin = 0, now: Date = ne
     weightPoints,
     bmi: result?.bmi ?? null,
     projection: result?.projection ?? [],
+    burnedTodayKcal: (exerciseBurn._sum.kcal ?? 0) + wellnessBurn,
   });
 }

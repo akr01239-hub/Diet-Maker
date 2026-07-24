@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { recommendNextSession } from '../src/modules/exercise/overload';
+import { recommendNextSession, overloadTrendFromHistory } from '../src/modules/exercise/overload';
 import type { LoggedSet } from '../src/modules/exercise/overload';
 
 /** Build a logged set with sensible defaults. */
@@ -112,5 +112,47 @@ describe('recommendNextSession — edge cases', () => {
     const b = recommendNextSession(history);
     expect(JSON.stringify(a)).toBe(JSON.stringify(b));
     expect(a.map((r) => r.exerciseName)).toEqual(['Deadlift', 'Squat']);
+  });
+});
+
+describe('overloadTrendFromHistory', () => {
+  it('returns "flat" with fewer than two sessions', () => {
+    expect(overloadTrendFromHistory([])).toBe('flat');
+    expect(overloadTrendFromHistory([set({ date: '2026-01-01' })])).toBe('flat');
+  });
+
+  it('detects an upward trend when weight rises over time', () => {
+    const history: LoggedSet[] = [
+      set({ date: '2026-01-01', weightKg: 40 }),
+      set({ date: '2026-01-08', weightKg: 45 }),
+      set({ date: '2026-01-15', weightKg: 50 }),
+    ];
+    expect(overloadTrendFromHistory(history)).toBe('up');
+  });
+
+  it('detects a downward trend when weight falls', () => {
+    const history: LoggedSet[] = [
+      set({ date: '2026-01-01', weightKg: 60 }),
+      set({ date: '2026-01-15', weightKg: 50 }),
+    ];
+    expect(overloadTrendFromHistory(history)).toBe('down');
+  });
+
+  it('uses reps for bodyweight movements (no weight)', () => {
+    const history: LoggedSet[] = [
+      set({ exerciseName: 'Push-ups', weightKg: null, reps: 10, date: '2026-01-01' }),
+      set({ exerciseName: 'Push-ups', weightKg: null, reps: 15, date: '2026-01-08' }),
+    ];
+    expect(overloadTrendFromHistory(history)).toBe('up');
+  });
+
+  it('is flat when progress cancels across exercises', () => {
+    const history: LoggedSet[] = [
+      set({ exerciseName: 'Squat', weightKg: 60, date: '2026-01-01' }),
+      set({ exerciseName: 'Squat', weightKg: 70, date: '2026-01-08' }),
+      set({ exerciseName: 'Bench', weightKg: 50, date: '2026-01-01' }),
+      set({ exerciseName: 'Bench', weightKg: 40, date: '2026-01-08' }),
+    ];
+    expect(overloadTrendFromHistory(history)).toBe('flat');
   });
 });

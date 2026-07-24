@@ -107,6 +107,8 @@ export interface DashboardInput {
   weightPoints: WeightPoint[];
   bmi?: number | null;
   projection?: { label: string; weeks: number; weightKg: number; bmi: number }[];
+  /** Calories burned today from logged exercise + wellness sessions. */
+  burnedTodayKcal?: number;
 }
 
 /** Assembles the dashboard payload. Pure — the service just feeds it fetched data. */
@@ -115,6 +117,8 @@ export function buildDashboard(input: DashboardInput) {
   const pct = (have: number, target: number) =>
     target > 0 ? round((have / target) * 100, 0) : 0;
 
+  const burnedKcal = round(input.burnedTodayKcal ?? 0, 0);
+
   return {
     date: input.todayKey,
     calories: {
@@ -122,6 +126,11 @@ export function buildDashboard(input: DashboardInput) {
       target: targets?.dailyKcal ?? null,
       remaining: targets ? round(targets.dailyKcal - todayTotals.kcal, 0) : null,
       percent: targets ? pct(todayTotals.kcal, targets.dailyKcal) : null,
+    },
+    energy: {
+      // Movement connected to the calorie picture: intake − calories burned today.
+      burnedKcal,
+      netKcal: round(todayTotals.kcal - burnedKcal, 0),
     },
     protein: {
       consumed: todayTotals.proteinG,

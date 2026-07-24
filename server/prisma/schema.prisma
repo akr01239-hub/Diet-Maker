@@ -57,10 +57,11 @@ model User {
   waterLogs     WaterLog[]
   checkins      WeeklyCheckin[]
   familyMembers FamilyMember[]
-  exerciseLogs  ExerciseLog[]
-  periodLogs    PeriodLog[]
-  chatMessages  ChatMessage[]
-  savedFoods    SavedFood[]
+  exerciseLogs     ExerciseLog[]
+  periodLogs       PeriodLog[]
+  chatMessages     ChatMessage[]
+  savedFoods       SavedFood[]
+  wellnessSessions WellnessSession[]
 
   @@map("users")
 }
@@ -226,12 +227,31 @@ model ExerciseLog {
   reps         Int?
   weightKg     Float?
   durationMin  Int? // for cardio / timed work
+  kcal         Int? // estimated calories burned (server-computed, MET-based)
   notes        String?
   createdAt    DateTime @default(now())
 
   @@index([userId, performedAt])
   @@index([userId, exerciseName])
   @@map("exercise_logs")
+}
+
+/// A completed mind-&-body session (yoga flow, meditation or breathing). Powers the
+/// wellness streak and the calorie connection for the Move › Meditation sub-tab.
+model WellnessSession {
+  id          String   @id @default(uuid())
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  type        String // yoga | meditation | breathing
+  refId       String // yoga flow / meditation content id
+  refName     String
+  durationMin Int
+  kcal        Int      @default(0) // server-computed, MET-based
+  completedAt DateTime @default(now())
+  createdAt   DateTime @default(now())
+
+  @@index([userId, completedAt])
+  @@map("wellness_sessions")
 }
 
 /// A logged menstrual period (start, optional end). The cycle engine self-calibrates

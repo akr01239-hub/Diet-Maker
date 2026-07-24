@@ -209,3 +209,43 @@ export function recommendNextSession(
   out.sort((a, b) => a.exerciseName.localeCompare(b.exerciseName));
   return out;
 }
+
+/**
+ * Coarse progressive-overload TREND across a history of logged sets — PURE.
+ *
+ * Per exercise, compares the earliest vs the latest session by a single metric
+ * (top weight for weighted lifts, else top reps for bodyweight) and votes
+ * up/down. The overall trend is the majority vote across exercises. Used by the
+ * rating engine as one signal of the Exercise pillar. Deterministic: `Date` is
+ * only used to order the caller-supplied ISO dates.
+ */
+export function overloadTrendFromHistory(history: LoggedSet[]): 'up' | 'flat' | 'down' {
+  if (!history || history.length < 2) return 'flat';
+
+  const groups = new Map<string, LoggedSet[]>();
+  for (const s of history) {
+    if (!s || typeof s.exerciseName !== 'string' || s.exerciseName.length === 0) continue;
+    const arr = groups.get(s.exerciseName);
+    if (arr) arr.push(s);
+    else groups.set(s.exerciseName, [s]);
+  }
+
+  const metric = (s: LoggedSet): number =>
+    s.weightKg !== null && s.weightKg !== undefined ? s.weightKg : (s.reps ?? 0);
+
+  let up = 0;
+  let down = 0;
+  for (const sets of groups.values()) {
+    if (sets.length < 2) continue;
+    const sorted = [...sets].sort((a, b) => toMs(a.date) - toMs(b.date));
+    const first = metric(sorted[0]!);
+    const last = metric(sorted[sorted.length - 1]!);
+    if (first === 0 && last === 0) continue;
+    if (last > first + 1e-6) up += 1;
+    else if (last < first - 1e-6) down += 1;
+  }
+
+  if (up > down) return 'up';
+  if (down > up) return 'down';
+  return 'flat';
+}
